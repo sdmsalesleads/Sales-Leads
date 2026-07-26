@@ -197,8 +197,8 @@ $$ select auth.uid() is not null and public.app_role() not in ('pending','disabl
 
 create or replace function public.can_view_all() returns boolean
 language sql stable security definer set search_path = public as
-$$ select public.app_role() in
-   ('admin','director','salesops','marketing','marketingmgr','ceo','cfo','hrdirector') $$;
+$$ select public.app_role()::text in
+   ('admin','director','salesops','opsmgr','marketing','marketingmgr','ceo','cfo','hrdirector') $$;
 
 -- everyone in the reports-to tree under a root user (including the root)
 create or replace function public.team_ids(root uuid) returns setof uuid
@@ -215,9 +215,9 @@ language sql stable security definer set search_path = public as $$
   select public.is_active() and (
     public.can_view_all()
     or l_owner = auth.uid()
-    or (public.app_role() in ('manager','director')
+    or (public.app_role()::text in ('manager','director','bdmgr')
         and l_owner in (select public.team_ids(auth.uid())))
-    or (public.app_role() = 'finance' and l_status = 'Won')
+    or (public.app_role()::text in ('finance','finmgr') and l_status = 'Won')
   )
 $$;
 
@@ -247,7 +247,7 @@ language plpgsql security definer set search_path = public as $$
 declare r public.user_role := public.app_role();
         is_mkt boolean := r in ('marketing','marketingmgr');
         is_owner boolean := old.owner = auth.uid();
-        is_team_mgr boolean := r in ('manager','director')
+        is_team_mgr boolean := r::text in ('manager','director','bdmgr')
                                and old.owner in (select public.team_ids(auth.uid()));
 begin
   -- strictly-marketing lead data (identity & origin)
@@ -266,7 +266,7 @@ begin
   end if;
   -- distribution
   if new.owner is distinct from old.owner then
-    if not ( r in ('salesops','admin','director')
+    if not ( r::text in ('salesops','opsmgr','admin','director')
              or (r = 'manager' and (old.owner is null
                  or old.owner in (select public.team_ids(auth.uid()))))
              or (is_mkt and old.owner is null) ) then
@@ -285,7 +285,7 @@ begin
       old.industry, old.qual_status, old.temperature, old.qual_notes,
       old.lost_cat, old.lost_reason, old.assigned_at, old.first_contact_at,
       old.reassign_count, old.bd_ready)
-     and not (is_mkt or is_owner or is_team_mgr or r in ('salesops','admin')) then
+     and not (is_mkt or is_owner or is_team_mgr or r::text in ('salesops','opsmgr','admin')) then
     raise exception 'You can only update leads assigned to you';
   end if;
   -- transaction stages & commercial values: owner / manager / Sales Ops
@@ -296,8 +296,8 @@ begin
      (old.eoi_applicable, old.eoi_date, old.reservation_date, old.contract_date,
       old.total_sold_value, old.stage_meta, old.contract_reminded_at,
       old.value, old.sold_area, old.plot_no)
-     and not (is_owner or is_team_mgr or r in ('salesops','admin')
-              or (r in ('finance','cfo') and old.status = 'Won')) then
+     and not (is_owner or is_team_mgr or r::text in ('salesops','opsmgr','admin')
+              or (r::text in ('finance','finmgr','cfo') and old.status = 'Won')) then
     raise exception 'Not allowed to edit transaction or commercial fields';
   end if;
   -- cash confirmation lifecycle (THE v4 FIX):
@@ -305,11 +305,11 @@ begin
   --   progress the deal;  confirming / reopening → Finance & CFO only
   if (new.cash_status, new.cash_by, new.cash_date)
      is distinct from (old.cash_status, old.cash_by, old.cash_date) then
-    if r in ('finance','cfo') then
+    if r::text in ('finance','finmgr','cfo') then
       null; -- AR team: confirm, edit, reopen — all allowed
     elsif new.cash_status = 'pending'
           and coalesce(new.cash_by,'') = '' and new.cash_date is null
-          and (is_owner or is_team_mgr or is_mkt or r in ('salesops','admin')) then
+          and (is_owner or is_team_mgr or is_mkt or r::text in ('salesops','opsmgr','admin')) then
       null; -- won transition marks the deal as awaiting AR — allowed
     else
       raise exception 'Only Accounts Receivable confirms cash values';
@@ -477,7 +477,7 @@ create policy profiles_select on public.profiles for select
 drop policy if exists profiles_update on public.profiles;
 create policy profiles_update on public.profiles for update
   using (public.is_admin() or id = auth.uid()
-         or public.app_role() in ('manager','director','ceo','cfo','hrdirector','marketingmgr'))
+         or public.app_role()::text in ('manager','director','ceo','cfo','hrdirector','marketingmgr','opsmgr','finmgr','bdmgr'))
   with check (true);  -- column rules enforced by the profiles_enforce trigger
 
 -- leads
@@ -494,7 +494,7 @@ create policy leads_insert on public.leads for insert
     or (public.app_role() in ('sales','manager')
         and owner = auth.uid()
         and source in ('Personal','Management'))
-    or (public.app_role() = 'salesops'
+    or (public.app_role()::text in ('salesops','opsmgr')
         and source in ('Personal','Management'))
     -- business development adds its own research-sourced cold leads
     or (public.app_role()::text = 'bizdev'
@@ -578,6 +578,23 @@ create policy deal_docs_delete on storage.objects for delete
   using (bucket_id = 'deal-docs'
          and public.app_role() in ('salesops','admin','director'));
 
+-- ============ Department manager tier (reports-to before C-level) ============
+do $$ begin
+  if not exists (select 1 from pg_enum e join pg_type t on t.oid=e.enumtypid where t.typname='user_role' and e.enumlabel='opsmgr') then
+    alter type public.user_role add value 'opsmgr';
+  end if;
+end $$;
+do $$ begin
+  if not exists (select 1 from pg_enum e join pg_type t on t.oid=e.enumtypid where t.typname='user_role' and e.enumlabel='finmgr') then
+    alter type public.user_role add value 'finmgr';
+  end if;
+end $$;
+do $$ begin
+  if not exists (select 1 from pg_enum e join pg_type t on t.oid=e.enumtypid where t.typname='user_role' and e.enumlabel='bdmgr') then
+    alter type public.user_role add value 'bdmgr';
+  end if;
+end $$;
+
 -- ============ Business Development department ============
 do $$ begin
   if not exists (select 1 from pg_enum e join pg_type t on t.oid = e.enumtypid
@@ -605,15 +622,15 @@ alter table public.bd_weekly enable row level security;
 drop policy if exists bdw_select on public.bd_weekly;
 create policy bdw_select on public.bd_weekly for select using (
   member_id = auth.uid()
-  or public.app_role()::text in ('director','admin','salesops','ceo','cfo','hrdirector')
+  or public.app_role()::text in ('director','admin','salesops','opsmgr','bdmgr','finmgr','ceo','cfo','hrdirector')
 );
 drop policy if exists bdw_insert on public.bd_weekly;
 create policy bdw_insert on public.bd_weekly for insert with check (
-  member_id = auth.uid() and public.app_role()::text = 'bizdev'
+  member_id = auth.uid() and public.app_role()::text in ('bizdev','bdmgr')
 );
 drop policy if exists bdw_update on public.bd_weekly;
 create policy bdw_update on public.bd_weekly for update
-  using (member_id = auth.uid() and public.app_role()::text = 'bizdev')
+  using (member_id = auth.uid() and public.app_role()::text in ('bizdev','bdmgr'))
   with check (member_id = auth.uid());
 
 -- ============ per-user gamification record (streaks sync across devices) ============

@@ -515,6 +515,9 @@ function logoTryNext(img){
         <option value="marketing">Marketing — adds/edits/removes leads, views all reports (no distribution)</option>
         <option value="salesops">Sales Operations — distributes leads, views all data &amp; reports</option>
         <option value="bizdev">Business Development — researches &amp; warms cold leads, hands hot ones to sales</option>
+        <option value="opsmgr">Sales Operations Manager — leads the ops team, full data &amp; distribution</option>
+        <option value="finmgr">Finance Manager — leads AR, confirms cash, revenue reports</option>
+        <option value="bdmgr">Business Development Manager — leads the BD team, sees their leads &amp; tracker</option>
         <option value="finance">Finance / Accounts Receivable — confirms cash value of won deals only</option>
         <option value="marketingmgr">Marketing Manager — full view of everything + marketing lead powers</option>
         <option value="ceo">CEO — follows all data for the whole company (like Sales Director)</option>
@@ -655,7 +658,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "23 Jul 2026 · rev I";
+const APP_BUILD = "23 Jul 2026 · rev J";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -665,8 +668,9 @@ let state = { members:[], leads:[], teamTarget:0, extSales:[], importLog:[], bdW
 /* ---- role string <-> flag mapping ---- */
 const ROLE_FLAGS = r=>({
   roleKey:r,
-  admin:r==="admin", director:r==="director", mgr:r==="manager", ops:r==="salesops",
-  mkt:(r==="marketing"||r==="marketingmgr"), fin:(r==="finance"||r==="cfo"), bd:r==="bizdev",
+  admin:r==="admin", director:r==="director", mgr:r==="manager", ops:(r==="salesops"||r==="opsmgr"),
+  mkt:(r==="marketing"||r==="marketingmgr"), fin:(r==="finance"||r==="cfo"||r==="finmgr"), bd:(r==="bizdev"||r==="bdmgr"),
+  dmgr:["opsmgr","finmgr","bdmgr"].includes(r),
   exec:["ceo","cfo","hrdirector","marketingmgr"].includes(r),
   execType:({ceo:"ceo",cfo:"cfo",hrdirector:"hr",marketingmgr:"mktmgr"})[r]||"",
   pending:(r==="pending"||r==="disabled"), disabled:r==="disabled"
@@ -916,7 +920,27 @@ function canConfirmCash(){ return currentUser && currentUser.fin; } // AR team a
 function execLabel(m){ return ({ceo:"CEO", cfo:"CFO", hr:"HR Director", mktmgr:"Marketing Manager"})[m.execType]||"Executive"; }
 function execTag(m){ return '<span class="role-tag" style="color:#8A6D1D;background:#F5EBD0">'+execLabel(m)+'</span>'; }
 function fullView(){ return currentUser && (currentUser.admin || currentUser.director || currentUser.exec || currentUser.ops || currentUser.mkt); }
-function canManage(){ return currentUser && (currentUser.admin || currentUser.director || currentUser.exec || currentUser.ops || currentUser.mkt || currentUser.mgr); }
+function managerOptionsFor(m){
+  /* the reporting ladder: team member → their DEPARTMENT manager → C-level (admin confirms) */
+  const MGR_OF = { sales:["manager"], manager:[], marketing:["marketingmgr"], marketingmgr:[],
+                   salesops:["opsmgr"], opsmgr:[], finance:["finmgr"], finmgr:[],
+                   bizdev:["bdmgr"], bdmgr:[] };
+  const CLEVEL = ["director","ceo","cfo","hrdirector"];
+  const rk = m.roleKey||"pending";
+  const mgrRoles = MGR_OF[rk];
+  let pool;
+  if(mgrRoles && mgrRoles.length){
+    pool = state.members.filter(x=>mgrRoles.includes(x.roleKey) && !x.pending && x.id!==m.id);
+    if(!pool.length) pool = state.members.filter(x=>(CLEVEL.includes(x.roleKey)||x.admin) && !x.pending && x.id!==m.id);  // no dept manager yet → C-level directly
+  } else if(mgrRoles){ // they ARE a manager → they report to C-level
+    pool = state.members.filter(x=>(CLEVEL.includes(x.roleKey)||x.admin) && !x.pending && x.id!==m.id);
+  } else {              // execs / admin / pending → anyone senior
+    pool = state.members.filter(x=>(x.mgr||x.dmgr||x.admin||x.director||x.exec) && !x.pending && x.id!==m.id);
+  }
+  const tag = x=> x.admin? " (Admin)" : x.exec? " ("+execLabel(x)+")" : x.director? " (Director)" : " (Manager)";
+  return pool.map(x=>({v:x.id, t:x.name+tag(x)}));
+}
+function canManage(){ return currentUser && (currentUser.admin || currentUser.director || currentUser.exec || currentUser.ops || currentUser.mkt || currentUser.mgr || currentUser.dmgr); }
 function canDistribute(){ return isOps() || isDirector(); }   // full distribution rights
 function canDistributeLead(l){                                 // per-lead: managers within their team
   if(!currentUser) return false;
@@ -3220,13 +3244,24 @@ function viewBdTrack(){
       <div style="margin-top:8px;font-size:.82rem;font-weight:800">Total: <span style="color:var(--red)">${tot}</span> / ${totT} tasks &nbsp;${totT>0 && tot>=totT? "🎯 <span style='color:var(--green)'>All targets hit!</span>":""}</div>`;
   };
   let body = "";
-  if(isBD){
+  const isBdMgr = currentUser.roleKey==="bdmgr";
+  if(isBD && !isBdMgr){
     body = `<div class="card card-pad">
       <div class="eyebrow red" style="margin-bottom:6px">My weekly targets &amp; completed work</div>
       <p class="muted" style="font-size:.76rem">Set your target per category at the start of the week, update Completed as you go, and record milestones (e.g. "shortlisted 3 plots in 10th of Ramadan") in the notes. Leadership sees this live.</p>
       ${table(currentUser.id, true)}
       <button class="btn btn-red" style="margin-top:12px" onclick="saveBdWeek('${wk}')">💾 Save week</button>
     </div>`;
+  } else if(isBdMgr){
+    const team = bdMembers.filter(x=>x.id!==currentUser.id);
+    body = `<div class="card card-pad" style="margin-bottom:14px">
+      <div class="eyebrow red" style="margin-bottom:6px">My weekly targets &amp; completed work</div>
+      ${table(currentUser.id, true)}
+      <button class="btn btn-red" style="margin-top:12px" onclick="saveBdWeek('${wk}')">💾 Save week</button>
+    </div>` + (team.length? team.map(x=>`<div class="card card-pad" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><div class="avatar">${esc(initials(x.name))}</div><b>${esc(x.name)}</b><span class="muted" style="font-size:.76rem">${esc(x.role||"Business Development")}</span></div>
+      ${table(x.id, false)}
+    </div>`).join("") : "");
   } else {
     body = bdMembers.length? bdMembers.map(m=>`<div class="card card-pad" style="margin-bottom:14px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><div class="avatar">${esc(initials(m.name))}</div><b>${esc(m.name)}</b><span class="muted" style="font-size:.76rem">${esc(m.role||"Business Development")}</span></div>
@@ -3236,7 +3271,7 @@ function viewBdTrack(){
   return `<div class="section-head"><h2>Business Development — Weekly Tracker</h2><span class="no-print">${tabs}</span></div>${body}`;
 }
 async function saveBdWeek(wk){
-  if(!currentUser.bd || !sb) return;
+  if(!currentUser.bd || !sb) return;   // bizdev and bdmgr — own rows only (database-enforced)
   const rows = BD_CATS.map((cat,i)=>({
     member_id: currentUser.id, week: wk, category: cat,
     target: Number(($("bdt_"+i)||{}).value)||0,
@@ -3422,9 +3457,9 @@ function deptOf(){
   if(!currentUser) return "sales";
   const r = currentUser.roleKey;
   if(r==="marketing"||r==="marketingmgr") return "mkt";
-  if(r==="salesops") return "ops";
-  if(r==="finance") return "fin";
-  if(r==="bizdev") return "bd";
+  if(r==="salesops"||r==="opsmgr") return "ops";
+  if(r==="finance"||r==="finmgr") return "fin";
+  if(r==="bizdev"||r==="bdmgr") return "bd";
   return "sales";
 }
 /* ---- per-department game config: what counts, what it's called, what you earn ---- */
@@ -5141,7 +5176,7 @@ function openMemberModal(id){
   $("m_target").value = m.target||"";
   $("m_access").value = m.roleKey||"pending";
   $("targetField").style.display = ["sales","manager"].includes($("m_access").value)? "flex":"none";
-  const mgrOpts = state.members.filter(x=>(x.mgr||x.admin||x.director||x.exec) && !x.pending && x.id!==m.id).map(x=>({v:x.id,t:x.name+(x.admin?" (Admin)":x.exec?" ("+execLabel(x)+")":x.director?" (Director)":" (Manager)")}));
+  const mgrOpts = managerOptionsFor(m);
   fillSelect($("m_manager"), mgrOpts, "— None —");
   $("m_manager").value = m.managerId||"";
   $("memberOverlay").classList.add("open");
