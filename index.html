@@ -511,9 +511,10 @@ function logoTryNext(img){
         <option value="pending">Pending — awaiting approval, no access yet</option>
         <option value="sales">Salesperson — own leads; updates status, follow-ups, offers &amp; won value</option>
         <option value="manager">Sales Manager / Section Head — sees their team, confirms external sales</option>
-        <option value="director">Sales Director — follows all data for the whole team</option>
+        <option value="director">Sales &amp; Business Development Director — full visibility of sales and BD</option>
         <option value="marketing">Marketing — adds/edits/removes leads, views all reports (no distribution)</option>
         <option value="salesops">Sales Operations — distributes leads, views all data &amp; reports</option>
+        <option value="bizdev">Business Development — researches &amp; warms cold leads, hands hot ones to sales</option>
         <option value="finance">Finance / Accounts Receivable — confirms cash value of won deals only</option>
         <option value="marketingmgr">Marketing Manager — full view of everything + marketing lead powers</option>
         <option value="ceo">CEO — follows all data for the whole company (like Sales Director)</option>
@@ -557,7 +558,7 @@ function logoTryNext(img){
 
 <script>
 /* =================== Constants =================== */
-const SOURCES = ["Website","Billboard","Google SEM","Facebook","Instagram","LinkedIn","YouTube","Radio","Mobile App","Event / Exhibition","Business Development","Management","Referral","Personal","Walk-In"];
+const SOURCES = ["Website","Billboard","Google SEM","Facebook","Instagram","LinkedIn","YouTube","Radio","Mobile App","Event / Exhibition","Business Development","Management","Referral","Personal","Walk-In", "BD Research"];
 const MARKETING_SOURCES = ["Website","Billboard","Google SEM","Facebook","Instagram","LinkedIn","YouTube","Radio","Mobile App","Event / Exhibition"];
 const INDUSTRIES = ["Engineering","Pharmaceutical","Textile","Chemical","Food & Beverage (F&B)","Logistics","Heavy Industry","Services","Automotive","Warehouse"];
 const PRIORITIES = ["VIP","High","Medium","Low"];
@@ -654,18 +655,18 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "23 Jul 2026 · rev H";
+const APP_BUILD = "23 Jul 2026 · rev I";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 const DEFAULT_SETTINGS = {autoAssign:false, autoReassign:false, vipHours:4, neglectHours:48, notifyDirector:true, siteMgrEmail:"", adminCal:false, workloadCap:140};
-let state = { members:[], leads:[], teamTarget:0, extSales:[], importLog:[], notifShown:"", settings:Object.assign({},DEFAULT_SETTINGS) };
+let state = { members:[], leads:[], teamTarget:0, extSales:[], importLog:[], bdWeekly:[], notifShown:"", settings:Object.assign({},DEFAULT_SETTINGS) };
 
 /* ---- role string <-> flag mapping ---- */
 const ROLE_FLAGS = r=>({
   roleKey:r,
   admin:r==="admin", director:r==="director", mgr:r==="manager", ops:r==="salesops",
-  mkt:(r==="marketing"||r==="marketingmgr"), fin:(r==="finance"||r==="cfo"),
+  mkt:(r==="marketing"||r==="marketingmgr"), fin:(r==="finance"||r==="cfo"), bd:r==="bizdev",
   exec:["ceo","cfo","hrdirector","marketingmgr"].includes(r),
   execType:({ceo:"ceo",cfo:"cfo",hrdirector:"hr",marketingmgr:"mktmgr"})[r]||"",
   pending:(r==="pending"||r==="disabled"), disabled:r==="disabled"
@@ -682,7 +683,7 @@ function leadFromDb(r){ return { id:r.id, name:r.name||"", company:r.company||""
   phone:r.phone||"", phone2:r.phone2||"", email:r.email||"", source:r.source||"", project:r.project||"",
   land:r.land==null?"":Number(r.land), industry:r.industry||"", priority:r.priority||"",
   status:r.status||"New", owner:r.owner||"", next:r.next_followup||"", nextTime:r.next_time||"",
-  meetingDate:r.meeting_date||"", meetingTime:r.meeting_time||"", offerSent:!!r.offer_sent,
+  meetingDate:r.meeting_date||"", meetingTime:r.meeting_time||"", bdReady:!!r.bd_ready, offerSent:!!r.offer_sent,
   offerDate:r.offer_date||"", value:r.value==null?"":Number(r.value), cashStatus:r.cash_status||"",
   cashBy:r.cash_by||"", cashDate:r.cash_date||"", wonDate:r.won_date||"",
   qualStatus:r.qual_status||"", temperature:r.temperature||"", qualNotes:r.qual_notes||"",
@@ -700,7 +701,7 @@ function leadToDb(l){ return { id:l.id, name:l.name||"", company:l.company||"", 
   phone:l.phone||"", phone2:l.phone2||"", email:l.email||"", source:l.source||"", project:l.project||"",
   land:(l.land===""||l.land==null)?null:Number(l.land), industry:l.industry||"", priority:l.priority||"",
   status:l.status||"New", owner:l.owner||null, next_followup:l.next||null, next_time:l.nextTime||"",
-  meeting_date:l.meetingDate||null, meeting_time:l.meetingTime||"", offer_sent:!!l.offerSent,
+  meeting_date:l.meetingDate||null, meeting_time:l.meetingTime||"", bd_ready:!!l.bdReady, offer_sent:!!l.offerSent,
   offer_date:l.offerDate||null, value:(l.value===""||l.value==null)?null:Number(l.value),
   cash_status:l.cashStatus||"", cash_by:l.cashBy||"", cash_date:l.cashDate||null,
   won_date:l.wonDate||null,
@@ -735,13 +736,15 @@ function takeSnapshot(){
 }
 async function loadAll(){
   if(!sb) return;
-  const [pr, ld, ex, il, st] = await Promise.all([
+  const [pr, ld, ex, il, st, bw] = await Promise.all([
     sb.from("profiles").select("*"),
     sb.from("leads").select("*"),
     sb.from("external_sales").select("*"),
     sb.from("import_log").select("*").order("created_at",{ascending:false}).limit(20),
-    sb.from("app_settings").select("*")
+    sb.from("app_settings").select("*"),
+    sb.from("bd_weekly").select("*")
   ]);
+  state.bdWeekly = (bw && bw.data)||[];
   const beforeSnap = currentUser? notifSnapshot() : null;
   state.members = (pr.data||[]).map(profileToMember);
   state.leads = (ld.data||[]).map(leadFromDb);
@@ -923,7 +926,8 @@ function canDistributeLead(l){                                 // per-lead: mana
 }
 function canEditLeads(){ return isMarketing(); }         // add/remove/edit lead data: Marketing only
 const SELF_SOURCES = ["Personal","Management"];           // channels a salesperson may add themselves
-function canAddLead(){ return isMarketing() || (currentUser && ["sales","manager","salesops"].includes(currentUser.roleKey)); }
+function selfSources(){ return currentUser && currentUser.bd? ["BD Research","Personal","Management"] : SELF_SOURCES; }
+function canAddLead(){ return isMarketing() || (currentUser && ["sales","manager","salesops","bizdev"].includes(currentUser.roleKey)); }
 function isSelfAdder(){ return canAddLead() && !isMarketing(); }
 function canConfirmExt(){ return currentUser && (currentUser.admin || currentUser.director || currentUser.exec || currentUser.mgr); }
 function teamMembers(){
@@ -1120,6 +1124,7 @@ const NAV_ITEMS = [
   {v:"reports", ic:"▤", label:()=> isFinance()? "Revenue Reports":"Team Reports", show:()=>canManage()||isFinance()},
   {v:"calendar", ic:"▦", label:()=>"Calendar", show:()=>canSeeCalendar()},
   {v:"achievements", ic:"🏅", label:()=>"Achievements", show:()=>gamEligible()},
+  {v:"bdtrack", ic:"📋", label:()=>"BD Tracker", show:()=>(currentUser&&currentUser.bd)||isOps()||isAdmin()||(currentUser&&currentUser.director)||(currentUser&&currentUser.exec)},
   {v:"hierarchy", ic:"◬", label:()=>"Hierarchy", show:()=>canManage()},
   {v:"myreport", ic:"▣", label:()=>"My Report", show:()=>!canManage() && !isFinance()},
   {v:"extsales", ic:"↗", label:()=>"External Sales", show:()=>!isFinance() && !isOps() && !isMarketing()},
@@ -1156,6 +1161,7 @@ function render(){
   else if(currentView==="myreport") c.innerHTML = viewMyReport();
   else if(currentView==="calendar" && canSeeCalendar()) c.innerHTML = viewCalendar();
   else if(currentView==="achievements" && gamEligible()) c.innerHTML = viewAchievements();
+  else if(currentView==="bdtrack") c.innerHTML = viewBdTrack();
   else if(currentView==="hierarchy" && canManage()) c.innerHTML = viewHierarchy();
   else if(currentView==="extsales" && !isFinance()) c.innerHTML = viewExtSales();
   else if(currentView==="targets" && isAdmin()) c.innerHTML = viewTargets();
@@ -1258,6 +1264,7 @@ function notifSnapshot(){
   return {
     myLeads: new Set(state.leads.filter(l=>l.owner===currentUser.id).map(l=>l.id)),
     unassigned: state.leads.filter(l=>!l.owner && l.status!=="Won" && l.status!=="Lost").length,
+    bdReady: new Set(state.leads.filter(l=>l.bdReady).map(l=>l.id)),
     pendingWon: new Set(state.leads.filter(l=>l.status==="Won" && (l.cashStatus||"pending")!=="confirmed").map(l=>l.id)),
     wonIds: new Set(state.leads.filter(l=>l.status==="Won").map(l=>l.id))
   };
@@ -1267,7 +1274,7 @@ function notifDiff(prev){
   try{
     if(!currentUser) return;
     const dept = deptOf();
-    if(dept==="sales"){
+    if(dept==="sales" || dept==="bd"){
       const fresh = state.leads.filter(l=>l.owner===currentUser.id && !prev.myLeads.has(l.id) && l.status!=="Won" && l.status!=="Lost");
       if(fresh.length===1){
         const l = fresh[0];
@@ -1280,6 +1287,8 @@ function notifDiff(prev){
     if(dept==="ops"){
       const un = state.leads.filter(l=>!l.owner && l.status!=="Won" && l.status!=="Lost").length;
       if(un>prev.unassigned) notifOnce("newunassigned_"+un, "📦 "+(un-prev.unassigned)+" new lead"+((un-prev.unassigned)>1?"s":"")+" arrived", un+" now waiting for assignment — route them to the team.", "leads");
+      const freshHot = state.leads.filter(l=>l.bdReady && !prev.bdReady.has(l.id));
+      freshHot.forEach(l=> notifOnce("bdhot_"+l.id, "🔥 HOT lead from Business Development", l.name+" was warmed to hot — assign it to a salesperson now.", "dashboard"));
     }
     if(dept==="fin"){
       const freshPending = state.leads.filter(l=>l.status==="Won" && (l.cashStatus||"pending")!=="confirmed" && !prev.pendingWon.has(l.id));
@@ -1497,6 +1506,19 @@ function viewAdminDashboard(){
 
   return `
   ${greetingCard()}
+  ${(function(){
+    const hot = fullView()||isOps()? state.leads.filter(l=>l.bdReady && l.status!=="Won" && l.status!=="Lost") : [];
+    if(!hot.length) return "";
+    return `<div class="card card-pad" style="margin-bottom:14px;border-left:4px solid var(--red)">
+      <div class="eyebrow red" style="margin-bottom:8px">🔥 Hot from Business Development — hand to sales now</div>
+      ${hot.map(l=>`<div class="cs-item" style="cursor:pointer" onclick="if(!event.target.closest('button,a,input,select,label')) openLeadModal('${l.id}')">
+        <div class="avatar" style="background:var(--red)">${esc(initials(l.name))}</div>
+        <div class="cs-main"><div class="cs-name">${esc(l.name)} ${scoreChip(l)}</div>
+        <div class="cs-meta">Warmed by ${esc(memberName(l.owner))} · ${esc(l.project||"No project")} · open the lead and pick "Assigned to"</div></div>
+        <button class="btn btn-red btn-sm" onclick="openLeadModal('${l.id}')">Assign →</button>
+      </div>`).join("")}
+    </div>`;
+  })()}
   ${topPerformers()}
   <div class="grid g4">
     ${fullView()? `<div class="card kpi ${un.length?"k-amber":""}" onclick="kpiGo({owner:'__none'})" style="cursor:pointer" title="Open unassigned leads"><div class="k-label">Unassigned leads</div><div class="k-val" style="${un.length?"color:var(--amber)":""}">${un.length}</div><div class="k-sub">Waiting for a salesperson</div></div>`
@@ -1697,8 +1719,8 @@ function bindLeadFilters(){
 function openLeadModal(id){
   if(!id && !canAddLead()){ toast("You don't have permission to add leads"); return; }
   editingLeadId = id||null;
-  fillSelect($("f_source"), (!id && isSelfAdder())? SELF_SOURCES : SOURCES);
-  if(!id && isSelfAdder()) $("f_source").value = "Personal";
+  fillSelect($("f_source"), (!id && isSelfAdder())? selfSources() : SOURCES);
+  if(!id && isSelfAdder()) $("f_source").value = currentUser.bd? "BD Research" : "Personal";
 
   fillSelect($("f_project"), PROJECTS, "— Select project —");
   fillSelect($("f_industry"), INDUSTRIES, "— Select industry —");
@@ -1898,8 +1920,8 @@ function saveLead(){
     adoptCustnoPhone(l);
     if(isNewLead && isMarketing()) pushLog(l, "Lead added");
     if(isNewLead && isSelfAdder()){
-      if(!SELF_SOURCES.includes(l.source)) l.source = "Personal";
-      if(["sales","manager"].includes(currentUser.roleKey)) l.owner = currentUser.id;  // they follow it up
+      if(!selfSources().includes(l.source)) l.source = currentUser.bd? "BD Research" : "Personal";
+      if(["sales","manager","bizdev"].includes(currentUser.roleKey)) l.owner = currentUser.id;  // they follow it up
       pushLog(l, "Self-generated lead ("+l.source+") added by "+currentUser.name);
     }
     const dn = flagDupes(l);
@@ -1929,7 +1951,9 @@ function saveLead(){
       l.firstContactAt = "";
       if(newOwner){
         if(!l.next) l.next = addDays(today(),2);
-        pushLog(l, "Assigned to "+memberName(newOwner)+" by "+currentUser.name);
+        const wasBD = l.bdReady;
+        if(wasBD){ l.bdReady = false; pushLog(l, "Handed over from Business Development to "+memberName(newOwner)+" by "+currentUser.name); }
+        else pushLog(l, "Assigned to "+memberName(newOwner)+" by "+currentUser.name);
       }
     }
   }
@@ -1959,6 +1983,14 @@ function saveLead(){
     l.industry = $("f_industry").value;
     l.qualStatus = $("f_qual").value;
     l.temperature = $("f_qual").value==="Qualified"? $("f_temp").value : "";
+    if(currentUser.bd && l.owner===currentUser.id && l.temperature==="Hot" && l.qualStatus==="Qualified" && !l.bdReady){
+      l.bdReady = true;
+      pushLog(l, "🔥 Warmed to HOT by Business Development — awaiting Sales Operations handover");
+      const gd = gamData(); gd.bdHot=(gd.bdHot||0)+1; gd.bdHotW=gd.bdHotW||{}; gd.bdHotW[weekKey()]=(gd.bdHotW[weekKey()]||0)+1; gamSave(gd);
+      toast("🔥 Lead is HOT — it's now in the Sales Operations handover queue");
+      confetti(false);
+      celebrate("🔥", "Lead warmed to HOT!", esc(l.name)+" is ready for sales. Sales Operations will assign it — great hunting!");
+    }
     l.qualNotes = $("f_qualNotes").value.trim();
     l.lostCat = s==="Lost"? $("f_lostCat").value : "";
     l.lostReason = s==="Lost"? $("f_lostReason").value : "";
@@ -2699,6 +2731,14 @@ const BADGES_OPS = [
   {id:"op_speed",   ic:"⚡", name:"Same-Day Router", hint:"Assign 10 leads in a single day",      prog:()=>[myAssignLogs(e=>e.d===today()),10], test:()=>myAssignLogs(e=>e.d===today())>=10},
   {id:"op_streak7", ic:"🔥", name:"Queue Keeper",    hint:"Clear the unassigned queue 7 days in a row", prog:()=>[gamData().best||0,7], unit:" days", test:()=>((gamData().best||0)>=7)}
 ];
+const BADGES_BD = [
+  {id:"bd_first",  ic:"🔥", name:"First Heat-Up",   hint:"Warm your first lead to HOT and hand it to sales", prog:()=>[gamData().bdHot||0,1],  test:()=>((gamData().bdHot||0)>=1)},
+  {id:"bd_hot10",  ic:"🌋", name:"Ten Heat-Ups",    hint:"10 hot handovers to the sales team",               prog:()=>[gamData().bdHot||0,10], test:()=>((gamData().bdHot||0)>=10)},
+  {id:"bd_res50",  ic:"📚", name:"Research Machine",hint:"Complete 50 Market Research tasks",                prog:()=>[bdTasksDone("Market Research"),50], test:()=>bdTasksDone("Market Research")>=50},
+  {id:"bd_land10", ic:"🗺️", name:"Land Hunter",     hint:"Complete 10 Land Acquisition tasks",               prog:()=>[bdTasksDone("Land Acquisition"),10], test:()=>bdTasksDone("Land Acquisition")>=10},
+  {id:"bd_100",    ic:"🏗️", name:"Groundwork",      hint:"100 tracker tasks completed across all categories", prog:()=>[bdTasksDone(),100], test:()=>bdTasksDone()>=100},
+  {id:"bd_streak7",ic:"🔥", name:"Relentless",      hint:"Clear your follow-ups 7 working days in a row",    prog:()=>[gamData().best||0,7], unit:" days", test:()=>((gamData().best||0)>=7)}
+];
 const BADGES_FIN = [
   {id:"fi_first",   ic:"💰", name:"First Confirmation", hint:"Confirm your first won deal's cash value", prog:()=>[myConfirms().length,1],   test:()=>myConfirms().length>=1},
   {id:"fi_25",      ic:"🧾", name:"Twenty-Five Sealed", hint:"Confirm 25 deals",                  prog:()=>[myConfirms().length,25],  test:()=>myConfirms().length>=25},
@@ -2710,7 +2750,7 @@ const BADGES_FIN = [
 const BADGE_PW = {id:"pw3", ic:"🌟", name:"Perfectionist", hint:"3 Perfect Weeks — every working day completed, Sun–Thu", prog:()=>[gamData().perfectWeeks||0,3], unit:" weeks", test:()=>((gamData().perfectWeeks||0)>=3)};
 function myBadges(){
   const dept = deptOf();
-  const set = dept==="mkt"? BADGES_MKT : dept==="ops"? BADGES_OPS : dept==="fin"? BADGES_FIN : BADGES_SALES;
+  const set = dept==="mkt"? BADGES_MKT : dept==="ops"? BADGES_OPS : dept==="fin"? BADGES_FIN : dept==="bd"? BADGES_BD : BADGES_SALES;
   const mine = state.leads.filter(l=>l.owner===currentUser.id);
   return [...set, BADGE_PW].map(b=>({ ...b, un: !!b.test(mine) }));
 }
@@ -2766,13 +2806,17 @@ const CHALLENGES_OPS = [
   {id:"op_a15", ic:"📦", name:"Assign 15 leads this week", target:15, count:()=>myAssignLogs(e=>inWeek(e.d))},
   {id:"op_a30", ic:"🚚", name:"Assign 30 leads this week", target:30, count:()=>myAssignLogs(e=>inWeek(e.d))}
 ];
+const CHALLENGES_BD = [
+  {id:"bd_hot2",   ic:"🔥", name:"Warm 2 leads to HOT this week",    target:2,  count:()=>((gamData().bdHotW||{})[weekKey()]||0)},
+  {id:"bd_task15", ic:"📋", name:"Complete 15 tracker tasks this week", target:15, count:()=>bdTasksDone(null, weekKey())}
+];
 const CHALLENGES_FIN = [
   {id:"fi_c5", ic:"💰", name:"Confirm 5 deals this week", target:5, count:()=>myConfirms(l=>inWeek(l.cashDate)).length},
   {id:"fi_zero", ic:"🧾", name:"Reach zero pending confirmations", target:1, count:()=>GAM.fin.queue()===0? 1:0}
 ];
 function currentChallenge(){
   const dept = deptOf();
-  const list = dept==="mkt"? CHALLENGES_MKT : dept==="ops"? CHALLENGES_OPS : dept==="fin"? CHALLENGES_FIN : CHALLENGES_SALES;
+  const list = dept==="mkt"? CHALLENGES_MKT : dept==="ops"? CHALLENGES_OPS : dept==="fin"? CHALLENGES_FIN : dept==="bd"? CHALLENGES_BD : CHALLENGES_SALES;
   const wk = Math.floor(weekStart().getTime()/(7*864e5));
   return list[wk % list.length];
 }
@@ -2905,6 +2949,14 @@ const JOURNEY_OPS = [
   {id:"jo5", ic:"🎼", name:"500 Assigned",   hint:"Reach 500 assignments",         test:()=>myAssignLogs()>=500},
   {id:"jo6", ic:"👑", name:"Operations Master", hint:"1,000 assignments",          test:()=>myAssignLogs()>=1000}
 ];
+const JOURNEY_BD = [
+  {id:"jb1", ic:"🔥", name:"First Hot Handover", hint:"Warm one lead to HOT",       test:()=>((gamData().bdHot||0)>=1)},
+  {id:"jb2", ic:"📚", name:"25 Tasks Done",      hint:"25 tracker tasks completed", test:()=>bdTasksDone()>=25},
+  {id:"jb3", ic:"🌡️", name:"5 Handovers",        hint:"5 leads handed to sales",    test:()=>((gamData().bdHot||0)>=5)},
+  {id:"jb4", ic:"🗺️", name:"Land Specialist",    hint:"25 Land Acquisition tasks",  test:()=>bdTasksDone("Land Acquisition")>=25},
+  {id:"jb5", ic:"🌋", name:"25 Handovers",       hint:"25 hot leads delivered",     test:()=>((gamData().bdHot||0)>=25)},
+  {id:"jb6", ic:"👑", name:"BD Master",          hint:"250 tracker tasks completed",test:()=>bdTasksDone()>=250}
+];
 const JOURNEY_FIN = [
   {id:"jf1", ic:"💰", name:"First Confirmation", hint:"Confirm your first deal",   test:()=>myConfirms().length>=1},
   {id:"jf2", ic:"🧾", name:"10 Confirmed",   hint:"Reach 10 confirmations",        test:()=>myConfirms().length>=10},
@@ -2915,7 +2967,7 @@ const JOURNEY_FIN = [
 ];
 function myJourney(){
   const dept = deptOf();
-  const set = dept==="mkt"? JOURNEY_MKT : dept==="ops"? JOURNEY_OPS : dept==="fin"? JOURNEY_FIN : JOURNEY_SALES;
+  const set = dept==="mkt"? JOURNEY_MKT : dept==="ops"? JOURNEY_OPS : dept==="fin"? JOURNEY_FIN : dept==="bd"? JOURNEY_BD : JOURNEY_SALES;
   const mine = state.leads.filter(l=>l.owner===currentUser.id);
   return set.map(j=>({ ...j, done: !!j.test(mine) }));
 }
@@ -3139,6 +3191,71 @@ document.addEventListener("click", e=>{
 });
 
 /* =================== Conversion funnel =================== */
+/* =================== BD Weekly Tracker =================== */
+let bdWeekSel = "";
+function bdWeeks(){ const t=weekKey(); const p=new Date(weekStart()); p.setDate(p.getDate()-7); return [{k:t,label:"This week"},{k:isoLocal(p),label:"Last week"}]; }
+function bdRow(memberId, wk, cat){
+  return (state.bdWeekly||[]).find(r=>r.member_id===memberId && r.week===wk && r.category===cat) || {target:0,done:0,notes:""};
+}
+function viewBdTrack(){
+  const wk = bdWeekSel || weekKey();
+  const tabs = bdWeeks().map(w=>`<button class="btn btn-sm ${w.k===wk?"btn-red":"btn-ghost"}" onclick="bdWeekSel='${w.k}';render()">${w.label}</button>`).join(" ");
+  const isBD = currentUser.bd;
+  const bdMembers = state.members.filter(m=>m.bd && !m.pending);
+  const table = (mid, editable)=>{
+    let tot=0, totT=0;
+    const rows = BD_CATS.map((cat,i)=>{
+      const r = bdRow(mid, wk, cat);
+      tot += Number(r.done)||0; totT += Number(r.target)||0;
+      const pct = r.target>0? Math.min(100, Math.round(r.done/r.target*100)) : 0;
+      return `<tr>
+        <td style="font-weight:800;font-size:.82rem">${cat}</td>
+        <td>${editable? `<input type="number" min="0" id="bdt_${i}" value="${r.target||0}" style="width:74px">` : `<b>${r.target||0}</b>`}</td>
+        <td>${editable? `<input type="number" min="0" id="bdd_${i}" value="${r.done||0}" style="width:74px">` : `<b style="color:var(--red)">${r.done||0}</b>`}</td>
+        <td style="min-width:120px"><div class="meter"><div class="meter-fill" style="width:${pct}%"></div></div><span class="muted" style="font-size:.7rem">${r.target>0? pct+"%":"—"}</span></td>
+        <td>${editable? `<input type="text" id="bdn_${i}" value="${esc(r.notes||"")}" placeholder="Milestones / details…" style="width:100%">` : `<span class="muted" style="font-size:.76rem">${esc(r.notes||"")}</span>`}</td>
+      </tr>`;
+    }).join("");
+    return `<table class="tbl" style="margin-top:8px"><thead><tr><th>Category</th><th>Weekly target</th><th>Completed</th><th>Progress</th><th>Milestones &amp; notes</th></tr></thead><tbody>${rows}</tbody></table>
+      <div style="margin-top:8px;font-size:.82rem;font-weight:800">Total: <span style="color:var(--red)">${tot}</span> / ${totT} tasks &nbsp;${totT>0 && tot>=totT? "🎯 <span style='color:var(--green)'>All targets hit!</span>":""}</div>`;
+  };
+  let body = "";
+  if(isBD){
+    body = `<div class="card card-pad">
+      <div class="eyebrow red" style="margin-bottom:6px">My weekly targets &amp; completed work</div>
+      <p class="muted" style="font-size:.76rem">Set your target per category at the start of the week, update Completed as you go, and record milestones (e.g. "shortlisted 3 plots in 10th of Ramadan") in the notes. Leadership sees this live.</p>
+      ${table(currentUser.id, true)}
+      <button class="btn btn-red" style="margin-top:12px" onclick="saveBdWeek('${wk}')">💾 Save week</button>
+    </div>`;
+  } else {
+    body = bdMembers.length? bdMembers.map(m=>`<div class="card card-pad" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><div class="avatar">${esc(initials(m.name))}</div><b>${esc(m.name)}</b><span class="muted" style="font-size:.76rem">${esc(m.role||"Business Development")}</span></div>
+      ${table(m.id, false)}
+    </div>`).join("") : `<div class="empty"><div class="e-big">📋</div>No Business Development members yet. Add one from the Team page with the "Business Development" access level.</div>`;
+  }
+  return `<div class="section-head"><h2>Business Development — Weekly Tracker</h2><span class="no-print">${tabs}</span></div>${body}`;
+}
+async function saveBdWeek(wk){
+  if(!currentUser.bd || !sb) return;
+  const rows = BD_CATS.map((cat,i)=>({
+    member_id: currentUser.id, week: wk, category: cat,
+    target: Number(($("bdt_"+i)||{}).value)||0,
+    done: Number(($("bdd_"+i)||{}).value)||0,
+    notes: (($("bdn_"+i)||{}).value)||"",
+    updated_at: new Date().toISOString()
+  }));
+  try{
+    const r = await sb.from("bd_weekly").upsert(rows, {onConflict:"member_id,week,category"});
+    if(r && r.error) throw r.error;
+    rows.forEach(nr=>{
+      const i = state.bdWeekly.findIndex(x=>x.member_id===nr.member_id && x.week===nr.week && x.category===nr.category);
+      if(i>=0) state.bdWeekly[i] = Object.assign(state.bdWeekly[i], nr); else state.bdWeekly.push(nr);
+    });
+    toast("Week saved — leadership can see your progress");
+    setTimeout(gamTick, 400);
+    render();
+  }catch(e){ toast("Could not save — check your connection and try again"); }
+}
 function funnelCard(pool, title){
   const stages = [
     {label:"Leads received",  n: pool.length},
@@ -3307,12 +3424,18 @@ function deptOf(){
   if(r==="marketing"||r==="marketingmgr") return "mkt";
   if(r==="salesops") return "ops";
   if(r==="finance") return "fin";
+  if(r==="bizdev") return "bd";
   return "sales";
 }
 /* ---- per-department game config: what counts, what it's called, what you earn ---- */
 function myAddsAll(){ return state.leads.filter(l=>(l.log||[]).some(e=>e.by===currentUser.name && /^(Lead added|Imported from Excel|Self-generated lead)/.test(e.t||""))); }
 function myAssignLogs(fn){ let n=0; state.leads.forEach(l=>(l.log||[]).forEach(e=>{ if(e.by===currentUser.name && /^(Assigned to|Transferred to)/.test(e.t||"") && (!fn||fn(e))) n++; })); return n; }
 function myConfirms(fn){ return state.leads.filter(l=>l.cashBy===currentUser.name && l.cashStatus==="confirmed" && (!fn||fn(l))); }
+const BD_CATS = ["Market Research","Land Acquisition","Cold Outreach","Broker & Partner Network","Feasibility & Site Studies"];
+function bdTasksDone(cat, wk){
+  return (state.bdWeekly||[]).filter(r=>r.member_id===currentUser.id && (!cat || r.category===cat) && (!wk || r.week===wk))
+    .reduce((s,r)=>s+(Number(r.done)||0),0);
+}
 const GAM = {
   sales: {
     mode:"clear",
@@ -3337,13 +3460,25 @@ const GAM = {
   },
   ops: {
     mode:"clear",
-    queue: ()=> state.leads.filter(l=>!l.owner && l.status!=="Won" && l.status!=="Lost").length,
+    queue: ()=> state.leads.filter(l=>(!l.owner || l.bdReady) && l.status!=="Won" && l.status!=="Lost").length,
     qIcon:"📦", qLabel:"to assign", ribbonTag:"queue",
     doneTitle:"Queue cleared — every lead has a home!", doneSub:()=>"Nobody waits when you're on duty. "+praise(),
     actsToday: ()=> myAssignLogs(e=>e.d===today()),
     xp: ()=> myAssignLogs()*12 + myAddsAll().length*10,
     xpHow:"📦 Assign or transfer a lead — <b>12 XP</b><br>📥 Add a lead — <b>10 XP</b>",
     levels: [{xp:0,name:"Queue Rookie",ic:"🌱"},{xp:150,name:"Coordinator",ic:"🗂️"},{xp:400,name:"Dispatcher",ic:"📦"},{xp:900,name:"Flow Keeper",ic:"🔁"},{xp:1800,name:"Orchestrator",ic:"🎼"},{xp:3500,name:"Operations Legend",ic:"👑"}]
+  },
+  bd: {
+    mode:"clear",
+    queue: ()=> state.leads.filter(l=>l.owner===currentUser.id && !ACTIVE_EXCLUDE.includes(l.status) && l.next && l.next<=today()).length,
+    qIcon:"🔍", qLabel:"follow-ups", ribbonTag:"today",
+    doneTitle:"Hunting day complete!", doneSub:()=>"Every cold call made, every lead touched. The next hot handover is coming. "+praise(),
+    actsToday: ()=> state.leads.filter(l=>l.owner===currentUser.id).reduce((s,l)=>s+((l.log||[]).filter(e=>e.by===currentUser.name && e.d===today()).length),0),
+    xp: ()=> (gamData().bdHot||0)*60 + bdTasksDone()*5
+           + state.leads.filter(l=>l.owner===currentUser.id && l.qualStatus==="Qualified").length*10
+           + state.leads.filter(l=>l.owner===currentUser.id).reduce((s,l)=>s+((l.log||[]).length),0)*2,
+    xpHow:"🔥 Warm a lead to HOT (handover) — <b>60 XP</b><br>📋 Complete a tracker task — <b>5 XP</b><br>✅ Qualify a lead — <b>10 XP</b><br>✍️ Log any activity — <b>2 XP</b>",
+    levels: [{xp:0,name:"Scout",ic:"🔍"},{xp:150,name:"Researcher",ic:"📚"},{xp:400,name:"Pathfinder",ic:"🧭"},{xp:900,name:"Deal Hunter",ic:"🎯"},{xp:1800,name:"Rainmaker's Ally",ic:"🤝"},{xp:3500,name:"BD Legend",ic:"👑"}]
   },
   fin: {
     mode:"clear",

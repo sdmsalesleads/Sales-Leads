@@ -70,6 +70,7 @@ create table if not exists public.leads (
   next_time text not null default '',
   meeting_date date,
   meeting_time text not null default '',
+  bd_ready boolean not null default false,
   offer_sent boolean not null default false,
   offer_date date,
   value numeric,
@@ -277,13 +278,13 @@ begin
       new.notes, new.last_contact, new.won_date, new.dup, new.dup_cleared,
       new.industry, new.qual_status, new.temperature, new.qual_notes,
       new.lost_cat, new.lost_reason, new.assigned_at, new.first_contact_at,
-      new.reassign_count)
+      new.reassign_count, new.bd_ready)
      is distinct from
      (old.status, old.next_followup, old.next_time, old.meeting_date, old.meeting_time, old.offer_sent, old.offer_date,
       old.notes, old.last_contact, old.won_date, old.dup, old.dup_cleared,
       old.industry, old.qual_status, old.temperature, old.qual_notes,
       old.lost_cat, old.lost_reason, old.assigned_at, old.first_contact_at,
-      old.reassign_count)
+      old.reassign_count, old.bd_ready)
      and not (is_mkt or is_owner or is_team_mgr or r in ('salesops','admin')) then
     raise exception 'You can only update leads assigned to you';
   end if;
@@ -495,6 +496,10 @@ create policy leads_insert on public.leads for insert
         and source in ('Personal','Management'))
     or (public.app_role() = 'salesops'
         and source in ('Personal','Management'))
+    -- business development adds its own research-sourced cold leads
+    or (public.app_role()::text = 'bizdev'
+        and owner = auth.uid()
+        and source in ('Personal','Management','BD Research'))
   );
 drop policy if exists leads_update on public.leads;
 create policy leads_update on public.leads for update
@@ -572,6 +577,44 @@ drop policy if exists deal_docs_delete on storage.objects;
 create policy deal_docs_delete on storage.objects for delete
   using (bucket_id = 'deal-docs'
          and public.app_role() in ('salesops','admin','director'));
+
+-- ============ Business Development department ============
+do $$ begin
+  if not exists (select 1 from pg_enum e join pg_type t on t.oid = e.enumtypid
+                 where t.typname = 'user_role' and e.enumlabel = 'bizdev') then
+    alter type public.user_role add value 'bizdev';
+  end if;
+end $$;
+
+-- BD hot-handover flag on leads
+alter table public.leads add column if not exists bd_ready boolean not null default false;
+
+-- BD weekly targets & completed tasks (research, land acquisition, ...)
+create table if not exists public.bd_weekly (
+  id uuid primary key default gen_random_uuid(),
+  member_id uuid not null references public.profiles(id) on delete cascade,
+  week date not null,
+  category text not null,
+  target int not null default 0,
+  done int not null default 0,
+  notes text not null default '',
+  updated_at timestamptz not null default now(),
+  unique (member_id, week, category)
+);
+alter table public.bd_weekly enable row level security;
+drop policy if exists bdw_select on public.bd_weekly;
+create policy bdw_select on public.bd_weekly for select using (
+  member_id = auth.uid()
+  or public.app_role()::text in ('director','admin','salesops','ceo','cfo','hrdirector')
+);
+drop policy if exists bdw_insert on public.bd_weekly;
+create policy bdw_insert on public.bd_weekly for insert with check (
+  member_id = auth.uid() and public.app_role()::text = 'bizdev'
+);
+drop policy if exists bdw_update on public.bd_weekly;
+create policy bdw_update on public.bd_weekly for update
+  using (member_id = auth.uid() and public.app_role()::text = 'bizdev')
+  with check (member_id = auth.uid());
 
 -- ============ per-user gamification record (streaks sync across devices) ============
 create table if not exists public.user_gam (
