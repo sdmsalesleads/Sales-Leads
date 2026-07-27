@@ -1,4 +1,21 @@
 -- ============================================================================
+--  ELSEWEDY CRM  —  SUPABASE SCHEMA (AUTHENTICATION ONLY)
+--  ---------------------------------------------------------------------------
+--  Google Sheets is the database. This file no longer stores business data:
+--  it keeps ONLY what is needed to sign people in and know their role —
+--  accounts, roles, reporting lines and targets. Leads, sales, activities,
+--  BD tracking, settings and the audit trail all live in the workbook.
+--
+--  Run this once in the SQL Editor. It is safe to re-run.
+--
+--  IMPORTANT — the business tables are NOT dropped by this file. Your existing
+--  data stays exactly where it is until you decide otherwise. Once the workbook
+--  is live and you have confirmed every lead is in it, you can remove them with
+--  the clearly-marked block at the very bottom of this file (commented out on
+--  purpose — read it before you use it).
+-- ============================================================================
+
+-- ============================================================================
 -- ELSEWEDY SALES CRM — COMPLETE SUPABASE DATABASE (ALL-IN-ONE)
 -- This single file contains the ENTIRE database: tables, relationships, security
 -- policies, authority matrix, activity logs, duplicate detection, fair rotation,
@@ -646,3 +663,28 @@ drop policy if exists gam_insert on public.user_gam;
 create policy gam_insert on public.user_gam for insert with check (id = auth.uid());
 drop policy if exists gam_update on public.user_gam;
 create policy gam_update on public.user_gam for update using (id = auth.uid()) with check (id = auth.uid());
+
+-- ============================================================================
+--  OPTIONAL — RETIRING THE OLD BUSINESS TABLES
+--  ---------------------------------------------------------------------------
+--  Do NOT run this until all of the following are true:
+--    1. The workbook is connected and "Use the workbook as the database" is on.
+--    2. You clicked "Send all existing leads" and the Leads tab shows every lead.
+--    3. The team has worked normally for a few days with no data missing.
+--    4. You have downloaded a copy of the workbook (File > Download > .xlsx)
+--       AND exported the leads from the CRM as a backup.
+--
+--  This is irreversible: it deletes the leads, sales and tracker data held in
+--  Postgres. The CRM will not miss them — by then it reads from the workbook —
+--  but there is no undo. Remove the leading -- from each line to run it.
+--
+--  drop table if exists public.bd_weekly cascade;
+--  drop table if exists public.import_log cascade;
+--  drop table if exists public.external_sales cascade;
+--  drop table if exists public.leads cascade;
+--  drop table if exists public.app_settings cascade;
+--
+--  Keep these — they are authentication and personal app state, not business data:
+--    public.profiles    (accounts, roles, reporting lines, targets)
+--    public.user_gam    (each person's own streaks and achievements)
+-- ============================================================================

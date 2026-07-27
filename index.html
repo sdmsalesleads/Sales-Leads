@@ -312,7 +312,9 @@ const SDM_LOGOS = [
   "https://elsewedydevelopment.com/wp-content/uploads/2020/03/SDM-web-Logo-footer.png",
   "https://elsewedydevelopment.com/wp-content/uploads/2023/06/SDM-Logo-web.png"
 ];
-document.addEventListener("DOMContentLoaded", ()=>{ ["buildStamp","buildStamp2"].forEach(id=>{ const e=document.getElementById(id); if(e && typeof APP_BUILD!=="undefined") e.textContent = APP_BUILD; }); });
+document.addEventListener("DOMContentLoaded", ()=>{
+  try{ gsLoadQueue(); setInterval(()=>{ if(gsQueue.length) gsFlush(); }, 45000); }catch(e){}   // queued rows go as soon as the sheet is reachable
+  ["buildStamp","buildStamp2"].forEach(id=>{ const e=document.getElementById(id); if(e && typeof APP_BUILD!=="undefined") e.textContent = APP_BUILD; }); });
 function logoTryNext(img){
   const i = (Number(img.dataset.li)||0) + 1;
   if(i < SDM_LOGOS.length){ img.dataset.li = i; img.src = SDM_LOGOS[i]; }
@@ -658,11 +660,11 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "27 Jul 2026 · rev O";
+const APP_BUILD = "27 Jul 2026 · rev S";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
-const DEFAULT_SETTINGS = {autoAssign:false, autoReassign:false, vipHours:4, neglectHours:48, notifyDirector:true, siteMgrEmail:"", adminCal:false, workloadCap:140};
+const DEFAULT_SETTINGS = {autoAssign:false, autoReassign:false, vipHours:4, neglectHours:48, notifyDirector:true, siteMgrEmail:"", adminCal:false, workloadCap:140, gsUrl:"", gsToken:"", gsOn:false, gsDb:false};
 let state = { members:[], leads:[], teamTarget:0, extSales:[], importLog:[], bdWeekly:[], notifShown:"", settings:Object.assign({},DEFAULT_SETTINGS) };
 
 /* ---- role string <-> flag mapping ---- */
@@ -740,6 +742,26 @@ function takeSnapshot(){
 }
 async function loadAll(){
   if(!sb) return;
+  if(gsDbOn()){
+    /* Google Sheets is the database. Supabase supplies nothing but the list of
+       accounts and their roles; every lead, sale and activity comes from the workbook. */
+    if(gsQueue.length) await gsFlush();        // never let a reload overwrite changes still waiting to be sent
+    const beforeSnapG = currentUser? notifSnapshot() : null;
+    const pr0 = await sb.from("profiles").select("*");
+    state.members = (pr0.data||[]).map(profileToMember);
+    try{
+      await gsLoadFromSheet();
+    }catch(err){
+      gsStat.err = err.message; gsSaveStat();
+      toast("\u26A0 Could not read the workbook: "+err.message+" \u2014 showing the last data loaded");
+      return;
+    }
+    serverIds.leads = new Set(state.leads.map(l=>l.id));
+    serverIds.ext = new Set(state.extSales.map(e=>e.id));
+    if(beforeSnapG) notifDiff(beforeSnapG);
+    invalidateDupes();
+    return;
+  }
   const [pr, ld, ex, il, st, bw] = await Promise.all([
     sb.from("profiles").select("*"),
     sb.from("leads").select("*"),
@@ -779,6 +801,7 @@ function persist(){
 }
 async function doSync(){
   if(!sb || !currentUser) return;
+  if(gsDbOn()){ gsSyncDirty(); gsFlush(); return; }   // the workbook is the database — write there only
   /* leads — UPDATE existing rows (any role the database allows), INSERT only rows
      created this session (marketing). Never upsert: upsert needs INSERT rights,
      which non-marketing roles correctly don't have. Snapshots are committed only
@@ -1761,6 +1784,7 @@ function bulkAssign(){
     const l = state.leads.find(x=>x.id===id); if(!l) return;
     if(l.owner!==owner){ l.owner=owner; l.assignedAt=new Date().toISOString(); l.firstContactAt=""; if(!l.next) l.next=addDays(today(),2); pushLog(l,"Transferred to "+memberName(owner)); n++; moved.push(l); }
   });
+  moved.forEach(gsMirrorLead);
   selectedLeads.clear(); persist(); render();
   toast(n+" lead"+(n===1?"":"s")+" transferred to "+memberName(owner));
   if(moved.length) notifyAssigned([{m: state.members.find(x=>x.id===owner), leads: moved}]);
@@ -1794,6 +1818,7 @@ function bulkDelete(){
   const won = rows.filter(l=>l.status==="Won").length;
   if(!confirm("Delete "+rows.length+" lead"+(rows.length===1?"":"s")+" permanently?"+(won? "\n\n\u26A0 "+won+" of them are WON deals — their value will be removed from the reports." : "")+"\n\nThis cannot be undone.")) return;
   const ids = new Set(rows.map(l=>l.id));
+  rows.forEach(l=>{ l.deleted = true; l.deletedDate = today(); l.deletedBy = currentUser.name; gsMirrorNow(l); });
   state.leads = state.leads.filter(l=>!ids.has(l.id));
   selectedLeads.clear(); invalidateDupes(); persist(); render(); updateBell();
   toast(rows.length+" lead"+(rows.length===1?"":"s")+" deleted");
@@ -1949,14 +1974,327 @@ function markFirstContact(l){
   if(l && l.owner===currentUser.id && !l.firstContactAt) l.firstContactAt = new Date().toISOString();
 }
 function closeLeadModal(){ $("leadOverlay").classList.remove("open"); editingLeadId=null; }
+/* =================== Google Sheets live sync =================== */
+/* Every save in the CRM is mirrored into the connected workbook: Leads, Sales
+   Volume and Activities tabs. Writes go to a Google Apps Script web app that
+   runs inside your own Google account — no credentials ever reach the browser.
+   The queue survives a closed tab and retries, so nothing is silently lost. */
+let gsQueue = [], gsTimer = null, gsBusy = false, gsSuppress = false;
+let gsStat = { last:"", err:"", sent:0 };
+function gsCfg(){ const s = state.settings||{}; return { url:(s.gsUrl||"").trim(), token:(s.gsToken||"").trim(), on:!!s.gsOn }; }
+function gsReady(){ const c = gsCfg(); return c.on && c.url.indexOf("https://script.google.com/")===0; }
+function gsLoadQueue(){ try{ gsQueue = JSON.parse(localStorage.getItem("gs_queue")||"[]"); }catch(e){ gsQueue = []; }
+  try{ gsStat = JSON.parse(localStorage.getItem("gs_stat")||"null") || gsStat; }catch(e){} }
+function gsSaveQueue(){ try{ localStorage.setItem("gs_queue", JSON.stringify(gsQueue.slice(0,4000))); }catch(e){} }
+function gsSaveStat(){ try{ localStorage.setItem("gs_stat", JSON.stringify(gsStat)); }catch(e){} }
+function gsPush(tab, row){
+  if(!gsReady() || !row) return;
+  gsQueue.push({tab, row});
+  gsSaveQueue();
+  clearTimeout(gsTimer);
+  gsTimer = setTimeout(gsFlush, 1500);          // small delay so one save sends one batch
+}
+function gsDbOn(){ return gsReady() && !!state.settings.gsDb; }        // Sheets IS the database
+async function gsAuthToken(){
+  try{ const s = await sb.auth.getSession(); return (s && s.data && s.data.session && s.data.session.access_token)||""; }
+  catch(e){ return ""; }
+}
+async function gsCall(action, rows){
+  /* every call carries the signed-in user's token — the script checks it with
+     Supabase and decides what this person may see or change */
+  const token = await gsAuthToken();
+  const r = await fetch(gsCfg().url, { method:"POST",
+    body: JSON.stringify({ accessToken: token, action: action, rows: rows||[] }) });
+  return await r.json();
+}
+async function gsLoadFromSheet(){
+  const res = await gsCall("read");
+  if(!res || !res.ok) throw new Error((res && res.error) || "The workbook did not answer");
+  const d = res.data||{};
+  state.leads    = (d.leads||[]).map(gsToLead);
+  state.extSales = (d.extSales||[]).map(gsToExt);
+  state.bdWeekly = (d.bdWeekly||[]).map(gsToBd);
+  state.importLog= (d.importLog||[]).map(r=>({d:r["Date"], method:r["Method"], added:r["Rows Added"],
+                     updated:r["Rows Updated"], dupes:r["Duplicates Flagged"], failed:r["Rows Failed"], assigned:r["Auto-assigned"]}));
+  if((d.settings||[]).length){
+    const s = Object.assign({}, DEFAULT_SETTINGS);
+    d.settings.forEach(r=>{ const k=r["Setting"], v=r["Value"];
+      if(k==="gsUrl"||k==="gsToken") return;                       // connection details stay local
+      s[k] = (v==="true")? true : (v==="false")? false : (v!=="" && !isNaN(v))? Number(v) : v; });
+    s.gsUrl = state.settings.gsUrl; s.gsDb = state.settings.gsDb; s.gsOn = state.settings.gsOn;
+    state.settings = s;
+  }
+  gsSnapTake();
+  gsStat.last = new Date().toISOString(); gsStat.err=""; gsSaveStat();
+}
+/* ---- sheet row  ->  lead object ---- */
+function gsToLead(r){
+  const g = k => r[k]===undefined||r[k]===null? "" : r[k];
+  const log = String(g("Activity Log")).split("\n").filter(Boolean).map(line=>{
+    const m = line.match(/^\[(\d{4}-\d{2}-\d{2})(?: (\d{2}:\d{2}))?\]\s*(?:([^:]+):\s*)?([\s\S]*)$/);
+    return m? {d:m[1], tm:m[2]||"", by:(m[3]||"").trim(), t:m[4]||""} : {d:today(), tm:"", by:"", t:line};
+  });
+  const num = v => v===""||v===null? "" : Number(v);
+  return { id:g("Lead ID"), name:g("Lead Name"), company:g("Company"),
+    phone:g("Customer Number"), phone2:g("Customer Number 2"), email:g("Email"),
+    industry:g("Industry"), source:g("Lead Source"), project:g("Project Interested In"),
+    land:num(g("Requested Area (sqm)")), soldArea:num(g("Sold Area (sqm)")), plotNo:g("Plot Number"),
+    status:g("Status")||"New", qualStatus:g("Qualification"), qualNotes:g("Qualification Notes"),
+    temperature:g("Temperature"), priority:g("Priority"),
+    owner:g("Owner ID"), assignedAt:g("Assigned Date"), firstContactAt:g("First Contact At"),
+    reassignCount:Number(g("Times Reassigned"))||0,
+    next:g("Follow-up Date"), nextTime:g("Follow-up Time"),
+    meetingDate:g("Meeting Date")||g("Site Visit Date"), meetingTime:g("Meeting Time"),
+    offerSent:g("Offer Sent")==="Yes", offerDate:g("Offer Date"),
+    value:num(g("Cash Value (EGP)")), totalSold:num(g("Total Sold Value (EGP)")),
+    wonDate:g("Won Date"), cashStatus:g("Cash Status"), cashBy:g("Cash Confirmed By"), cashDate:g("Cash Confirmed Date"),
+    lostCat:g("Lost Category"), lostReason:g("Lost Reason"),
+    bdReady:g("BD Ready")==="Yes", dupCleared:false, notes:g("Notes"),
+    created:g("Created Date")||today(), log:log,
+    stageMeta:{ reservationDate:g("Reservation Date"), eoiDate:g("EOI Date"), contractDate:g("Contract Date") },
+    deleted:g("Deleted")==="Yes" };
+}
+function gsToExt(r){
+  return { id:r["External Sale ID"], memberId:(state.members.find(m=>m.name===r["Salesperson"])||{}).id||"",
+    date:r["Sale Date"]||"", amount:Number(r["Amount (EGP)"])||0, project:r["Project"]||"",
+    desc:r["Description"]||"", status:r["Status"]||"pending", confirmedBy:r["Confirmed By"]||"",
+    confirmedDate:r["Confirmed Date"]||"", submitted:r["Submitted Date"]||"" };
+}
+function gsToBd(r){
+  return { member_id:(state.members.find(m=>m.name===r["BD Member"])||{}).id||"", week:r["Week Starting"]||"",
+    category:r["Category"]||"", target:Number(r["Weekly Target"])||0, done:Number(r["Completed"])||0,
+    notes:r["Milestones & Notes"]||"", updated_at:r["Last Updated"]||"" };
+}
+/* ---- what changed since the last read: only those rows are sent back ---- */
+let gsSnap = {};
+function gsSnapTake(){ gsSnap = {}; state.leads.forEach(l=>{ gsSnap[l.id] = JSON.stringify(gsLeadRow(l)); }); }
+function gsSyncDirty(){
+  const seen = new Set();
+  state.leads.forEach(l=>{
+    seen.add(l.id);
+    const row = gsLeadRow(l), k = JSON.stringify(row);
+    if(gsSnap[l.id] !== k){
+      gsPush("Leads", row);
+      if(l.status==="Won") gsPush("Sales Volume", gsSaleRow(l));
+      gsSnap[l.id] = k;
+    }
+  });
+  Object.keys(gsSnap).forEach(id=>{ if(!seen.has(id)) delete gsSnap[id]; });   // deletions already sent as soft deletes
+}
+async function gsFlush(){
+  if(gsBusy || !gsReady() || !gsQueue.length) return;
+  gsBusy = true;
+  const batch = gsQueue.slice(0, 100);
+  try{
+    const j = await gsCall("write", batch);
+    let ok = !!(j && j.ok);
+    if(!ok) gsStat.err = (j && j.error) || "Rejected by the workbook";
+    else if(j.refused) gsStat.err = j.refused+" change(s) refused — your access level does not allow them";
+    if(ok){
+      gsQueue = gsQueue.slice(batch.length);
+      gsStat.sent += batch.length; gsStat.last = new Date().toISOString(); gsStat.err = "";
+      gsSaveQueue(); gsSaveStat();
+      if(gsQueue.length){ gsBusy = false; return gsFlush(); }     // keep going while there is more
+    } else {
+      gsSaveStat();
+      gsBusy = false;                                   // free the lane straight away so the next save can retry
+      setTimeout(gsFlush, 20000);
+      return;
+    }
+  }catch(err){
+    gsStat.err = "Could not reach the sheet ("+err.message+") — will retry";
+    gsSaveStat();
+    gsBusy = false;                                     // offline: retry, never drop, never jam
+    setTimeout(gsFlush, 30000);
+    return;
+  }
+  gsBusy = false;
+}
+const gsYN = v => v? "Yes" : "No";
+function gsLeadRow(l){
+  /* ONE row per lead — follow-ups, meetings, site visits and the full
+     interaction history all live inside it. The sheet is the database. */
+  const log = l.log||[];
+  const last = log[0];
+  return {
+    "Lead ID": l.id, "Lead Name": l.name||"", "Company": l.company||"",
+    "Customer Number": l.phone||"", "Customer Number 2": l.phone2||"", "Email": l.email||"",
+    "Industry": l.industry||"", "Lead Source": l.source||"", "Project Interested In": l.project||"",
+    "Requested Area (sqm)": l.land||"", "Sold Area (sqm)": l.soldArea||"", "Plot Number": l.plotNo||"",
+    "Status": l.status||"", "Qualification": l.qualStatus||"", "Qualification Notes": l.qualNotes||"",
+    "Temperature": l.temperature||"", "Priority": l.priority||"", "Lead Score": (typeof leadScore==="function"? leadScore(l) : ""),
+    "Owner ID": l.owner||"", "Assigned To": l.owner? memberName(l.owner) : "",
+    "Assigned Date": (l.assignedAt||"").slice(0,10),
+    "First Contact At": (l.firstContactAt||"").slice(0,16).replace("T"," "),
+    "Times Reassigned": l.reassignCount||0,
+    "Follow-up Date": l.next||"", "Follow-up Time": l.nextTime||"",
+    "Meeting Date": (l.status==="Scheduled Meeting"? (l.meetingDate||"") : (l.meetingDate||"")),
+    "Meeting Time": l.meetingTime||"",
+    "Site Visit Date": l.status==="Site Visit Scheduled"? (l.meetingDate||"") : "",
+    "Offer Sent": gsYN(l.offerSent), "Offer Date": l.offerDate||"",
+    "Reservation Date": (l.stageMeta&&l.stageMeta.reservationDate)||l.resDate||"",
+    "EOI Date": (l.stageMeta&&l.stageMeta.eoiDate)||"",
+    "Contract Date": (l.stageMeta&&l.stageMeta.contractDate)||l.contractDate||"",
+    "Cash Value (EGP)": l.value||"", "Total Sold Value (EGP)": l.totalSold||"",
+    "Won Date": l.wonDate||"", "Cash Status": l.cashStatus||"",
+    "Cash Confirmed By": l.cashBy||"", "Cash Confirmed Date": l.cashDate||"",
+    "Lost Category": l.lostCat||"", "Lost Reason": l.lostReason||"",
+    "BD Ready": gsYN(l.bdReady), "Duplicate Flag": gsYN(isDupFlagged(l)), "Notes": l.notes||"",
+    "Last Activity": last? last.t : "", "Last Activity Date": last? (last.d+" "+(last.tm||"")).trim() : "",
+    "Activities Count": log.length,
+    /* every call, WhatsApp, note, meeting and status change, newest first */
+    "Activity Log": log.map(e=>"["+e.d+(e.tm? " "+e.tm:"")+"] "+(e.by? e.by+": ":"")+e.t).join("\n"),
+    "Created By": (log.length? log[log.length-1].by : "")||"", "Created Date": l.created||"",
+    "Last Updated": new Date().toISOString().slice(0,16).replace("T"," "),
+    "Last Modified By": currentUser? currentUser.name : "",
+    "Deleted": gsYN(l.deleted), "Deleted Date": l.deletedDate||"", "Deleted By": l.deletedBy||""
+  };
+}
+function gsSaleRow(l){
+  return {
+    "Sale ID": "SALE-"+l.id, "Lead ID": l.id, "Salesperson": l.owner? memberName(l.owner):"",
+    "Customer": l.name||"", "Company": l.company||"", "Project": l.project||"",
+    "Plot Number": l.plotNo||"", "Area (sqm)": l.soldArea||l.land||"", "Currency": "EGP",
+    "Cash Value": l.value||"", "Total Sold Value": l.totalSold||l.value||"",
+    "Reservation Date": (l.stageMeta&&l.stageMeta.reservationDate)||"", "EOI Date": (l.stageMeta&&l.stageMeta.eoiDate)||"",
+    "Contract Date": (l.stageMeta&&l.stageMeta.contractDate)||"", "Contract Status": l.contractStatus||"",
+    "Approval Status": l.cashStatus==="confirmed"? "Approved":"Pending",
+    "Sales Stage": l.status||"", "Notes": l.notes||"",
+    "Created By": (l.log&&l.log.length? l.log[l.log.length-1].by:"")||"", "Created Date": l.wonDate||l.created||"",
+    "Last Updated": new Date().toISOString().slice(0,16).replace("T"," "),
+    "Last Modified By": currentUser? currentUser.name:"",
+    "Deleted": gsYN(l.deleted), "Deleted Date": l.deletedDate||"", "Deleted By": l.deletedBy||""
+  };
+}
+let gsPending = new Set(), gsPendTimer = null;
+function gsMirrorNow(l){
+  /* send this exact state immediately — used when the lead is about to leave memory */
+  if(!gsReady() || !l) return;
+  gsPush("Leads", gsLeadRow(l));
+  if(l.status==="Won") gsPush("Sales Volume", gsSaleRow(l));
+}
+const GS_ROLE_LABELS = { pending:"Pending", sales:"Sales", manager:"Sales Manager", salesops:"Sales Operations",
+  opsmgr:"Sales Operations Manager", marketing:"Marketing", marketingmgr:"Marketing Manager",
+  finance:"Finance", finmgr:"Finance Manager", bizdev:"Business Development", bdmgr:"Business Development Manager",
+  director:"Sales & Business Development Director", ceo:"CEO", cfo:"CFO", hrdirector:"HR Director",
+  admin:"Administrator", disabled:"Disabled" };
+function gsRoleLabel(rk){ return GS_ROLE_LABELS[rk] || rk || ""; }
+function gsMemberRow(m){
+  return { "Member ID": m.id, "Name": m.name||"", "Email": m.email||"", "Phone": m.phone||"",
+    "Job Title": m.role||"", "Department": m.dept||"", "Access Level": gsRoleLabel(m.roleKey),
+    "Reports To": m.managerId? memberName(m.managerId) : "", "Annual Target (EGP)": m.target||0,
+    "Last Login": (m.lastLogin||"").slice(0,16).replace("T"," "),
+    "Status": m.pending? "Pending approval" : (m.roleKey==="disabled"? "Disabled":"Active"),
+    "Last Updated": new Date().toISOString().slice(0,16).replace("T"," "),
+    "Last Modified By": currentUser? currentUser.name : "" };
+}
+function gsExtRow(e){
+  return { "External Sale ID": e.id, "Salesperson": e.memberId? memberName(e.memberId):"", "Sale Date": e.date||"",
+    "Amount (EGP)": e.amount||0, "Project": e.project||"", "Description": e.desc||"",
+    "Status": e.status||"", "Confirmed By": e.confirmedBy||"", "Confirmed Date": e.confirmedDate||"",
+    "Submitted Date": e.submitted||"" };
+}
+function gsBdRow(r){
+  return { "Record ID": (r.member_id||"")+"|"+(r.week||"")+"|"+(r.category||""),
+    "BD Member": memberName(r.member_id)||"", "Week Starting": r.week||"", "Category": r.category||"",
+    "Weekly Target": Number(r.target)||0, "Completed": Number(r.done)||0, "Milestones & Notes": r.notes||"",
+    "Last Updated": (r.updated_at||"").slice(0,16).replace("T"," ") };
+}
+function gsImportRow(e){
+  const now = new Date();
+  return { "Import ID": "IMP-"+now.getTime().toString(36).toUpperCase(), "Date": today(),
+    "Time": now.toTimeString().slice(0,5), "User": currentUser? currentUser.name:"", "Method": e.method||"Excel",
+    "Rows Added": e.added||0, "Rows Updated": e.updated||0, "Duplicates Flagged": e.dupes||0,
+    "Rows Failed": e.failed||0, "Auto-assigned": e.assigned||0 };
+}
+function gsAudit(action, module, recordId, field, oldV, newV){
+  if(!gsReady()) return;
+  const now = new Date();
+  gsPush("Audit Log", {
+    "Log ID": "LOG-"+now.getTime().toString(36).toUpperCase()+Math.random().toString(36).slice(2,4).toUpperCase(),
+    "Date": today(), "Time": now.toTimeString().slice(0,5),
+    "User": currentUser? currentUser.name : "", "Access Level": currentUser? gsRoleLabel(currentUser.roleKey) : "",
+    "Action": action, "Module": module, "Record ID": recordId||"", "Field": field||"",
+    "Old Value": (oldV===undefined||oldV===null||oldV==="")? "" : String(oldV),
+    "New Value": (newV===undefined||newV===null||newV==="")? "" : String(newV) });
+}
+function gsMirrorReference(){
+  /* settings and the dropdown lists behind the whole system */
+  Object.keys(state.settings||{}).forEach(k=>{
+    if(k==="gsToken") return;                       // never write the shared token into the sheet
+    gsPush("Settings", { "Setting": k, "Value": String(state.settings[k]), "Description": GS_SETTING_HELP[k]||"",
+      "Last Updated": new Date().toISOString().slice(0,16).replace("T"," "), "Updated By": currentUser? currentUser.name:"" });
+  });
+  const lists = { "Lead Sources": SOURCES, "Projects": PROJECTS, "Statuses": STATUSES };
+  Object.keys(lists).forEach(name=> (lists[name]||[]).forEach(v=>
+    gsPush("Lookup Tables", { "List": name+" \u2014 "+v, "Value": v })));
+}
+const GS_SETTING_HELP = { autoAssign:"Assign new leads automatically", autoReassign:"Take back neglected leads",
+  vipHours:"Hours a VIP lead may wait for first contact", neglectHours:"Hours before a lead counts as neglected",
+  notifyDirector:"Email the director on escalations", siteMgrEmail:"Site manager address for visit alerts",
+  adminCal:"Admin can see the whole team calendar", workloadCap:"Maximum open leads per salesperson",
+  gsUrl:"Google Sheets web app URL", gsOn:"Sync to Google Sheets is on" };
+function gsMirrorLead(l){
+  /* one save = one row. Several log entries and field changes inside the same
+     save collapse into a single write with the final values. */
+  if(!gsReady() || !l || !l.id) return;
+  gsPending.add(l.id);
+  clearTimeout(gsPendTimer);
+  gsPendTimer = setTimeout(()=>{
+    const ids = Array.from(gsPending); gsPending.clear();
+    ids.forEach(id=>{ const cur = state.leads.find(x=>x.id===id); if(cur) gsMirrorNow(cur); });
+  }, 700);
+}
+function gsSyncAll(){
+  if(!gsReady()){ toast("Connect the workbook first"); return; }
+  state.leads.forEach(l=>{ gsPush("Leads", gsLeadRow(l)); if(l.status==="Won") gsPush("Sales Volume", gsSaleRow(l)); });
+  state.members.forEach(m=> gsPush("Team Members", gsMemberRow(m)));
+  (state.extSales||[]).forEach(e=> gsPush("External Sales", gsExtRow(e)));
+  (state.bdWeekly||[]).forEach(r=> gsPush("BD Weekly Tracker", gsBdRow(r)));
+  gsMirrorReference();
+  gsAudit("Full sync sent","System","","", "", state.leads.length+" leads");
+  toast("Everything queued — the workbook fills in the background");
+  render();
+}
+async function gsTest(){
+  const c = gsCfg();
+  if(c.url.indexOf("https://script.google.com/")!==0){ toast("Paste the web app URL from Apps Script (it starts with https://script.google.com/)"); return; }
+  const box = $("gsTestOut"); if(box) box.innerHTML = "Testing\u2026";
+  try{
+    const j = await gsCall("ping");
+    if(j.ok){
+      gsStat.err=""; gsSaveStat();
+      if(box) box.innerHTML = `<b style="color:var(--green)">\u2713 Connected</b> as <b>${esc(j.user||"")}</b> (${esc(j.role||"")}). Tabs found: ${esc((j.sheets||[]).join(", "))}`;
+    } else if(box) box.innerHTML = `<b style="color:var(--red)">\u2717 ${esc(j.error||"Rejected")}</b> \u2014 check the Supabase URL and anon key inside the script.`;
+  }catch(err){
+    if(box) box.innerHTML = `<b style="color:var(--red)">\u2717 Could not reach it.</b> Check the deployment is set to <b>Anyone</b> and the URL ends in /exec.`;
+  }
+}
+function gsSaveConn(){
+  if(!isAdmin()) return;
+  state.settings.gsUrl = $("gs_url").value.trim();
+  state.settings.gsToken = $("gs_token")? $("gs_token").value.trim() : "";
+  state.settings.gsOn = $("gs_on").checked;
+  const wasDb = !!state.settings.gsDb;
+  state.settings.gsDb = $("gs_db").checked;
+  if(state.settings.gsDb && !wasDb){
+    toast("Reading from the workbook\u2026");
+    setTimeout(()=>loadAll().then(render), 300);
+  }
+  persist(); render();
+  if(state.settings.gsOn) gsMirrorReference();
+  toast(state.settings.gsOn? "Connected — new changes will flow into the sheet" : "Sync paused");
+}
 function pushLog(l, text){
   l.log = l.log||[];
-  l.log.unshift({d: today(), tm: new Date().toTimeString().slice(0,5), by: currentUser?currentUser.name:"", t: text});
+  const entry = {d: today(), tm: new Date().toTimeString().slice(0,5), by: currentUser?currentUser.name:"", t: text};
+  l.log.unshift(entry);
+  if(!gsSuppress) gsMirrorLead(l);      // the lead's own row carries its whole history
 }
 function auditChange(l, label, oldV, newV){
   const o = (oldV===undefined||oldV===null||oldV==="")? "—" : String(oldV);
   const n = (newV===undefined||newV===null||newV==="")? "—" : String(newV);
-  if(o!==n) pushLog(l, label+' changed: "'+o+'" → "'+n+'"');
+  if(o!==n){ pushLog(l, label+' changed: "'+o+'" → "'+n+'"'); gsAudit(label+" changed","Leads",l.id,label,o,n); }
 }
 function canSeeMoney(){ return currentUser && !currentUser.mkt; } // marketing: no commercial values
 function renderLog(l){
@@ -2116,6 +2454,7 @@ function saveLead(){
     if(prevOwner!==l.owner && l.owner) pushLog(l, "Transferred to "+memberName(l.owner));
   }
   persist(); closeLeadModal(); render();
+  gsMirrorLead(l);
   toast(isNewLead? "Lead added":"Lead updated");
   if(isNewLead && sb){
     // ask the SERVER too — it sees leads this user cannot (privacy-safe: returns only ids)
@@ -2158,6 +2497,8 @@ function notifyAR(l){
 function deleteLead(){
   if(!editingLeadId || !canEditLeads()) return;
   if(!confirm("Delete this lead permanently?")) return;
+  const gone = state.leads.find(l=>l.id===editingLeadId);
+  if(gone){ gone.deleted = true; gone.deletedDate = today(); gone.deletedBy = currentUser.name; gsMirrorNow(gone); }
   state.leads = state.leads.filter(l=>l.id!==editingLeadId);
   persist(); closeLeadModal(); render(); toast("Lead deleted");
 }
@@ -2329,6 +2670,7 @@ function confirmCash(id){
   l.cashBy = currentUser.name;
   l.cashDate = today();
   pushLog(l, "Cash value confirmed by AR — "+fmtMoneyFull(v));
+  gsMirrorLead(l);
   persist(); render(); updateBell();
   toast("Cash value confirmed");
 }
@@ -3357,6 +3699,8 @@ async function saveBdWeek(wk){
       const i = state.bdWeekly.findIndex(x=>x.member_id===nr.member_id && x.week===nr.week && x.category===nr.category);
       if(i>=0) state.bdWeekly[i] = Object.assign(state.bdWeekly[i], nr); else state.bdWeekly.push(nr);
     });
+    rows.forEach(r=> gsPush("BD Weekly Tracker", gsBdRow(r)));
+    gsAudit("BD week saved","BD Weekly Tracker",currentUser.id,"Week","",wk);
     toast("Week saved — leadership can see your progress");
     setTimeout(gamTick, 400);
     render();
@@ -4390,6 +4734,7 @@ function submitExtSale(){
   };
   if(e.status==="confirmed"){ e.confirmedBy = currentUser.name; e.confirmedDate = today(); }
   state.extSales.push(e);
+  gsPush("External Sales", gsExtRow(e)); gsAudit("External sale submitted","External Sales",e.id,"Amount","",e.amount);
   persist(); render(); updateBell();
   toast(e.status==="confirmed"? "External sale recorded" : "Submitted — waiting for your manager's confirmation");
 }
@@ -4859,6 +5204,7 @@ function autoDistributeUnassigned(){
 }
 /* ---- Import activity log ---- */
 function logImport(entry){
+  gsPush("Import Log", gsImportRow(entry));
   state.importLog = state.importLog||[];
   state.importLog.unshift(Object.assign({d: new Date().toISOString()}, entry));
   state.importLog = state.importLog.slice(0,20);
@@ -4953,9 +5299,37 @@ Comment: Interested in food processing plot…" style="width:100%;border:1px sol
   </div>
   <div class="section-head"><h2>Excel import &amp; export</h2></div>`:`
   <div class="section-head" style="margin-top:0"><h2>Excel import &amp; export</h2></div>`}
+  ${isAdmin()? `<div class="card card-pad" style="margin-bottom:14px;border-left:4px solid var(--red)">
+    <div class="eyebrow red" style="margin-bottom:8px">Google Sheets integration \u2014 administrators only</div>
+    <p style="font-size:.86rem;line-height:1.6;margin-bottom:10px">Everything in the system is written straight into your Google workbook. <b>Leads</b> holds one row per lead \u2014 with its follow-ups, meetings, site visits and full activity history inside that row \u2014 and <b>Sales Volume</b> one row per won deal. The rest of the system has its own tabs too: Team Members, External Sales, BD Weekly Tracker, Import Log, Audit Log, Settings and Lookup Tables, with a README explaining the whole workbook. Nobody types into the sheet: the CRM is the only writer, and each person still only changes what their access allows. Paste the web app URL from the Apps Script you deployed on the workbook \u2014 no Google credentials ever touch this page.</p>
+    <div class="grid g2" style="gap:10px">
+      <label class="fld"><span>Apps Script web app URL</span><input type="text" id="gs_url" value="${esc(state.settings.gsUrl||"")}" placeholder="https://script.google.com/macros/s/\u2026/exec"></label>
+      <div class="fld"><span>Who may read and write</span><div style="font-size:.82rem;padding:8px 0;line-height:1.5">Whoever is signed in. The script checks each request against Supabase and applies that person's role \u2014 a salesperson's request returns only their own leads.</div></div>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;margin:10px 0 4px;font-size:.86rem;font-weight:700">
+      <input type="checkbox" id="gs_on" ${state.settings.gsOn?"checked":""}> Send every change to the workbook
+    </label>
+    <label style="display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:.86rem;font-weight:700;color:var(--red)">
+      <input type="checkbox" id="gs_db" ${state.settings.gsDb?"checked":""}> <span>Use the workbook as the database \u2014 read <i>and</i> write from Google Sheets (Supabase keeps only the logins)</span>
+    </label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-red btn-sm" onclick="gsSaveConn()">Save connection</button>
+      <button class="btn btn-ghost btn-sm" onclick="gsTest()">Test connection</button>
+      <button class="btn btn-ghost btn-sm" onclick="gsSyncAll()">\u21bb Send all existing leads</button>
+    </div>
+    <div id="gsTestOut" style="font-size:.82rem;margin-top:10px"></div>
+    <div style="font-size:.82rem;margin-top:8px;line-height:1.7">
+      <b>Status:</b> ${gsReady()? '<span style="color:var(--green);font-weight:800">Connected \u2014 syncing</span>' : (state.settings.gsUrl? '<span style="color:var(--amber);font-weight:800">Paused</span>':'<span class="muted">Not connected yet</span>')}<br>
+      <b>Last successful sync:</b> ${gsStat.last? esc(new Date(gsStat.last).toLocaleString("en-GB")) : "\u2014"} &nbsp;\u00b7&nbsp;
+      <b>Rows sent:</b> ${gsStat.sent||0} &nbsp;\u00b7&nbsp;
+      <b>Waiting to send:</b> ${gsQueue.length}
+      ${gsStat.err? `<br><span style="color:var(--red)"><b>Last error:</b> ${esc(gsStat.err)}</span>`:""}
+    </div>
+    <p class="muted" style="font-size:.74rem;margin-top:8px;line-height:1.6">Rows are matched on the ID column: an existing row is updated in place, a new one is appended, and deletions mark <b>Deleted / Deleted Date / Deleted By</b> rather than removing history. Keep the workbook private to your own Google account \u2014 the team never needs access to it, only to the CRM. If the sheet is unreachable the changes queue on this device and send themselves when it returns.</p>
+  </div>`:""}
   <div class="grid g3">
     ${isMarketing()?`<div class="card card-pad">
-      <div class="eyebrow red" style="margin-bottom:10px">1 · Template</div>
+      <div class="eyebrow red" style="margin-bottom:10px">1 \u00b7 Template</div>
       <p style="font-size:.88rem;line-height:1.5;margin-bottom:14px">Download the blank template. You fill in the <b>Leads</b> sheet only \u2014 the second sheet is a read-only reference of valid sources, projects, statuses and team names. This is the one and only sheet the system uses.</p>
       <button class="btn btn-dark btn-sm" onclick="downloadTemplate()">Download template</button>
     </div>
@@ -5080,7 +5454,8 @@ function importExcel(file){
       };
       if(ci.name<0){ $("importResult").innerHTML="<b style='color:var(--red)'>Import failed:</b> couldn't find a \"Lead Name\" column. Use the downloaded template format."; return; }
       let added=0, updated=0, skipped=0, unassigned=0, keptOwner=0, rangedAreas=0;
-      const newLeads=[]; const badPhones=[]; const fixedPhones=[];
+      const newLeads=[]; const badPhones=[]; const fixedPhones=[]; const gsTouched=[];
+      gsSuppress = true;                    // imported leads mirror as Lead rows, not as hundreds of activity rows
       const nameCache = {}, badNames = {}, goodNames = {};   // written name → member id / match report
       const pool = ownerCandidates(), allM = state.members.filter(m=>!m.pending);
       const findMember = raw=>{
@@ -5172,6 +5547,7 @@ function importExcel(file){
         if(l.phone)  l.phone  = phoneIntl(l.phone)  || l.phone;
     if(l.phone2) l.phone2 = phoneIntl(l.phone2) || l.phone2;
     adoptCustnoPhone(l);
+        gsTouched.push(l);
         if(isNewLead){
           added++;
           pushLog(l, "Imported from Excel"+(l.owner? " \u2014 already assigned to "+memberName(l.owner) : ""));
@@ -5182,6 +5558,8 @@ function importExcel(file){
       let assignedN=0, aEntries=[];
       const aa = $("excelAutoAssign");
       if(aa && aa.checked){ const r = autoAssignLeads(newLeads.filter(l=>!l.owner)); assignedN = r.count; aEntries = r.entries; }
+      gsSuppress = false;
+      gsTouched.forEach(gsMirrorLead);          // one Lead row per imported lead, straight into the workbook
       logImport({method:"Excel", added, updated, dupes:dupN, failed:skipped, assigned:assignedN});
       persist(); render(); updateBell();
       if(aEntries.length) notifyAssigned(aEntries);
@@ -5371,6 +5749,8 @@ async function saveMember(){
   m.target = ["sales","manager"].includes(m.roleKey)? (Number($("m_target").value)||0) : 0;
   m.managerId = $("m_manager").value || "";
   if(m.managerId===m.id) m.managerId="";
+  gsPush("Team Members", gsMemberRow(m));
+  gsAudit("Team member saved","Team Members",m.id,"Access level","",gsRoleLabel(m.roleKey));
   persist(); closeMemberModal();
   if(currentUser && currentUser.id===m.id){
     $("chipName").innerHTML = esc(m.name) + (m.admin?'<span class="role-tag">Admin</span>':m.exec?execTag(m):m.director?'<span class="role-tag dir">Director</span>':m.mgr?'<span class="role-tag mgr">Manager</span>':"");
@@ -5386,6 +5766,8 @@ function deleteMember(){
   if(m.admin && state.members.filter(x=>x.admin).length===1){ toast("You can't disable the only administrator"); return; }
   if(!confirm("Disable "+m.name+"'s access? They can no longer sign in. Their leads stay assigned and you can re-enable them anytime by changing the access level.")) return;
   Object.assign(m, ROLE_FLAGS("disabled"));
+  gsPush("Team Members", gsMemberRow(m));
+  gsAudit("Access disabled","Team Members",m.id,"Access level","","Disabled");
   persist(); closeMemberModal(); render();
   toast("Access disabled");
 }
