@@ -658,7 +658,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "27 Jul 2026 · rev L";
+const APP_BUILD = "27 Jul 2026 · rev N";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -873,9 +873,35 @@ let currentUser = null;
 let editingLeadId = null;
 let editingMemberId = null;
 let currentView = "dashboard";
-let leadFilters = { q:"", source:"", status:"", project:"", owner:"", due:"" };
+let leadFilters = { q:"", source:"", status:"", project:"", owner:"", due:"", dup:"", sort:"" };
+function canSelectLeads(){ return canManage(); }          // anyone who oversees leads can work on several at once
+function dupGroupKey(l){
+  /* leads that duplicate each other share this key, so sorting clusters them */
+  const ids = [l.id].concat(leadDups(l)).sort();
+  return ids[0];
+}
+function sortLeads(rows, mode){
+  const byNext = (a,b)=>(a.next||"9999").localeCompare(b.next||"9999");
+  if(mode==="dupes"){
+    return rows.slice().sort((a,b)=>{
+      const fa = isDupFlagged(a)?0:1, fb = isDupFlagged(b)?0:1;
+      if(fa!==fb) return fa-fb;                                  // flagged pairs first
+      if(fa===0){
+        const ga = dupGroupKey(a), gb = dupGroupKey(b);
+        if(ga!==gb) return String(ga).localeCompare(String(gb)); // keep each pair side by side
+        return String(a.created||"").localeCompare(String(b.created||"")); // oldest first — keep it, discard the newer copy
+      }
+      return byNext(a,b);
+    });
+  }
+  if(mode==="newest") return rows.slice().sort((a,b)=>String(b.created||"").localeCompare(String(a.created||"")));
+  if(mode==="name")   return rows.slice().sort((a,b)=>String(a.name||"").localeCompare(String(b.name||"")));
+  if(mode==="company")return rows.slice().sort((a,b)=>String(a.company||"").localeCompare(String(b.company||"")));
+  if(mode==="value")  return rows.slice().sort((a,b)=>(Number(b.value)||0)-(Number(a.value)||0));
+  return rows.slice().sort(byNext);
+}
 function kpiGo(patch, view){
-  Object.assign(leadFilters, {q:"", source:"", status:"", project:"", owner:"", due:""}, patch||{});
+  Object.assign(leadFilters, {q:"", source:"", status:"", project:"", owner:"", due:"", dup:"", sort:""}, patch||{});
   setView(view||"leads");
 }
 let selectedLeads = new Set();
@@ -1669,8 +1695,10 @@ function viewLeads(){
   if(F.due==="overdue") rows = rows.filter(l=>l.next && l.next<t && l.status!=="Won" && l.status!=="Lost");
   if(F.due==="today") rows = rows.filter(l=>l.next===t && l.status!=="Won" && l.status!=="Lost");
   if(F.due==="none") rows = rows.filter(l=>!l.next && l.status!=="Won" && l.status!=="Lost");
-  rows.sort((a,b)=>(a.next||"9999").localeCompare(b.next||"9999"));
+  if(F.dup==="only") rows = rows.filter(l=>isDupFlagged(l));
+  rows = sortLeads(rows, F.sort);
   const adm = canManage();
+  const dupTotal = visibleLeads().filter(l=>isDupFlagged(l)).length;
   const selCount = selectedLeads.size;
 
   return `
@@ -1688,21 +1716,27 @@ function viewLeads(){
     <select id="fl_status"><option value="">All statuses</option>${STATUSES.map(s=>`<option ${F.status===s?"selected":""}>${s}</option>`).join("")}</select>
     <select id="fl_source"><option value="">All sources</option>${SOURCES.map(s=>`<option ${F.source===s?"selected":""}>${s}</option>`).join("")}</select>
     <select id="fl_project"><option value="">All projects</option>${PROJECTS.map(p=>`<option ${F.project===p?"selected":""}>${p}</option>`).join("")}</select>
+    <select id="fl_dup"><option value="">All leads</option><option value="only" ${F.dup==="only"?"selected":""}>\u26A0 Duplicates only${dupTotal?" ("+dupTotal+")":""}</option></select>
+    <select id="fl_sort"><option value="">Sort: follow-up date</option><option value="dupes" ${F.sort==="dupes"?"selected":""}>Sort: duplicates grouped together</option><option value="newest" ${F.sort==="newest"?"selected":""}>Sort: newest first</option><option value="name" ${F.sort==="name"?"selected":""}>Sort: name A\u2013Z</option><option value="company" ${F.sort==="company"?"selected":""}>Sort: company A\u2013Z</option><option value="value" ${F.sort==="value"?"selected":""}>Sort: highest value</option></select>
     <select id="fl_due"><option value="">Any follow-up</option><option value="overdue" ${F.due==="overdue"?"selected":""}>Overdue</option><option value="today" ${F.due==="today"?"selected":""}>Due today</option><option value="none" ${F.due==="none"?"selected":""}>No date set</option></select>
   </div>
-  ${canDistribute() && selCount? `<div class="bulkbar no-print">
-    <b>${selCount} selected</b> — transfer to
-    <select id="bulkOwner"><option value="">Choose salesperson…</option>${state.members.filter(hasTarget).map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join("")}</select>
-    <button class="btn btn-red btn-sm" onclick="bulkAssign()">Transfer</button>
+  ${canSelectLeads() && selCount? `<div class="bulkbar no-print">
+    <b>${selCount} selected</b>
+    ${canDistribute()? `\u2014 transfer to
+      <select id="bulkOwner"><option value="">Choose salesperson\u2026</option>${state.members.filter(hasTarget).map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join("")}</select>
+      <button class="btn btn-red btn-sm" onclick="bulkAssign()">Transfer</button>`:""}
+    <button class="btn btn-ghost btn-sm" onclick="bulkExport()">\u2b07 Export selected</button>
+    ${canEditLeads()? `<button class="btn btn-ghost btn-sm" onclick="bulkClearDup()">\u2713 Not duplicates</button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="bulkDelete()">\uD83D\uDDD1 Delete</button>`:""}
     <button class="btn btn-ghost btn-sm" onclick="selectedLeads.clear();render()">Clear selection</button>
   </div>`:""}
   <div class="card" style="overflow:auto">
     ${rows.length? `<table>
-      <thead><tr>${canDistribute()?`<th style="width:34px"><input type="checkbox" onclick="toggleAllSel(this.checked, ${JSON.stringify(rows.map(r=>r.id)).replace(/"/g,"&quot;")})"></th>`:""}<th>Lead</th><th class="hide-sm">Source</th><th>Project</th><th class="num hide-sm">Land (sqm)</th><th>Status</th>${adm?'<th class="hide-sm">Owner</th>':""}<th>Follow-up</th>${canSeeMoney()?`<th class="num">Value</th>`:""}</tr></thead>
+      <thead><tr>${canSelectLeads()?`<th style="width:34px"><input type="checkbox" onclick="toggleAllSel(this.checked, ${JSON.stringify(rows.map(r=>r.id)).replace(/"/g,"&quot;")})"></th>`:""}<th>Lead</th><th class="hide-sm">Source</th><th>Project</th><th class="num hide-sm">Land (sqm)</th><th>Status</th>${adm?'<th class="hide-sm">Owner</th>':""}<th>Follow-up</th>${canSeeMoney()?`<th class="num">Value</th>`:""}</tr></thead>
       <tbody>${rows.map(l=>{
         const dc = dueClass(l);
         return `<tr class="row-click" onclick="openLeadModal('${l.id}')">
-        ${canDistribute()?`<td onclick="event.stopPropagation()"><input type="checkbox" ${selectedLeads.has(l.id)?"checked":""} onchange="toggleSel('${l.id}', this.checked)"></td>`:""}
+        ${canSelectLeads()?`<td onclick="event.stopPropagation()"><input type="checkbox" ${selectedLeads.has(l.id)?"checked":""} onchange="toggleSel('${l.id}', this.checked)"></td>`:""}
         <td><b>${esc(l.name)}</b>${isDupFlagged(l)?' <span title="Possible duplicate" style="color:var(--amber);font-weight:800">⚠</span>':""}${l.priority==="VIP"?' <span class="pill" style="color:#fff;background:var(--red);font-size:.66rem;padding:1px 7px">VIP</span>':l.priority==="High"?' <span class="pill" style="color:var(--red);background:var(--red-soft);font-size:.66rem;padding:1px 7px">High</span>':""} ${scoreChip(l)}<div class="muted" style="font-size:.78rem">${esc(l.company||fmtPhone(l.phone)||"")}</div></td>
         <td class="hide-sm">${esc(l.source||"—")}</td>
         <td>${esc(l.project||"—")}</td>
@@ -1731,8 +1765,41 @@ function bulkAssign(){
   toast(n+" lead"+(n===1?"":"s")+" transferred to "+memberName(owner));
   if(moved.length) notifyAssigned([{m: state.members.find(x=>x.id===owner), leads: moved}]);
 }
+function selectedLeadObjects(){
+  const out = [];
+  selectedLeads.forEach(id=>{ const l = state.leads.find(x=>x.id===id); if(l) out.push(l); });
+  return out;
+}
+function bulkExport(){
+  const rows = selectedLeadObjects();
+  if(!rows.length){ toast("Nothing selected"); return; }
+  if(typeof XLSX==="undefined"){ toast("Excel library not loaded — check internet connection"); return; }
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([XLSX_HEADERS].concat(rows.map(leadToRow))), "Leads");
+  XLSX.writeFile(wb, "Selected leads — "+today()+".xlsx");
+  toast(rows.length+" lead"+(rows.length===1?"":"s")+" exported");
+}
+function bulkClearDup(){
+  if(!canEditLeads()) return;
+  const rows = selectedLeadObjects().filter(l=>isDupFlagged(l));
+  if(!rows.length){ toast("None of the selected leads carry a duplicate warning"); return; }
+  rows.forEach(l=>{ l.dupCleared = true; pushLog(l, "Duplicate warning dismissed — kept as separate lead"); });
+  selectedLeads.clear(); persist(); render(); updateBell();
+  toast(rows.length+" marked as genuine — warnings cleared");
+}
+function bulkDelete(){
+  if(!canEditLeads()) return;
+  const rows = selectedLeadObjects();
+  if(!rows.length){ toast("Nothing selected"); return; }
+  const won = rows.filter(l=>l.status==="Won").length;
+  if(!confirm("Delete "+rows.length+" lead"+(rows.length===1?"":"s")+" permanently?"+(won? "\n\n\u26A0 "+won+" of them are WON deals — their value will be removed from the reports." : "")+"\n\nThis cannot be undone.")) return;
+  const ids = new Set(rows.map(l=>l.id));
+  state.leads = state.leads.filter(l=>!ids.has(l.id));
+  selectedLeads.clear(); invalidateDupes(); persist(); render(); updateBell();
+  toast(rows.length+" lead"+(rows.length===1?"":"s")+" deleted");
+}
 function bindLeadFilters(){
-  const map = {fl_q:"q", fl_owner:"owner", fl_status:"status", fl_source:"source", fl_project:"project", fl_due:"due"};
+  const map = {fl_q:"q", fl_owner:"owner", fl_status:"status", fl_source:"source", fl_project:"project", fl_due:"due", fl_dup:"dup", fl_sort:"sort"};
   Object.entries(map).forEach(([id,key])=>{
     const el=$(id); if(!el) return;
     el.addEventListener(id==="fl_q"?"input":"change", ()=>{ leadFilters[key]=el.value; render(); const el2=$(id); if(el2 && id==="fl_q"){ el2.focus(); el2.setSelectionRange(el2.value.length, el2.value.length);} });
@@ -1941,6 +2008,8 @@ function saveLead(){
       created: $("f_created").value || l.created || today()
     });
     autoEnglish(l);
+    if(l.phone)  l.phone  = phoneIntl(l.phone)  || l.phone;
+    if(l.phone2) l.phone2 = phoneIntl(l.phone2) || l.phone2;
     adoptCustnoPhone(l);
     if(isNewLead && isMarketing()) pushLog(l, "Lead added");
     if(isNewLead && isSelfAdder()){
@@ -2002,6 +2071,8 @@ function saveLead(){
       l.meetingTime = $("f_meetingTime").value;
       if(!l.next) l.next = l.meetingDate;                       // follow-up defaults to the meeting day
     } else { l.meetingDate = ""; l.meetingTime = ""; }
+    if(l.phone)  l.phone  = phoneIntl(l.phone)  || l.phone;    // always stored in international form
+    if(l.phone2) l.phone2 = phoneIntl(l.phone2) || l.phone2;
     l.offerSent = $("f_offer").checked;
     l.offerDate = $("f_offer").checked? ($("f_offerDate").value||today()) : "";
     l.industry = $("f_industry").value;
@@ -4857,42 +4928,73 @@ function cleanAllLeads(){
 /* ---- Standalone Excel phone formatter: upload ANY sheet, download it fixed ---- */
 function formatPhoneSheet(file){
   if(!file) return;
+  if(typeof XLSX==="undefined"){ toast("Excel library not loaded — check internet connection"); return; }
   const reader = new FileReader();
   reader.onload = e=>{
     try{
-      const wb = XLSX.read(new Uint8Array(e.target.result), {type:"array"});
-      const wsName = wb.SheetNames[0];
-      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wsName], {header:1, defval:""});
-      if(!rows.length){ toast("The sheet is empty"); return; }
-      const hdr = rows[0].map(h=>String(h).toLowerCase());
-      const KEY = ["phone","mobile","tel","whatsapp","number","رقم","هاتف","موبايل","تليفون"];
-      let cols = hdr.map((h,i)=>KEY.some(k=>h.includes(k))? i : -1).filter(i=>i>=0);
-      if(!cols.length){
-        // no header match — detect columns where most values look like phone numbers
-        for(let c=0;c<(rows[0].length||1);c++){
-          const vals = rows.slice(1).map(r=>String(r[c]||"")).filter(Boolean);
-          if(vals.length && vals.filter(v=>arDigits(v).replace(/[^0-9]/g,"").length>=8).length >= vals.length*0.6) cols.push(c);
+      /* Works INSIDE the uploaded workbook: every tab is kept exactly as it is,
+         the phone cells are corrected where they already live, and the summary
+         is added as one extra tab. The file keeps its own name. */
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type:"array", cellStyles:true, cellDates:true});
+      const REPORT_TAB = "Phone Fix Report";
+      const KEY = ["phone","mobile","tel","whatsapp","number","\u0631\u0642\u0645","\u0647\u0627\u062A\u0641","\u0645\u0648\u0628\u0627\u064A\u0644","\u062A\u0644\u064A\u0641\u0648\u0646"];
+      let fixed=0, already=0, invalid=0, tabsFixed=[];
+      const report = [["Tab","Row","Column","Original","Corrected","Status"]];
+      const dataTabs = wb.SheetNames.filter(n=>n!==REPORT_TAB);
+      dataTabs.forEach(name=>{
+        const ws = wb.Sheets[name];
+        if(!ws || !ws["!ref"]) return;
+        const rng = XLSX.utils.decode_range(ws["!ref"]);
+        const at = (r,c)=>ws[XLSX.utils.encode_cell({r:r,c:c})];
+        const val = (r,c)=>{ const cell = at(r,c); if(!cell) return "";
+          if(cell.t==="n") return String(cell.v);
+          return String(cell.v==null? (cell.w||"") : cell.v).trim(); };
+        const head = [];
+        for(let c=rng.s.c;c<=rng.e.c;c++) head[c] = val(rng.s.r,c).toLowerCase();
+        let cols = [];
+        for(let c=rng.s.c;c<=rng.e.c;c++) if(head[c] && KEY.some(k=>head[c].indexOf(k)>=0)) cols.push(c);
+        if(!cols.length){                       // no header match — find columns that LOOK like phone numbers
+          for(let c=rng.s.c;c<=rng.e.c;c++){
+            const vals = [];
+            for(let r=rng.s.r+1;r<=rng.e.r;r++){ const v = val(r,c); if(v) vals.push(v); }
+            if(vals.length && vals.filter(v=>arDigits(v).replace(/[^0-9]/g,"").length>=8).length >= vals.length*0.6) cols.push(c);
+          }
         }
-      }
-      if(!cols.length){ toast("No phone column found — name a column Phone / Mobile / رقم"); return; }
-      let fixed=0, already=0, invalid=0; const report=[["Row","Column","Original","Formatted","Status"]];
-      cols.forEach(c=>{
-        for(let r=1;r<rows.length;r++){
-          const raw = String(rows[r][c]||"").trim();
-          if(!raw) continue;
-          const p = phoneIntl(raw);
-          if(p && p!==raw){ report.push([r+1, rows[0][c], raw, p, "Fixed"]); rows[r][c]=p; fixed++; }
-          else if(p){ already++; }
-          else { report.push([r+1, rows[0][c], raw, "", "⚠ Too short / unrecognizable — fix manually"]); invalid++; }
-        }
+        if(!cols.length) return;
+        let touched = 0;
+        cols.forEach(c=>{
+          for(let r=rng.s.r+1;r<=rng.e.r;r++){
+            const raw = val(r,c);
+            if(!raw) continue;
+            const p = phoneIntl(raw);
+            const colName = head[c]? val(rng.s.r,c) : XLSX.utils.encode_col(c);
+            if(p && p!==raw){
+              const ref = XLSX.utils.encode_cell({r:r,c:c});
+              const cell = ws[ref] || (ws[ref] = {});
+              cell.t = "s"; cell.v = p;            // written as text so the + and leading digits survive
+              delete cell.w; delete cell.z; delete cell.f;
+              report.push([name, r+1, colName, raw, p, "Corrected"]);
+              fixed++; touched++;
+            } else if(p){ already++; }
+            else { report.push([name, r+1, colName, raw, "", "\u26A0 Too short / unrecognizable \u2014 fix manually"]); invalid++; }
+          }
+        });
+        if(touched) tabsFixed.push(name);
       });
-      const out = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(out, XLSX.utils.aoa_to_sheet(rows), wsName);
-      XLSX.utils.book_append_sheet(out, XLSX.utils.aoa_to_sheet(report), "Phone Fix Report");
-      XLSX.writeFile(out, file.name.replace(/\.[^.]+$/,"")+" — phones formatted.xlsx");
+      if(!fixed && !already && !invalid){ toast("No phone column found \u2014 name a column Phone / Mobile / \u0631\u0642\u0645"); return; }
+      if(wb.SheetNames.indexOf(REPORT_TAB)>=0){        // re-running replaces the old report, never stacks copies
+        delete wb.Sheets[REPORT_TAB];
+        wb.SheetNames = wb.SheetNames.filter(n=>n!==REPORT_TAB);
+      }
+      const rs = XLSX.utils.aoa_to_sheet(report);
+      rs["!cols"] = [{wch:18},{wch:6},{wch:20},{wch:22},{wch:22},{wch:38}];
+      XLSX.utils.book_append_sheet(wb, rs, REPORT_TAB);
+      const wasCsv = /\.csv$/i.test(file.name);
+      XLSX.writeFile(wb, file.name.replace(/\.[^.]+$/,"")+".xlsx");
       const res = $("phoneFixResult");
-      if(res) res.innerHTML = `<b style="color:var(--green)">Done:</b> ${fixed} number${fixed!==1?"s":""} formatted, ${already} already correct${invalid?`, <b style="color:var(--red)">${invalid} unrecognizable</b> (listed in the Phone Fix Report sheet — digits are never invented)`:""}. File downloaded.`;
-      toast("Formatted sheet downloaded");
+      if(res) res.innerHTML = `<b style="color:var(--green)">Done \u2014 your own file, corrected:</b> ${fixed} number${fixed!==1?"s":""} fixed in place, ${already} already correct${invalid?`, <b style="color:var(--red)">${invalid} unrecognizable</b> (digits are never invented \u2014 see the report tab)`:""}.
+        <div style="margin-top:6px;font-size:.82rem">Every tab is untouched apart from the phone cells${tabsFixed.length?` (corrected in: <b>${tabsFixed.map(esc).join(", ")}</b>)`:""}, and a <b>Phone Fix Report</b> tab was added at the end.${wasCsv?" Saved as .xlsx because a CSV cannot hold tabs.":""}</div>`;
+      toast("Your sheet was corrected \u2014 downloaded with all its tabs");
     }catch(err){ toast("Could not read the file: "+err.message); }
   };
   reader.readAsArrayBuffer(file);
@@ -4926,7 +5028,7 @@ Comment: Interested in food processing plot…" style="width:100%;border:1px sol
   <div class="section-head" style="margin-top:0"><h2>Excel import &amp; export</h2></div>`}
   <div class="card card-pad" style="margin-bottom:14px">
     <div class="eyebrow red" style="margin-bottom:8px">Phone formatter — for any Excel sheet</div>
-    <p style="font-size:.86rem;line-height:1.6;margin-bottom:10px">Upload any Excel file — it finds the phone columns (by header or by content), fixes every number into proper international format (dropped zeros, stray symbols like <b>92832+11</b>, Arabic digits, missing country codes), and downloads the same sheet formatted plus a "Phone Fix Report". Numbers too short to be real are flagged, never guessed.</p>
+    <p style="font-size:.86rem;line-height:1.6;margin-bottom:10px">Upload your Excel file — it corrects the phone numbers <b>inside your own workbook</b>: every tab stays exactly as it is, the numbers are fixed where they already sit (dropped zeros, stray symbols like <b>92832+11</b>, Arabic digits, missing country codes), and a <b>Phone Fix Report</b> tab is added at the end. The file downloads under its own name — no separate sheet to reconcile. Numbers too short to be real are flagged, never guessed.</p>
     <input type="file" id="phoneFixFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="formatPhoneSheet(this.files[0]);this.value=''">
     <button class="btn btn-red btn-sm" onclick="$('phoneFixFile').click()">Choose Excel file to format</button>
     <div id="phoneFixResult" style="font-size:.84rem;margin-top:10px"></div>
@@ -5115,7 +5217,10 @@ function importExcel(file){
           qualStatus: String(g(ci.qual)).trim() || (l.qualStatus||""),
           temperature: String(g(ci.temp)).trim() || (l.temperature||""),
           lostReason: String(g(ci.lostReason)).trim() || (l.lostReason||""),
-          phone2: String(g(ci.phone2)).trim() || (l.phone2||""),
+          phone2: (function(){ const raw = String(g(ci.phone2)).trim(); if(!raw) return l.phone2||"";
+            const intl = phoneIntl(raw);
+            if(!intl){ badPhones.push((String(g(ci.name)).trim()||"?")+" \u2014 second number \""+raw+"\""); return raw; }
+            return intl; })(),
           meetingDate: normDate(g(ci.meetingDate)) || (l.meetingDate||""),
           meetingTime: String(g(ci.meetingTime)).trim() || (l.meetingTime||""),
           eoiApplicable: /^y/i.test(String(g(ci.eoiApp)))? true : /^n/i.test(String(g(ci.eoiApp)))? false : (l.eoiApplicable!==undefined? l.eoiApplicable : null),
@@ -5142,7 +5247,9 @@ function importExcel(file){
         if(l.status==="Won" && prevStatus!=="Won" && !l.wonDate) l.wonDate = today();
         if(!l.owner && l.status!=="Won" && l.status!=="Lost") unassigned++;
         autoEnglish(l);
-        adoptCustnoPhone(l);
+        if(l.phone)  l.phone  = phoneIntl(l.phone)  || l.phone;
+    if(l.phone2) l.phone2 = phoneIntl(l.phone2) || l.phone2;
+    adoptCustnoPhone(l);
         if(isNewLead){
           added++;
           pushLog(l, "Imported from Excel"+(l.owner? " \u2014 already assigned to "+memberName(l.owner) : ""));
