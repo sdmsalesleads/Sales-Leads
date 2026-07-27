@@ -658,7 +658,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "27 Jul 2026 · rev N";
+const APP_BUILD = "27 Jul 2026 · rev O";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -4926,79 +4926,6 @@ function cleanAllLeads(){
   toast("Cleanup done — "+tr+" translated, "+ph+" phone"+(ph!==1?"s":"")+" formatted"+(cleared?", "+cleared+" false duplicate warning"+(cleared!==1?"s":"")+" cleared":"")+(bad?", "+bad+" number"+(bad!==1?"s":"")+" too short to fix":""));
 }
 /* ---- Standalone Excel phone formatter: upload ANY sheet, download it fixed ---- */
-function formatPhoneSheet(file){
-  if(!file) return;
-  if(typeof XLSX==="undefined"){ toast("Excel library not loaded — check internet connection"); return; }
-  const reader = new FileReader();
-  reader.onload = e=>{
-    try{
-      /* Works INSIDE the uploaded workbook: every tab is kept exactly as it is,
-         the phone cells are corrected where they already live, and the summary
-         is added as one extra tab. The file keeps its own name. */
-      const wb = XLSX.read(new Uint8Array(e.target.result), {type:"array", cellStyles:true, cellDates:true});
-      const REPORT_TAB = "Phone Fix Report";
-      const KEY = ["phone","mobile","tel","whatsapp","number","\u0631\u0642\u0645","\u0647\u0627\u062A\u0641","\u0645\u0648\u0628\u0627\u064A\u0644","\u062A\u0644\u064A\u0641\u0648\u0646"];
-      let fixed=0, already=0, invalid=0, tabsFixed=[];
-      const report = [["Tab","Row","Column","Original","Corrected","Status"]];
-      const dataTabs = wb.SheetNames.filter(n=>n!==REPORT_TAB);
-      dataTabs.forEach(name=>{
-        const ws = wb.Sheets[name];
-        if(!ws || !ws["!ref"]) return;
-        const rng = XLSX.utils.decode_range(ws["!ref"]);
-        const at = (r,c)=>ws[XLSX.utils.encode_cell({r:r,c:c})];
-        const val = (r,c)=>{ const cell = at(r,c); if(!cell) return "";
-          if(cell.t==="n") return String(cell.v);
-          return String(cell.v==null? (cell.w||"") : cell.v).trim(); };
-        const head = [];
-        for(let c=rng.s.c;c<=rng.e.c;c++) head[c] = val(rng.s.r,c).toLowerCase();
-        let cols = [];
-        for(let c=rng.s.c;c<=rng.e.c;c++) if(head[c] && KEY.some(k=>head[c].indexOf(k)>=0)) cols.push(c);
-        if(!cols.length){                       // no header match — find columns that LOOK like phone numbers
-          for(let c=rng.s.c;c<=rng.e.c;c++){
-            const vals = [];
-            for(let r=rng.s.r+1;r<=rng.e.r;r++){ const v = val(r,c); if(v) vals.push(v); }
-            if(vals.length && vals.filter(v=>arDigits(v).replace(/[^0-9]/g,"").length>=8).length >= vals.length*0.6) cols.push(c);
-          }
-        }
-        if(!cols.length) return;
-        let touched = 0;
-        cols.forEach(c=>{
-          for(let r=rng.s.r+1;r<=rng.e.r;r++){
-            const raw = val(r,c);
-            if(!raw) continue;
-            const p = phoneIntl(raw);
-            const colName = head[c]? val(rng.s.r,c) : XLSX.utils.encode_col(c);
-            if(p && p!==raw){
-              const ref = XLSX.utils.encode_cell({r:r,c:c});
-              const cell = ws[ref] || (ws[ref] = {});
-              cell.t = "s"; cell.v = p;            // written as text so the + and leading digits survive
-              delete cell.w; delete cell.z; delete cell.f;
-              report.push([name, r+1, colName, raw, p, "Corrected"]);
-              fixed++; touched++;
-            } else if(p){ already++; }
-            else { report.push([name, r+1, colName, raw, "", "\u26A0 Too short / unrecognizable \u2014 fix manually"]); invalid++; }
-          }
-        });
-        if(touched) tabsFixed.push(name);
-      });
-      if(!fixed && !already && !invalid){ toast("No phone column found \u2014 name a column Phone / Mobile / \u0631\u0642\u0645"); return; }
-      if(wb.SheetNames.indexOf(REPORT_TAB)>=0){        // re-running replaces the old report, never stacks copies
-        delete wb.Sheets[REPORT_TAB];
-        wb.SheetNames = wb.SheetNames.filter(n=>n!==REPORT_TAB);
-      }
-      const rs = XLSX.utils.aoa_to_sheet(report);
-      rs["!cols"] = [{wch:18},{wch:6},{wch:20},{wch:22},{wch:22},{wch:38}];
-      XLSX.utils.book_append_sheet(wb, rs, REPORT_TAB);
-      const wasCsv = /\.csv$/i.test(file.name);
-      XLSX.writeFile(wb, file.name.replace(/\.[^.]+$/,"")+".xlsx");
-      const res = $("phoneFixResult");
-      if(res) res.innerHTML = `<b style="color:var(--green)">Done \u2014 your own file, corrected:</b> ${fixed} number${fixed!==1?"s":""} fixed in place, ${already} already correct${invalid?`, <b style="color:var(--red)">${invalid} unrecognizable</b> (digits are never invented \u2014 see the report tab)`:""}.
-        <div style="margin-top:6px;font-size:.82rem">Every tab is untouched apart from the phone cells${tabsFixed.length?` (corrected in: <b>${tabsFixed.map(esc).join(", ")}</b>)`:""}, and a <b>Phone Fix Report</b> tab was added at the end.${wasCsv?" Saved as .xlsx because a CSV cannot hold tabs.":""}</div>`;
-      toast("Your sheet was corrected \u2014 downloaded with all its tabs");
-    }catch(err){ toast("Could not read the file: "+err.message); }
-  };
-  reader.readAsArrayBuffer(file);
-}
 
 function viewData(){
   return `
@@ -5026,22 +4953,15 @@ Comment: Interested in food processing plot…" style="width:100%;border:1px sol
   </div>
   <div class="section-head"><h2>Excel import &amp; export</h2></div>`:`
   <div class="section-head" style="margin-top:0"><h2>Excel import &amp; export</h2></div>`}
-  <div class="card card-pad" style="margin-bottom:14px">
-    <div class="eyebrow red" style="margin-bottom:8px">Phone formatter — for any Excel sheet</div>
-    <p style="font-size:.86rem;line-height:1.6;margin-bottom:10px">Upload your Excel file — it corrects the phone numbers <b>inside your own workbook</b>: every tab stays exactly as it is, the numbers are fixed where they already sit (dropped zeros, stray symbols like <b>92832+11</b>, Arabic digits, missing country codes), and a <b>Phone Fix Report</b> tab is added at the end. The file downloads under its own name — no separate sheet to reconcile. Numbers too short to be real are flagged, never guessed.</p>
-    <input type="file" id="phoneFixFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="formatPhoneSheet(this.files[0]);this.value=''">
-    <button class="btn btn-red btn-sm" onclick="$('phoneFixFile').click()">Choose Excel file to format</button>
-    <div id="phoneFixResult" style="font-size:.84rem;margin-top:10px"></div>
-  </div>
   <div class="grid g3">
     ${isMarketing()?`<div class="card card-pad">
       <div class="eyebrow red" style="margin-bottom:10px">1 · Template</div>
-      <p style="font-size:.88rem;line-height:1.5;margin-bottom:14px">Download the blank Excel template with the exact column format and a reference sheet of valid sources, projects, statuses and team names.</p>
+      <p style="font-size:.88rem;line-height:1.5;margin-bottom:14px">Download the blank template. You fill in the <b>Leads</b> sheet only \u2014 the second sheet is a read-only reference of valid sources, projects, statuses and team names. This is the one and only sheet the system uses.</p>
       <button class="btn btn-dark btn-sm" onclick="downloadTemplate()">Download template</button>
     </div>
     <div class="card card-pad">
       <div class="eyebrow red" style="margin-bottom:10px">2 · Upload leads</div>
-      <p style="font-size:.88rem;line-height:1.5;margin-bottom:14px">Upload a filled sheet. Rows with a <b>Lead ID</b> update existing leads; rows without one are added as new. Fill "Assigned To" with the salesperson's name, or leave it empty and assign from the dashboard.</p>
+      <p style="font-size:.88rem;line-height:1.5;margin-bottom:14px">Upload the filled template. Phone numbers are corrected to international format automatically as they come in (dropped zeros, Arabic digits, stray symbols) and area ranges like "2,500 - 5,000" are stored as their mid-point. Rows with a <b>Lead ID</b> update existing leads; rows without one are added as new. Fill "Assigned To" with the salesperson's name \u2014 first name is enough \u2014 or leave it empty and assign from the dashboard.</p>
       <input type="file" id="importFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcel(this.files[0]);this.value=''">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <button class="btn btn-red btn-sm" onclick="$('importFile').click()">Choose Excel file</button>
@@ -5080,32 +5000,32 @@ function autoWidth(ws, rows){
 function downloadTemplate(){
   if(typeof XLSX==="undefined"){ toast("Excel library not loaded — check internet connection"); return; }
   const wb = XLSX.utils.book_new();
+  /* SHEET 1 — the only sheet you fill in */
   const rows = [XLSX_HEADERS];
   const ws = XLSX.utils.aoa_to_sheet(rows);
   autoWidth(ws, rows);
   XLSX.utils.book_append_sheet(wb, ws, "Leads");
-  makeRefSheet(wb);
-  /* Phone format guide (visible) */
-  const guide = [
-    ["PHONE NUMBER FORMAT GUIDE — the system auto-cleans on import"],
+  /* SHEET 2 — one read-only helper: valid values + what the import fixes for you */
+  const ref = [
+    ["HOW TO USE THIS FILE"],
+    ["Fill in the \u201CLeads\u201D sheet only \u2014 this sheet is a lookup, never uploaded separately."],
+    ["Phone numbers: type them however you have them. On upload the system converts them to"],
+    ["international format automatically (Egypt 01001234567 \u2192 +201001234567, Saudi 0501234567 \u2192 +966501234567,"],
+    ["UAE 971501234567 \u2192 +971501234567). Spaces, dashes, stray symbols, Arabic digits and Excel-dropped"],
+    ["leading zeros are all handled. Anything that cannot be corrected honestly is listed after import."],
+    ["Requested Area: a range such as \u201C2,500 - 5,000\u201D is stored as its mid-point (3,750)."],
+    ["Assigned To: the salesperson's first name is enough \u2014 the lead goes straight to them."],
     [""],
-    ["Country","You can type","System converts to"],
-    ["Egypt","01001234567 / 0100 123 4567 / 20100...","+201001234567"],
-    ["Saudi Arabia","0501234567 / 966501234567","+966501234567"],
-    ["UAE","971501234567 (use the full 971 code)","+971501234567"],
-    [""],
-    ["The import automatically removes spaces, dashes and symbols, converts"],
-    ["Arabic digits, and adds the country code when missing. Numbers that"],
-    ["cannot be auto-corrected are highlighted after import for manual review."]];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(guide), "Phone Format Guide");
-  /* hidden processing sheet used by the system */
-  const proc = [["_SYSTEM PROCESSING — do not edit"],["normalize_phone","strip[^0-9+] ; 01x→+20 ; 05x→+966 ; keep 20/966/971"],["validate","+20 needs 12 digits, +966/+971 need 12 digits total"]];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(proc), "_processing");
-  wb.Workbook = wb.Workbook||{}; wb.Workbook.Sheets = wb.Workbook.Sheets||[];
-  const pi = wb.SheetNames.indexOf("_processing");
-  wb.Workbook.Sheets[pi] = { Hidden: 1 };
+    ["Lead Sources","Projects","Statuses","Team Members"]
+  ];
+  const n = Math.max(SOURCES.length, PROJECTS.length, STATUSES.length, state.members.length);
+  for(let i=0;i<n;i++) ref.push([SOURCES[i]||"", PROJECTS[i]||"", STATUSES[i]||"", state.members[i]? state.members[i].name : ""]);
+  const rws = XLSX.utils.aoa_to_sheet(ref);
+  rws["!cols"] = [{wch:34},{wch:30},{wch:24},{wch:24}];
+  XLSX.utils.book_append_sheet(wb, rws, "Reference");
   XLSX.writeFile(wb, "Elsewedy_CRM_Lead_Template.xlsx");
 }
+
 function exportLeadsExcel(){
   if(typeof XLSX==="undefined"){ toast("Excel library not loaded — check internet connection"); return; }
   const scope = visibleLeads();
@@ -5160,7 +5080,7 @@ function importExcel(file){
       };
       if(ci.name<0){ $("importResult").innerHTML="<b style='color:var(--red)'>Import failed:</b> couldn't find a \"Lead Name\" column. Use the downloaded template format."; return; }
       let added=0, updated=0, skipped=0, unassigned=0, keptOwner=0, rangedAreas=0;
-      const newLeads=[]; const badPhones=[];
+      const newLeads=[]; const badPhones=[]; const fixedPhones=[];
       const nameCache = {}, badNames = {}, goodNames = {};   // written name → member id / match report
       const pool = ownerCandidates(), allM = state.members.filter(m=>!m.pending);
       const findMember = raw=>{
@@ -5204,6 +5124,7 @@ function importExcel(file){
           phone: (function(){ const raw = String(g(ci.phone)).trim(); if(!raw) return l.phone||"";
             const intl = phoneIntl(raw);
             if(!intl || !phoneValid(raw)){ badPhones.push((String(g(ci.name)).trim()||"?")+" — \""+raw+"\""); return raw; }
+            if(intl!==raw) fixedPhones.push({name:String(g(ci.name)).trim()||"?", from:raw, to:intl});
             return intl; })(),
           email: String(g(ci.email)).trim(),
           source: src? matchList(src, SOURCES) : (l.source||""),
@@ -5220,6 +5141,7 @@ function importExcel(file){
           phone2: (function(){ const raw = String(g(ci.phone2)).trim(); if(!raw) return l.phone2||"";
             const intl = phoneIntl(raw);
             if(!intl){ badPhones.push((String(g(ci.name)).trim()||"?")+" \u2014 second number \""+raw+"\""); return raw; }
+            if(intl!==raw) fixedPhones.push({name:String(g(ci.name)).trim()||"?", from:raw, to:intl, second:true});
             return intl; })(),
           meetingDate: normDate(g(ci.meetingDate)) || (l.meetingDate||""),
           meetingTime: String(g(ci.meetingTime)).trim() || (l.meetingTime||""),
@@ -5274,7 +5196,8 @@ function importExcel(file){
         })()}
         ${rangedAreas?`<div style="margin-top:6px;font-size:.8rem">\u25B8 <b>${rangedAreas} area range(s)</b> stored as their mid-point (e.g. 2,500 - 5,000 \u2192 3,750 m\u00B2). The original text is kept in each lead's activity log.</div>`:""}
         ${badList.length?`<div style="margin-top:8px;color:var(--amber)"><b>\u26A0 ${badList.length} name(s) in the "Assigned To" column could not be matched</b> \u2014 those leads kept their previous owner or stayed unassigned:<br>${badList.slice(0,12).map(k=>esc(k)+" ("+badNames[k].n+" lead"+(badNames[k].n>1?"s":"")+" \u2014 "+badNames[k].why+")").join("<br>")}${badList.length>12?"<br>\u2026":""}<div class="muted" style="font-size:.74rem;margin-top:4px">Fix by matching the spelling to the team member's name, or add them on the Team page, then import again.</div></div>`:""}
-        ${badPhones.length?`<div style="margin-top:8px;color:var(--red)"><b>⚠ ${badPhones.length} phone number(s) could not be auto-corrected</b> — imported as-is, please fix manually:<br>${badPhones.slice(0,10).map(esc).join("<br>")}${badPhones.length>10?"<br>…":""}</div>`:`<div style="margin-top:6px;color:var(--green);font-size:.8rem">✓ All phone numbers cleaned &amp; standardized to international format (+20 / +966 / +971).</div>`}`;
+        ${fixedPhones.length?`<div style="margin-top:8px;font-size:.8rem"><b style="color:var(--green)">\u2713 ${fixedPhones.length} phone number(s) corrected to international format</b> as they came in:<br>${fixedPhones.slice(0,10).map(f=>esc(f.name)+(f.second?" (second number)":"")+": "+esc(f.from)+" \u2192 <b>"+esc(f.to)+"</b>").join("<br>")}${fixedPhones.length>10?"<br>\u2026 and "+(fixedPhones.length-10)+" more":""}</div>`:""}
+        ${badPhones.length?`<div style="margin-top:8px;color:var(--red)"><b>\u26A0 ${badPhones.length} phone number(s) could not be auto-corrected</b> — imported as-is, please fix manually:<br>${badPhones.slice(0,10).map(esc).join("<br>")}${badPhones.length>10?"<br>\u2026":""}</div>`:`<div style="margin-top:6px;color:var(--green);font-size:.8rem">\u2713 Every phone number is stored in international format (+20 / +966 / +971).</div>`}`;
       toast("Imported: "+added+" new, "+updated+" updated");
     }catch(err){
       $("importResult").innerHTML="<b style='color:var(--red)'>Import failed:</b> "+esc(err.message);
