@@ -658,7 +658,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "23 Jul 2026 · rev J";
+const APP_BUILD = "27 Jul 2026 · rev L";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -4495,9 +4495,104 @@ function fuzzyList(v, list){
   f = list.find(x=>tok.some(t=>x.toLowerCase().includes(t)));
   return f || v;
 }
-function parseLand(s){
-  const m = arDigits(String(s||"")).replace(/,/g,"").match(/(\d+(?:\.\d+)?)/);
-  return m? Number(m[1]) : "";
+function parseAreaInfo(s){
+  /* Reads an area cell. A RANGE like "2,500 - 5,000 Meters" is stored as its
+     average (3,750) so ranges become usable numbers for filters and reports.
+     A single value is kept exactly as written. */
+  if(typeof s === "number") return {value: isFinite(s)? s : "", ranged:false};
+  let t = arDigits(String(s==null? "":s)).trim();
+  if(!t) return {value:"", ranged:false};
+  t = t.replace(/[\u066B\u066C\u060C]/g, ",")
+       .replace(/\b(sq\.?\s*m(?:tr|eter|etre)?s?|sqm|m2|m\u00B2|meters?|metres?|mtrs?)\b/gi, " ")
+       .replace(/\u0645\u062A\u0631(\s*\u0645\u0631\u0628\u0639)?/g, " ")
+       .replace(/,/g, "");
+  const nums = (t.match(/\d+(?:\.\d+)?/g)||[]).map(Number).filter(n=>isFinite(n));
+  if(!nums.length) return {value:"", ranged:false};
+  const ranged = nums.length>1 && /\d\s*(?:-|\u2013|\u2014|~|to|till|until|\u0625\u0644\u0649|\u0627\u0644\u0649)\s*\d/i.test(t);
+  if(ranged){
+    const lo = Math.min.apply(null, nums), hi = Math.max.apply(null, nums);
+    return {value: Math.round((lo+hi)/2), ranged:true, lo, hi};
+  }
+  return {value: nums[0], ranged:false};
+}
+function parseLand(s){ return parseAreaInfo(s).value; }
+
+/* ============ FIX 2: match the salesperson already written in the sheet ============ */
+function normPersonName(s){
+  return String(s==null? "":s)
+    .replace(/\(.*?\)/g, " ")
+    .replace(/[._]+/g, " ")
+    .toLowerCase()
+    .replace(/\b(mr|mrs|miss|ms|dr|eng|engineer|prof|mohandes)\b\.?/g, " ")
+    .replace(/[^a-z0-9@\u0600-\u06FF\s-]/g, " ")
+    .replace(/\s+/g, " ").trim();
+}
+function ownerCandidates(){
+  return state.members.filter(m=>!m.pending && ["sales","manager","bizdev","bdmgr"].includes(m.roleKey));
+}
+function tlit(s){
+  /* Folds the ways one Arabic name reaches Excel in English:
+     doubled letters (Mohammed/Mohamed, Bassma/Basma) and the e/i and o/u
+     swaps (Kareem/Karim, Hesham/Hisham, Nourhan/Nurhan). Distinct names stay
+     distinct — Basma and Basem do NOT collide. */
+  return String(s==null? "":s).toLowerCase()
+    .replace(/(.)\1+/g, "$1")
+    .replace(/ph/g, "f")
+    .replace(/[ei]/g, "i")
+    .replace(/[ou]/g, "u")
+    .replace(/y$/, "i")
+    .replace(/[^a-z0-9\u0600-\u06FF]/g, "");
+}
+function near(a, b){
+  /* Arabic names reach Excel spelled many ways (Kareem/Karim, Hesham/Hisham,
+     Mohamed/Mohammed). Allows 1 typo, or 2 once the name is long. */
+  if(a===b) return true;
+  const la=a.length, lb=b.length;
+  const budget = Math.max(la,lb)>=7? 2 : 1;
+  if(Math.abs(la-lb)>budget) return false;
+  const prev = new Array(lb+1);
+  let cur = new Array(lb+1);
+  for(let j=0;j<=lb;j++) prev[j]=j;
+  for(let i=1;i<=la;i++){
+    cur[0]=i;
+    for(let j=1;j<=lb;j++){
+      cur[j] = Math.min(prev[j]+1, cur[j-1]+1, prev[j-1] + (a[i-1]===b[j-1]? 0:1));
+    }
+    for(let j=0;j<=lb;j++) prev[j]=cur[j];
+  }
+  return prev[lb]<=budget;
+}
+function matchMemberByName(raw, pool){
+  /* progressively looser matching, but NEVER guesses between two people */
+  const v = normPersonName(raw);
+  if(!v) return {id:"", why:"empty"};
+  const list = (pool||ownerCandidates()).map(m=>{
+    const n = normPersonName(m.name);
+    return {id:m.id, n, parts:n.split(" ").filter(Boolean), e:String(m.email||"").toLowerCase().trim()};
+  });
+  const vp = v.split(" ").filter(Boolean);
+  const flat = v.replace(/\s+/g,"");
+  const tries = [
+    ()=> list.filter(m=>m.n===v),                                                     // exact full name
+    ()=> v.indexOf("@")>=0? list.filter(m=>m.e===flat) : [],                          // email
+    ()=> list.filter(m=>m.e && m.e.split("@")[0]===flat),                             // email local part
+    ()=> vp.length>=2? list.filter(m=>m.parts.length>=2 && m.parts[0]===vp[0]
+           && m.parts[m.parts.length-1]===vp[vp.length-1]) : [],                      // first + last (middles ignored)
+    ()=> vp.length>=2? list.filter(m=>vp.every(p=>m.parts.indexOf(p)>=0)) : [],       // all written words appear
+    ()=> list.filter(m=>m.parts.length && m.parts[0]===vp[0]),                        // FIRST NAME ONLY — "Hesham" → Hesham Anas
+    ()=> list.filter(m=>m.n.indexOf(v)===0 || v.indexOf(m.n)===0),                    // one is the start of the other
+    ()=> vp.length===1? list.filter(m=>m.parts.indexOf(v)>=0) : [],                   // any single written name — "Anas", "Elsaid"
+    ()=> v.length>=3? list.filter(m=>m.parts.some(p=>p.indexOf(v)===0 || v.indexOf(p)===0)) : [],  // prefix — "Bas" → Basma
+    ()=> vp.length===1 && v.length>=3? list.filter(m=>m.parts.some(p=>tlit(p)===tlit(v))) : [],   // spelling variants — Kareem→Karim
+    ()=> vp.length>1? list.filter(m=>tlit(m.n)===tlit(v)) : [],                       // same, for full names
+    ()=> v.length>=5? list.filter(m=>m.parts.some(p=>near(p,v))) : []                 // last resort: a single typo
+  ];
+  for(let i=0;i<tries.length;i++){
+    const hit = tries[i]();
+    if(hit.length===1) return {id:hit[0].id, why:"matched"};
+    if(hit.length>1) return {id:"", why:"ambiguous", n:hit.length};
+  }
+  return {id:"", why:"unknown"};
 }
 function parseSmart(raw){
   const allLabs = [];
@@ -4950,8 +5045,11 @@ function importExcel(file){
            "Customer Number" is the reference field. New exports have no "Phone":
            "Customer Number" IS the phone (matches the app's field names). */
         phone: col("phone")>=0? col("phone") : col("customer number"),
-        email: col("email"), source: col("lead source"), project: col("project"), land: col("land size"),
-        industry: col("industry"), status: col("status"), owner: col("assigned"), next: col("next follow"),
+        email: col("email"), source: col("lead source"), project: col("project"),
+        land: (function(){ const c=["land size","requested area","area","size"]; for(const k of c){ const i=col(k); if(i>=0) return i; } return -1; })(),
+        industry: col("industry"), status: col("status"),
+        owner: (function(){ const c=["assigned","owner","salesperson","sales person","sales rep","responsible","agent"]; for(const k of c){ const i=col(k); if(i>=0) return i; } return -1; })(),
+        next: col("next follow"),
         value: col("deal value"), notes: col("notes"), created: (col("lead date")>=0? col("lead date") : col("created")), last: col("last contact"),
         offer: col("offer sent"), offerDate: col("offer date"),
         custno: col("reference no.")>=0? col("reference no.") : (col("phone")>=0? col("customer number") : -1), priority: col("priority"),
@@ -4959,8 +5057,30 @@ function importExcel(file){
         phone2: col("customer number 2")>=0? col("customer number 2") : col("phone 2"), meetingDate: col("meeting date"), meetingTime: col("meeting time"), eoiApp: col("eoi applicable"), eoiDate: col("eoi date"), resDate: col("reservation date"), contractDate: col("contract date"), totalSold: col("total sold value")
       };
       if(ci.name<0){ $("importResult").innerHTML="<b style='color:var(--red)'>Import failed:</b> couldn't find a \"Lead Name\" column. Use the downloaded template format."; return; }
-      let added=0, updated=0, skipped=0, unassigned=0; const newLeads=[]; const badPhones=[];
-      const findMember = n=>{ n=String(n).trim().toLowerCase(); const m=state.members.find(m=>m.name.toLowerCase()===n); return m?m.id:""; };
+      let added=0, updated=0, skipped=0, unassigned=0, keptOwner=0, rangedAreas=0;
+      const newLeads=[]; const badPhones=[];
+      const nameCache = {}, badNames = {}, goodNames = {};   // written name → member id / match report
+      const pool = ownerCandidates(), allM = state.members.filter(m=>!m.pending);
+      const findMember = raw=>{
+        const key = String(raw==null? "":raw).trim();
+        if(!key) return "";
+        if(nameCache[key]!==undefined){
+          if(nameCache[key] && goodNames[key]) goodNames[key].n++;
+          else if(!nameCache[key] && badNames[key]) badNames[key].n++;
+          return nameCache[key];
+        }
+        const r = matchMemberByName(key, pool);
+        if(!r.id){
+          const any = matchMemberByName(key, allM);   // exists, but not a lead-owning role?
+          const why = r.why==="ambiguous"? "more than one match"
+                    : any.id? "not a sales role — leads left unassigned"
+                    : "no matching team member";
+          badNames[key] = badNames[key]||{n:0, why}; badNames[key].n++;
+        }
+        if(r.id){ goodNames[key] = {id:r.id, n:1}; }
+        nameCache[key] = r.id;
+        return r.id;
+      };
       const matchList = (v,list)=>{ v=String(v).trim(); const f=list.find(x=>x.toLowerCase()===v.toLowerCase()); return f||v; };
       data.slice(1).forEach(r=>{
         const name = ci.name>=0? String(r[ci.name]).trim():"";
@@ -4972,6 +5092,10 @@ function importExcel(file){
         if(!l){ l = { id: rowId||uid(), created: normDate(g(ci.created))||today(), log: [] }; state.leads.push(l); }
         const src = g(ci.source), prj = g(ci.project), st = g(ci.status);
         const prevStatus = l.status;
+        const landRaw = g(ci.land), landInfo = parseAreaInfo(landRaw);
+        const ownerRaw = String(g(ci.owner)==null? "":g(ci.owner)).trim();
+        const ownerHit = ownerRaw? findMember(ownerRaw) : "";
+        const hadOwner = !!l.owner;
         Object.assign(l, {
           name,
           company: String(g(ci.company)).trim(),
@@ -4982,11 +5106,11 @@ function importExcel(file){
           email: String(g(ci.email)).trim(),
           source: src? matchList(src, SOURCES) : (l.source||""),
           project: prj? matchList(prj, PROJECTS) : (l.project||""),
-          land: g(ci.land)!==""? Number(g(ci.land))||"" : (l.land||""),
+          land: String(landRaw==null? "":landRaw).trim()===""? (l.land||"") : (landInfo.value!==""? landInfo.value : (l.land||"")),
           industry: String(g(ci.industry)).trim() || (l.industry||""),
           custno: String(g(ci.custno)).trim() || (l.custno||""),
           priority: normPriority(g(ci.priority)) || (l.priority||""),
-          soldArea: g(ci.soldArea)!==""? Number(g(ci.soldArea)) : (l.soldArea||""),
+          soldArea: String(g(ci.soldArea)==null? "":g(ci.soldArea)).trim()!==""? (parseLand(g(ci.soldArea))||"") : (l.soldArea||""),
           plotNo: String(g(ci.plotNo)).trim() || (l.plotNo||""),
           qualStatus: String(g(ci.qual)).trim() || (l.qualStatus||""),
           temperature: String(g(ci.temp)).trim() || (l.temperature||""),
@@ -5000,7 +5124,7 @@ function importExcel(file){
           contractDate: normDate(g(ci.contractDate)) || (l.contractDate||""),
           totalSold: g(ci.totalSold)!==""? Number(g(ci.totalSold)) : (l.totalSold||""),
           status: st? matchList(st, STATUSES) : (l.status||"New"),
-          owner: g(ci.owner)? findMember(g(ci.owner)) : (l.owner||""),
+          owner: ownerHit || (l.owner||""),
           created: normDate(g(ci.created)) || l.created || today(),
           offerSent: (ci.offer>=0 && String(g(ci.offer)).trim()!=="")? /^(yes|y|true|1)$/i.test(String(g(ci.offer)).trim()) : !!l.offerSent,
           offerDate: normDate(g(ci.offerDate)) || l.offerDate || "",
@@ -5009,12 +5133,21 @@ function importExcel(file){
           notes: String(g(ci.notes)).trim() || (l.notes||""),
           lastContact: normDate(g(ci.last)) || l.lastContact || ""
         });
+        if(landInfo.ranged){
+          rangedAreas++;
+          pushLog(l, 'Requested area "'+String(landRaw).trim()+'" imported as the mid-point of the range: '+Number(landInfo.value).toLocaleString()+' m\u00B2');
+        }
+        if(ownerHit && !hadOwner) keptOwner++;
         if(!STATUSES.includes(l.status)) l.status="New";
         if(l.status==="Won" && prevStatus!=="Won" && !l.wonDate) l.wonDate = today();
         if(!l.owner && l.status!=="Won" && l.status!=="Lost") unassigned++;
         autoEnglish(l);
         adoptCustnoPhone(l);
-        if(isNewLead){ added++; pushLog(l,"Imported from Excel"); newLeads.push(l); } else { updated++; }
+        if(isNewLead){
+          added++;
+          pushLog(l, "Imported from Excel"+(l.owner? " \u2014 already assigned to "+memberName(l.owner) : ""));
+          newLeads.push(l);
+        } else { updated++; }
       });
       let dupN=0; newLeads.forEach(l=>{ if(flagDupes(l)) dupN++; });
       let assignedN=0, aEntries=[];
@@ -5024,7 +5157,16 @@ function importExcel(file){
       persist(); render(); updateBell();
       if(aEntries.length) notifyAssigned(aEntries);
       else { const unNew = newLeads.filter(l=>!l.owner); if(unNew.length) notifyOps(unNew); }
+      const badList = Object.keys(badNames);
       $("importResult").innerHTML = `<b style="color:var(--green)">Import complete:</b> ${added} added, ${updated} updated${skipped?`, ${skipped} skipped (no name)`:""}.${dupN?` <b style="color:var(--amber)">${dupN} possible duplicate(s) flagged.</b>`:""}${assignedN?` ${assignedN} auto-assigned via rotation.`:(unassigned?` <b style="color:var(--amber)">${unassigned} lead(s) are unassigned.</b>`:"")}
+        ${keptOwner?`<div style="margin-top:8px;color:var(--green);font-size:.82rem">\u2713 <b>${keptOwner} lead(s)</b> went straight to the salesperson named in the sheet \u2014 no re-assignment needed.</div>`:""}
+        ${(function(){
+          const keys = Object.keys(goodNames).filter(k=>normPersonName(k)!==normPersonName(memberName(goodNames[k].id)));
+          if(!keys.length) return "";
+          return `<div style="margin-top:8px;font-size:.8rem"><b>Names matched from the sheet:</b><br>${keys.slice(0,15).map(k=>"\u201C"+esc(k)+"\u201D 	\u2192 <b>"+esc(memberName(goodNames[k].id))+"</b> ("+goodNames[k].n+" lead"+(goodNames[k].n>1?"s":"")+")").join("<br>")}${keys.length>15?"<br>\u2026":""}</div>`;
+        })()}
+        ${rangedAreas?`<div style="margin-top:6px;font-size:.8rem">\u25B8 <b>${rangedAreas} area range(s)</b> stored as their mid-point (e.g. 2,500 - 5,000 \u2192 3,750 m\u00B2). The original text is kept in each lead's activity log.</div>`:""}
+        ${badList.length?`<div style="margin-top:8px;color:var(--amber)"><b>\u26A0 ${badList.length} name(s) in the "Assigned To" column could not be matched</b> \u2014 those leads kept their previous owner or stayed unassigned:<br>${badList.slice(0,12).map(k=>esc(k)+" ("+badNames[k].n+" lead"+(badNames[k].n>1?"s":"")+" \u2014 "+badNames[k].why+")").join("<br>")}${badList.length>12?"<br>\u2026":""}<div class="muted" style="font-size:.74rem;margin-top:4px">Fix by matching the spelling to the team member's name, or add them on the Team page, then import again.</div></div>`:""}
         ${badPhones.length?`<div style="margin-top:8px;color:var(--red)"><b>⚠ ${badPhones.length} phone number(s) could not be auto-corrected</b> — imported as-is, please fix manually:<br>${badPhones.slice(0,10).map(esc).join("<br>")}${badPhones.length>10?"<br>…":""}</div>`:`<div style="margin-top:6px;color:var(--green);font-size:.8rem">✓ All phone numbers cleaned &amp; standardized to international format (+20 / +966 / +971).</div>`}`;
       toast("Imported: "+added+" new, "+updated+" updated");
     }catch(err){
