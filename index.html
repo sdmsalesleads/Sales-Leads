@@ -228,6 +228,46 @@ th.num{text-align:right}
 .log-item .l-date{font-size:.73rem;color:var(--steel);font-weight:700}
 
 .print-head,.print-foot{display:none}
+/* ---- How to use: the in-app guide player ---- */
+.gd-wrap{max-width:1000px;margin:0 auto}
+.gd-stage{position:relative;background:linear-gradient(180deg,#FFF6F6,#fff);border:1px solid var(--line);
+  border-radius:14px;min-height:330px;padding:26px 30px;display:flex;gap:26px;align-items:center;overflow:hidden}
+.gd-left{flex:0 0 42%;min-width:0}
+.gd-right{flex:1;min-width:0;display:flex;justify-content:center}
+.gd-eyebrow{font-size:.62rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--red);margin-bottom:8px}
+.gd-stage h3{font-family:'Archivo Expanded','Archivo',sans-serif;font-weight:800;font-size:1.35rem;line-height:1.15;margin:0 0 10px;letter-spacing:-.01em}
+.gd-stage p{font-size:.88rem;line-height:1.6;color:var(--ink-2);margin:0 0 7px}
+.gd-mock{width:100%;max-width:400px;background:#fff;border:1px solid var(--line);border-radius:11px;
+  box-shadow:0 12px 30px rgba(0,0,0,.08);overflow:hidden}
+.gd-mock-top{display:flex;align-items:center;gap:6px;padding:8px 11px;border-bottom:1px solid var(--line);background:var(--soft)}
+.gd-dot{width:7px;height:7px;border-radius:50%;background:#DDD}
+.gd-mock-t{font-size:.66rem;font-weight:700;color:var(--steel);letter-spacing:.05em;margin-left:5px}
+.gd-mock-b{padding:13px 14px;min-height:150px;font-size:.78rem}
+.gd-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border:1px solid var(--line);border-radius:8px;margin-bottom:5px;font-size:.74rem}
+.gd-av{width:21px;height:21px;border-radius:50%;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:800;flex:0 0 auto}
+.gd-nm{font-weight:700}
+.gd-mt{color:var(--steel);font-size:.66rem}
+.gd-fld{margin-bottom:7px}
+.gd-fld label{display:block;font-size:.62rem;font-weight:700;color:var(--steel);margin-bottom:2px}
+.gd-box{border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:.76rem;min-height:28px;background:#fff}
+.gd-box.hot{border-color:var(--red);box-shadow:0 0 0 3px rgba(224,30,37,.08)}
+.gd-toast{background:var(--ink);color:#fff;border-radius:8px;padding:8px 12px;font-size:.74rem;font-weight:600;display:inline-block}
+.gd-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gd-tile{border:1px solid var(--line);border-radius:8px;padding:9px}
+.gd-tile .n{font-family:'Archivo Expanded','Archivo',sans-serif;font-weight:800;font-size:1.15rem;line-height:1}
+.gd-tile .l{font-size:.58rem;color:var(--steel);text-transform:uppercase;letter-spacing:.09em;margin-top:2px}
+.gd-cap{background:var(--ink);color:#fff;border-radius:11px;padding:13px 17px;font-size:.88rem;line-height:1.5;margin-top:12px;min-height:52px;display:flex;align-items:center}
+.gd-ctrl{display:flex;align-items:center;gap:10px;margin-top:11px}
+.gd-track{flex:1;height:5px;background:var(--line);border-radius:99px;overflow:hidden;cursor:pointer}
+.gd-fill{height:100%;background:var(--red);width:0%;transition:width .12s linear}
+.gd-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:11px}
+.gd-chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 11px;font-size:.7rem;font-weight:700;color:var(--steel);cursor:pointer}
+.gd-chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+@media (max-width:820px){
+  .gd-stage{flex-direction:column;align-items:flex-start;padding:18px}
+  .gd-left{flex:none;width:100%}
+  .gd-right{width:100%}
+}
 @media print{
   @page{margin:14mm 12mm 16mm}
   .sidebar,.topbar,.filters,.no-print,.game-ribbon,#streakBar,.btn,.spotlight{display:none !important}
@@ -660,7 +700,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "27 Jul 2026 · rev S";
+const APP_BUILD = "27 Jul 2026 · rev T";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1197,6 +1237,7 @@ const NAV_ITEMS = [
   {v:"reports", ic:"▤", label:()=> isFinance()? "Revenue Reports":"Team Reports", show:()=>canManage()||isFinance()},
   {v:"calendar", ic:"▦", label:()=>"Calendar", show:()=>canSeeCalendar()},
   {v:"achievements", ic:"🏅", label:()=>"Achievements", show:()=>gamEligible()},
+  {v:"guide", ic:"🎓", label:()=>"How to use", show:()=>!!currentUser},
   {v:"bdtrack", ic:"📋", label:()=>"BD Tracker", show:()=>(currentUser&&currentUser.bd)||isOps()||isAdmin()||(currentUser&&currentUser.director)||(currentUser&&currentUser.exec)},
   {v:"hierarchy", ic:"◬", label:()=>"Hierarchy", show:()=>canManage()},
   {v:"myreport", ic:"▣", label:()=>"My Report", show:()=>!canManage() && !isFinance()},
@@ -1215,6 +1256,7 @@ document.getElementById("navBar").addEventListener("click", e=>{
 });
 function setView(v){
   closeSidebar();
+  if(v!=="guide" && typeof gdStop==="function") gdStop();     // the walkthrough only runs while you're watching it
   currentView=v; selectedLeads.clear();
   document.querySelectorAll("#navBar button").forEach(b=>b.classList.toggle("active", b.dataset.view===v));
   const item = NAV_ITEMS.find(n=>n.v===v);
@@ -1235,6 +1277,7 @@ function render(){
   else if(currentView==="calendar" && canSeeCalendar()) c.innerHTML = viewCalendar();
   else if(currentView==="achievements" && gamEligible()) c.innerHTML = viewAchievements();
   else if(currentView==="bdtrack") c.innerHTML = viewBdTrack();
+  else if(currentView==="guide") c.innerHTML = viewGuide();
   else if(currentView==="hierarchy" && canManage()) c.innerHTML = viewHierarchy();
   else if(currentView==="extsales" && !isFinance()) c.innerHTML = viewExtSales();
   else if(currentView==="targets" && isAdmin()) c.innerHTML = viewTargets();
@@ -5273,6 +5316,236 @@ function cleanAllLeads(){
 }
 /* ---- Standalone Excel phone formatter: upload ANY sheet, download it fixed ---- */
 
+/* =================== How to use — one guide per department =================== */
+const GD_MOCK = (title, body) => `<div class="gd-mock"><div class="gd-mock-top"><span class="gd-dot"></span><span class="gd-dot"></span><span class="gd-dot"></span><span class="gd-mock-t">${title}</span></div><div class="gd-mock-b">${body}</div></div>`;
+const GD_ROW = (ini, name, meta, hot) => `<div class="gd-row" ${hot?'style="border-color:var(--red);background:#FFF8F8"':''}><div class="gd-av" ${hot?'style="background:var(--red)"':''}>${ini}</div><div><div class="gd-nm">${name}</div><div class="gd-mt">${meta}</div></div></div>`;
+const GD_FLD = (l, v, hot) => `<div class="gd-fld"><label>${l}</label><div class="gd-box ${hot?"hot":""}">${v}</div></div>`;
+const GD_TILES = t => `<div class="gd-tiles">${t.map(x=>`<div class="gd-tile"><div class="n" ${x[2]?`style="color:${x[2]}"`:""}>${x[0]}</div><div class="l">${x[1]}</div></div>`).join("")}</div>`;
+
+const GUIDES = {
+ sales: { name:"Sales", icon:"🎯", steps:[
+  {ch:"My Day", h:"Your day starts on one screen", p:["<b>My Day</b> opens on today's call sheet — who to call, in order, with the overdue ones first.","The four cards at the top are clickable: press <b>Overdue</b> or <b>Due today</b> to jump straight to that list."],
+   cap:"My Day is the only screen you need to start. Work the call sheet from the top down.",
+   m:()=>GD_MOCK("My Day", GD_TILES([["3","Overdue","var(--red)"],["7","Due today"],["24","My open leads"],["62%","Achieved"]])+`<div style="margin-top:9px">${GD_ROW("TA","Tamer Abdel Elfatah","Negotiation · call first")}${GD_ROW("MS","Mostafa Sami","Call back · 11:00")}</div>`)},
+  {ch:"My Day", h:"Open a lead by tapping the row", p:["Tap anywhere on a lead to open it — not just the button.","The customer number is always shown in full international form, so <b>WhatsApp works every time</b>."],
+   cap:"Tap the row to open the lead. The number is always ready for WhatsApp or a call.",
+   m:()=>GD_MOCK("Tamer Abdel Elfatah", GD_FLD("Customer number","+201001146364")+GD_FLD("Company","Tasanaya Athath")+`<div style="display:flex;gap:6px;margin-top:8px"><span class="gd-toast" style="background:var(--green)">WhatsApp</span><span class="gd-toast" style="background:var(--ink-2)">Call</span></div>`)},
+  {ch:"Log", h:"After every call, log what happened", p:["Write one line in the activity box and set the <b>next follow-up date and time</b>.","That is what puts the lead back on your call sheet on the right day — and what keeps your streak alive."],
+   cap:"Log the call and set the next follow-up. That single habit runs your whole pipeline.",
+   m:()=>GD_MOCK("Log an activity", GD_FLD("What happened?","Called — asked for a revised offer",true)+GD_FLD("Next follow-up","28 Jul 2026 · 10:00")+`<div style="margin-top:8px"><span class="gd-toast">Saved</span></div>`)},
+  {ch:"Log", h:"Meetings and site visits need a time", p:["Choosing <b>Scheduled Meeting</b> or <b>Site Visit Scheduled</b> asks for the date and time.","It goes into your calendar and you are reminded <b>a day before and two hours before</b>."],
+   cap:"Meetings and site visits ask for a date and time, then remind you a day and two hours ahead.",
+   m:()=>GD_MOCK("Scheduled Meeting", GD_FLD("Meeting date","29 Jul 2026",true)+GD_FLD("Meeting time","13:00",true)+GD_FLD("Notes","Bringing the technical manager")+`<div style="margin-top:6px"><span class="gd-toast">🤝 Reminder set</span></div>`)},
+  {ch:"Qualify", h:"Say whether the lead is real", p:["Set <b>Qualified</b> or <b>Unqualified</b>, and how warm they are — Hot, Warm or Cold.","A short reason is required. That note is what your manager reads instead of asking you."],
+   cap:"Qualify the lead and say why. It saves you the follow-up questions later.",
+   m:()=>GD_MOCK("Qualification", GD_FLD("Qualification","Qualified")+GD_FLD("Temperature","Hot",true)+GD_FLD("Why","Budget confirmed, plot size fits, decision maker engaged"))},
+  {ch:"Your leads", h:"You can add your own leads", p:["Press <b>+ Add lead</b> and choose the source <b>Personal</b> or <b>Management</b>.","It is assigned to you automatically, and it shows in reporting as self-generated — your own effort, visible."],
+   cap:"Leads you find yourself: add them with source Personal or Management. They come straight to you.",
+   m:()=>GD_MOCK("New lead", GD_FLD("Customer name","Ahmed Mostafa")+GD_FLD("Lead source","Personal",true)+GD_FLD("Assigned to","You — automatically"))},
+  {ch:"Winning", h:"Winning a deal", p:["Set the status to <b>Won</b> and enter the cash value and total sold value.","Finance is notified to confirm the amount. Once confirmed it counts towards your target."],
+   cap:"Mark it Won, enter the value, and Finance confirms. Then it counts towards your target.",
+   m:()=>GD_MOCK("Won 🎉", GD_FLD("Cash value (EGP)","24,000,000",true)+GD_FLD("Contract date","20 Jul 2026")+`<div style="margin-top:8px"><span class="gd-toast" style="background:var(--green)">Sent to Finance to confirm</span></div>`)},
+  {ch:"Rewards", h:"Streaks, levels and the weekly challenge", p:["Clear your due follow-ups every working day to grow your 🔥 streak — <b>Sunday to Thursday only</b>, weekends never break it.","Climb from Land Scout to Sales Legend, collect badges, and race the team in the weekly challenge."],
+   cap:"Clear your list each working day. Weekends never break your streak — and the whole team is racing.",
+   m:()=>GD_MOCK("Achievements", GD_TILES([["🔥 12","Day streak","var(--red)"],["Prospector","Your level"],["6/8","Badges"],["4/10","Challenge"]]))}
+ ]},
+
+ ops: { name:"Sales Operations", icon:"📦", steps:[
+  {ch:"Queue", h:"Your job is the queue", p:["<b>Team Day</b> shows every lead waiting for an owner. Clearing it is the whole game.","Marketing adds them, Business Development warms them — you decide who works them."],
+   cap:"Team Day shows every unassigned lead. Clearing that queue is your daily win.",
+   m:()=>GD_MOCK("Team Day", GD_TILES([["9","Waiting to assign","var(--red)"],["2","Hot from BD"],["31","Active leads"],["4","Won this week"]]))},
+  {ch:"Assign", h:"Assigning a lead", p:["Open the lead and pick a name in <b>Assigned to</b>. Only salespeople and managers appear there.","They get a notification immediately, and a follow-up date is set for them automatically."],
+   cap:"Open the lead, choose the salesperson. They are notified the moment you save.",
+   m:()=>GD_MOCK("Assign", GD_FLD("Assigned to","Hesham Anas",true)+`<div style="margin-top:8px"><span class="gd-toast">📩 Hesham has been notified</span></div>`)},
+  {ch:"Assign", h:"Many at once", p:["On the <b>Leads</b> page, tick several leads, then use <b>Transfer</b> to move them all to one person.","Use the header tick-box to select everything you can see after filtering."],
+   cap:"Tick several leads and transfer them in one action — no need to open each one.",
+   m:()=>GD_MOCK("Leads — 12 selected", `<div class="gd-toast" style="margin-bottom:8px">12 selected — transfer to…</div>`+GD_ROW("AM","Ahmed Mostafa","Website · unassigned")+GD_ROW("SN","Sara Nabil","Facebook · unassigned"))},
+  {ch:"BD", h:"Hot leads from Business Development", p:["When BD warms a lead to <b>Hot</b>, it appears on your Team Day in a red card — and it <b>must</b> be handed to a salesperson.","Assign it like any other lead; the handover is recorded in the lead's history."],
+   cap:"A hot lead from BD must be handed to sales. It waits in the red card until you assign it.",
+   m:()=>GD_MOCK("🔥 Hot from Business Development", GD_ROW("DF","Delta Foods","Warmed by Nourhan Adel · assign now",true))},
+  {ch:"Quality", h:"Keeping the data clean", p:["On the Leads page use <b>⚠ Duplicates only</b> to see flagged leads, or sort by <b>duplicates grouped together</b> to compare each pair side by side.","A duplicate is the same phone number or the same email — never just a similar company name."],
+   cap:"Filter to duplicates, compare each pair, and keep the pipeline honest.",
+   m:()=>GD_MOCK("Leads — duplicates", GD_ROW("!","Ahmed Mostafa","Same number as an existing lead",true)+GD_ROW("AM","Ahmed Mostafa","Added 3 months ago · Hesham Anas"))},
+  {ch:"Reports", h:"Reports and the weekly digest", p:["<b>Team Reports</b> gives you the funnel, conversion by source, and every salesperson's numbers — printable as a branded PDF.","<b>📧 Weekly digest</b> drafts the management email in one click: wins, meetings, overdue and the top closer."],
+   cap:"Team Reports for the numbers, and one click drafts the weekly management email.",
+   m:()=>GD_MOCK("Team Reports", GD_TILES([["318","Leads this month"],["7.5%","Conversion","var(--green)"],["24","Won"],["EGP 180M","Value"]]))},
+  {ch:"Rewards", h:"Your own game", p:["Clear the unassigned queue and the day completes with a celebration — <b>“Queue cleared — every lead has a home!”</b>","Climb from Queue Rookie to Operations Legend; ⚡ Same-Day Router is 10 assignments in one day."],
+   cap:"Clear the queue each day to keep your streak. Nobody waits when you are on duty.",
+   m:()=>GD_MOCK("Achievements", GD_TILES([["🔥 8","Day streak","var(--red)"],["Dispatcher","Your level"],["142","Leads routed"],["5/6","Badges"]]))}
+ ]},
+
+ mkt: { name:"Marketing", icon:"📣", steps:[
+  {ch:"Three ways", h:"Three ways to add a lead", p:["<b>One by one</b> with the + Add lead button · <b>a whole Excel sheet</b> at once · or <b>paste the email form</b> straight from your inbox.","Whichever you choose, the system cleans the data for you."],
+   cap:"Three routes: one lead, one sheet, or paste the form. Pick whatever suits the moment.",
+   m:()=>GD_MOCK("Excel & Data", GD_TILES([["1","Add one lead","var(--red)"],["2","Upload a sheet","var(--red)"],["3","Paste the form","var(--red)"],["✓","All cleaned automatically","var(--green)"]]))},
+  {ch:"One lead", h:"One lead by hand", p:["Press <b>+ Add lead</b>. Only the customer name and customer number are required.","Type the number however you have it — the system stores it as <b>+201001146364</b> so WhatsApp always works."],
+   cap:"Only two fields are required. Type the phone any way you like; it gets corrected on save.",
+   m:()=>GD_MOCK("New lead", GD_FLD("Customer name *","Ahmed Mostafa")+GD_FLD("Customer number *","0100 114 6364",true)+GD_FLD("Lead source","Facebook"))},
+  {ch:"Excel", h:"A whole sheet at once", p:["<b>Excel &amp; Data → Download template</b>, fill the <b>Leads</b> sheet, then <b>Choose Excel file</b>.","Write things as they come: area <b>“2,500 - 5,000”</b> is stored as 3,750, and <b>“Hesham”</b> finds Hesham Anas."],
+   cap:"Download the template, fill one row per lead, upload it. Ranges and first names are understood.",
+   m:()=>GD_MOCK("October_leads.xlsx", `<div class="gd-row" style="background:var(--soft);font-weight:800;color:var(--steel);font-size:.6rem"><div style="flex:1.2">LEAD NAME</div><div style="flex:1.2">NUMBER</div><div style="flex:1">AREA</div><div style="flex:.8">ASSIGNED</div></div><div class="gd-row"><div style="flex:1.2">Ahmed Mostafa</div><div style="flex:1.2">01001146364</div><div style="flex:1">2,500 - 5,000</div><div style="flex:.8">Hesham</div></div><div class="gd-row"><div style="flex:1.2">Sara Nabil</div><div style="flex:1.2">0100 987 6543</div><div style="flex:1">5000</div><div style="flex:.8">Karim</div></div>`)},
+  {ch:"Excel", h:"Always read the summary", p:["It lists every number corrected, how each name was matched to a colleague, and anything it refused to guess.","Whatever appears in red was imported <b>exactly as written</b> — fix those few by hand."],
+   cap:"The summary is the important part. Read it before you close it.",
+   m:()=>GD_MOCK("Import finished", `<div style="font-size:.74rem;line-height:1.7"><b>42 leads added</b>, 3 updated<br><span style="color:var(--green)">✓ 12 numbers corrected</span><br><span style="color:var(--steel)">01001146364 → <b>+201001146364</b></span><br><span style="color:var(--green)">✓ “Hesham” → Hesham Anas (18)</span><br><span style="color:var(--amber)">⚠ 1 number needs fixing by hand</span></div>`)},
+  {ch:"Paste", h:"Paste the email form", p:["Copy the whole form out of the email — labels and all — into <b>Smart paste</b>, then press <b>Parse &amp; create leads</b>.","It strips the labels, translates Arabic names to English keeping the original in the notes, and tidies phone and email."],
+   cap:"Copy the form as it is and paste it. No Excel needed, and several leads can go in at once.",
+   m:()=>GD_MOCK("Smart paste", `<div style="border:1px solid var(--line);border-radius:8px;padding:9px;font-size:.7rem;line-height:1.6;color:var(--ink-2);white-space:pre-line">Customer Name: Ahmed Hassan
+Company Name: ABC Manufacturing
+Project Name: Industria October
+Required Size: 5000</div><div style="margin-top:8px"><span class="gd-toast">1 lead created</span></div>`)},
+  {ch:"After", h:"Duplicates are flagged, never lost", p:["If the customer already exists the lead is still saved, but marked — so two people never call the same client.","Filter <b>⚠ Duplicates only</b>, then keep the older row and delete the copy, or press <b>✓ Not duplicates</b> if they really are different."],
+   cap:"Duplicates are flagged for review, never silently dropped.",
+   m:()=>GD_MOCK("Leads — duplicates", GD_ROW("!","Ahmed Mostafa","Same number as an existing lead",true)+GD_ROW("AM","Ahmed Mostafa","Added 3 months ago"))},
+  {ch:"Proof", h:"Your reports prove the work", p:["<b>Reports</b> shows leads per source and how many became deals — the evidence of what marketing brought in.","Commercial values are hidden from marketing by design; conversion and volume are all yours."],
+   cap:"Reports by source show what you brought in and what it became.",
+   m:()=>GD_MOCK("Reports — by source", GD_TILES([["318","Leads this month"],["24","Won from them","var(--green)"],["Facebook","Best source"],["7.5%","Conversion"]]))},
+  {ch:"Rewards", h:"Feed the pipeline every day", p:["Add at least one lead on a working day and the day completes: <b>“Pipeline fed for today!”</b>","Climb from Lead Scout to Marketing Legend. ⛏️ Goldmine arrives when 10 of your leads are won."],
+   cap:"One lead a day keeps your streak alive — and every win traces back to you.",
+   m:()=>GD_MOCK("Achievements", GD_TILES([["🔥 15","Day streak","var(--red)"],["Pipeline Filler","Your level"],["1,240","Leads added"],["⛏️","Goldmine"]]))}
+ ]},
+
+ fin: { name:"Finance", icon:"💰", steps:[
+  {ch:"Your day", h:"Won deals waiting for you", p:["Your <b>My Day</b> lists every won deal whose cash value is not confirmed yet.","You see won deals only — the rest of the pipeline is not your concern and is not shown."],
+   cap:"Your day is the list of won deals waiting for confirmation. Nothing else.",
+   m:()=>GD_MOCK("My Day — Finance", GD_TILES([["4","Waiting to confirm","var(--red)"],["EGP 96M","This month","var(--green)"],["18","Confirmed"],["🔥 6","Day streak"]]))},
+  {ch:"Confirm", h:"Check the number, then confirm", p:["Open the deal, compare the amount with the contract, correct it if needed, then press <b>Confirm</b>.","If you change the figure, the old and new values are both recorded — the audit trail protects everyone."],
+   cap:"Compare with the contract, correct if needed, confirm. Every change is recorded.",
+   m:()=>GD_MOCK("Delta Foods — Won", GD_FLD("Cash value (EGP)","24,000,000",true)+GD_FLD("Contract date","20 Jul 2026")+`<div style="margin-top:8px"><span class="gd-toast" style="background:var(--green)">Cash value confirmed</span></div>`)},
+  {ch:"Confirm", h:"Correcting a wrong figure", p:["If the value does not match the contract, edit it before confirming. The log keeps <b>“edited by AR: was X, now Y”</b>.","Catching one wrong figure earns you the 🦅 <b>Hawk Eye</b> badge — scepticism is an achievement here."],
+   cap:"Correcting a wrong value is expected, and it earns you the Hawk Eye badge.",
+   m:()=>GD_MOCK("Correction", `<div style="font-size:.74rem;line-height:1.7"><span style="color:var(--steel)">Cash value edited by AR</span><br>was <b>EGP 26,000,000</b><br>now <b style="color:var(--red)">EGP 24,000,000</b><br><span style="color:var(--green)">🦅 Hawk Eye unlocked</span></div>`)},
+  {ch:"Reports", h:"Revenue reporting", p:["<b>Reports</b> breaks revenue down by salesperson, project and quarter, with completed contracts per rep.","Print it as a branded PDF for management with one click."],
+   cap:"Revenue by person, project and quarter — printable as a branded PDF.",
+   m:()=>GD_MOCK("Finance reports", GD_TILES([["EGP 412M","Confirmed YTD","var(--green)"],["96","Deals"],["Hesham","Top by value"],["Q3","Best quarter"]]))},
+  {ch:"Rewards", h:"An empty queue is the win", p:["Confirm everything pending and the day completes: <b>“Books balanced — nothing pending!”</b>","Climb from Ledger Keeper to Finance Legend; 💎 50M Guardian arrives at 50 million confirmed."],
+   cap:"Clear the pending list each day. The numbers can be trusted because of you.",
+   m:()=>GD_MOCK("Achievements", GD_TILES([["🔥 9","Day streak","var(--red)"],["Controller","Your level"],["96","Confirmed"],["💎","50M Guardian"]]))}
+ ]},
+
+ bd: { name:"Business Development", icon:"🔍", steps:[
+  {ch:"Hunting", h:"You start where there is nothing", p:["Add the leads you find yourself with <b>+ Add lead</b> and the source <b>BD Research</b>.","They are yours to work: research, cold outreach, brokers, feasibility — all logged on the lead."],
+   cap:"You create your own leads with the BD Research source, and you own them while they are cold.",
+   m:()=>GD_MOCK("New lead", GD_FLD("Customer name","Delta Foods")+GD_FLD("Lead source","BD Research",true)+GD_FLD("Assigned to","You — automatically"))},
+  {ch:"Warming", h:"Warm it up", p:["Log every touch: the research, the call, the broker introduction, the site study.","Move the temperature from Cold to Warm as the interest becomes real."],
+   cap:"Log every touch. The history you build is what makes the handover valuable.",
+   m:()=>GD_MOCK("Delta Foods", GD_FLD("Temperature","Warm",true)+`<div style="margin-top:6px;font-size:.7rem;line-height:1.6;color:var(--steel)">[26 Jul] Called — plot size discussed<br>[24 Jul] Broker introduction<br>[20 Jul] Market research completed</div>`)},
+  {ch:"Handover", h:"Hot means hand it over", p:["When you set <b>Qualified</b> and <b>Hot</b>, the lead is flagged for handover — this is required, not optional.","<b>Sales Operations</b> then assigns it to a salesperson. You cannot keep a hot lead."],
+   cap:"Qualified plus Hot triggers the handover. Sales Operations takes it from there.",
+   m:()=>GD_MOCK("🔥 Warmed to HOT", GD_FLD("Qualification","Qualified")+GD_FLD("Temperature","Hot",true)+`<div style="margin-top:8px"><span class="gd-toast" style="background:var(--red)">Awaiting Sales Operations handover</span></div>`)},
+  {ch:"Handover", h:"You keep the credit", p:["The handover is written into the lead's history with your name on it.","Your XP and badges keep it too — <b>60 XP per hot handover</b>, the most valuable single action in the whole system."],
+   cap:"The credit stays yours even after the lead moves to sales.",
+   m:()=>GD_MOCK("Your record", GD_TILES([["7","Hot handovers","var(--red)"],["+420","XP from handovers"],["🌋","Ten Heat-Ups"],["Deal Hunter","Your level"]]))},
+  {ch:"Tracker", h:"The weekly tracker", p:["<b>BD Tracker</b> is where you set this week's targets and record what you completed, per category: Market Research, Land Acquisition, Cold Outreach, Broker &amp; Partner Network, Feasibility &amp; Site Studies.","Write the milestone in the notes — “shortlisted 3 plots in 10th of Ramadan”. Leadership reads it live."],
+   cap:"Set your weekly targets, record what you completed, and note the milestones.",
+   m:()=>GD_MOCK("BD Tracker — this week", `<div class="gd-row" style="background:var(--soft);font-weight:800;color:var(--steel);font-size:.6rem"><div style="flex:1.6">CATEGORY</div><div style="flex:.6">TARGET</div><div style="flex:.7">DONE</div></div><div class="gd-row"><div style="flex:1.6">Market Research</div><div style="flex:.6">10</div><div style="flex:.7"><b style="color:var(--red)">7</b></div></div><div class="gd-row"><div style="flex:1.6">Land Acquisition</div><div style="flex:.6">5</div><div style="flex:.7"><b style="color:var(--red)">5</b></div></div>`)},
+  {ch:"Rewards", h:"Your own ladder", p:["Climb from Scout to <b>BD Legend</b>. Badges include 📚 Research Machine and 🗺️ Land Hunter.","The weekly challenge alternates between warming 2 leads to hot and completing 15 tracker tasks."],
+   cap:"Scout to BD Legend, with badges for research and land hunting.",
+   m:()=>GD_MOCK("Achievements", GD_TILES([["🔥 5","Day streak","var(--red)"],["Pathfinder","Your level"],["7","Handovers"],["2/2","Challenge","var(--green)"]]))}
+ ]},
+
+ admin: { name:"Management & Admin", icon:"🛡️", steps:[
+  {ch:"People", h:"Approving people", p:["Someone signs up, then appears in <b>Team</b> as pending. Give them a job title, department and access level.","The access level decides everything they can see and do — nothing else needs configuring."],
+   cap:"New people appear as pending. Set their title, department and access level.",
+   m:()=>GD_MOCK("Team", GD_FLD("Name","Hesham Anas")+GD_FLD("Access level","Sales",true)+GD_FLD("Reports to","Sales Manager"))},
+  {ch:"People", h:"The reporting ladder", p:["Each person reports to <b>their own department's manager</b>; the managers report to C-level.","The Hierarchy tab draws the whole structure automatically once you have set it."],
+   cap:"People report to their department manager; managers report to C-level. You confirm every appointment.",
+   m:()=>GD_MOCK("Hierarchy", `<div style="font-size:.72rem;line-height:1.9"><b>Sales &amp; BD Director</b><br>&nbsp;&nbsp;└ Sales Manager → 4 salespeople<br>&nbsp;&nbsp;└ Sales Operations Manager → 2<br>&nbsp;&nbsp;└ BD Manager → 3</div>`)},
+  {ch:"Reports", h:"Everything, everywhere", p:["<b>Team Reports</b> holds the funnel, conversion by source, revenue by person, and the self-generated lead report.","Print any of it as a branded PDF, or draft the weekly management email in one click."],
+   cap:"Every report, printable as a branded PDF, plus the one-click weekly digest.",
+   m:()=>GD_MOCK("Team Reports", GD_TILES([["318","Leads"],["7.5%","Conversion","var(--green)"],["EGP 412M","Confirmed"],["24","Won"]]))},
+  {ch:"Data", h:"The workbook", p:["<b>Excel &amp; Data → Google Sheets integration</b> connects the CRM to your private Google workbook.","Everything written in the CRM lands there: leads, sales, team, tracker, imports, audit log and settings."],
+   cap:"The Google Sheets panel is yours alone. Keep the workbook private to your account.",
+   m:()=>GD_MOCK("Google Sheets integration", `<div style="font-size:.74rem;line-height:1.8"><span style="color:var(--green);font-weight:700">✓ Connected — syncing</span><br><span style="color:var(--steel)">Last sync: a moment ago<br>Rows sent: 1,284 · Waiting: 0</span></div>`)},
+  {ch:"Data", h:"Keep it healthy", p:["Watch the <b>Import Log</b> and <b>Audit Log</b> tabs for who changed what.","Download the workbook weekly (File → Download → .xlsx) — that is your backup."],
+   cap:"The audit log answers who changed what. Download the workbook weekly as your backup.",
+   m:()=>GD_MOCK("Audit Log", `<div style="font-size:.7rem;line-height:1.8;color:var(--steel)">[16:02] Omar Ops · Owner changed<br><b style="color:var(--ink)">Unassigned → Hesham Anas</b><br>[15:41] Mona · Lead added<br>[15:12] Farida · Cash value confirmed</div>`)}
+ ]}
+};
+
+const GD_TOP_ROLES = ["admin","director","ceo","cfo","hrdirector"];
+function gdKey(){
+  /* you get YOUR department's guide — a marketing manager is still marketing.
+     Only the people who oversee everything land on the management guide. */
+  if(currentUser && GD_TOP_ROLES.includes(currentUser.roleKey)) return "admin";
+  const d = deptOf();
+  return GUIDES[d]? d : "sales";
+}
+function gdCanSwitch(){
+  /* department managers can also read other guides — they coach their people */
+  return currentUser && (GD_TOP_ROLES.includes(currentUser.roleKey) || currentUser.mgr || currentUser.dmgr ||
+                         currentUser.roleKey==="marketingmgr");
+}
+let gdView = "", gdStep = 0, gdTimer = null, gdElapsed = 0;
+const GD_SECS = 10;
+function gdStop(){ clearInterval(gdTimer); gdTimer = null; }
+function gdPlay(){
+  gdStop();
+  gdTimer = setInterval(()=>{
+    gdElapsed += 0.25;
+    const steps = GUIDES[gdView||gdKey()].steps;
+    if(gdElapsed >= GD_SECS){
+      if(gdStep >= steps.length-1){ gdStop(); gdElapsed = GD_SECS; gdPaint(); return; }
+      gdStep++; gdElapsed = 0; gdPaint(); return;
+    }
+    gdProgress();
+  }, 250);
+}
+function gdProgress(){
+  const steps = GUIDES[gdView||gdKey()].steps;
+  const el = $("gdFill"); if(!el) return;
+  el.style.width = (((gdStep + Math.min(gdElapsed,GD_SECS)/GD_SECS) / steps.length)*100)+"%";
+}
+function gdGo(n){
+  const steps = GUIDES[gdView||gdKey()].steps;
+  gdStep = Math.max(0, Math.min(steps.length-1, n));
+  gdElapsed = 0; gdPaint();
+}
+function gdToggle(){ if(gdTimer){ gdStop(); gdPaint(); } else { gdPlay(); gdPaint(); } }
+function gdSwitch(k){ gdView = k; gdStep = 0; gdElapsed = 0; gdPaint(); }
+function gdPaint(){
+  const box = $("gdBox"); if(!box) return;
+  box.innerHTML = gdInner();
+  gdProgress();
+}
+function gdInner(){
+  const key = gdView || gdKey();
+  const g = GUIDES[key], s = g.steps[gdStep];
+  const chapters = [];
+  g.steps.forEach((x,n)=>{ if(!chapters.some(c=>c.ch===x.ch)) chapters.push({ch:x.ch, at:n}); });
+  const canSwitch = gdCanSwitch();
+  return `
+  ${canSwitch? `<div class="gd-chips" style="margin:0 0 12px">${Object.keys(GUIDES).map(k=>
+      `<button class="gd-chip ${k===key?"on":""}" onclick="gdSwitch('${k}')">${GUIDES[k].icon} ${esc(GUIDES[k].name)}</button>`).join("")}</div>`:""}
+  <div class="gd-stage">
+    <div class="gd-left">
+      <div class="gd-eyebrow">${g.icon} ${esc(g.name)} · step ${gdStep+1} of ${g.steps.length}</div>
+      <h3>${s.h}</h3>
+      ${s.p.map(p=>`<p>${p}</p>`).join("")}
+    </div>
+    <div class="gd-right">${s.m()}</div>
+  </div>
+  <div class="gd-cap">${s.cap}</div>
+  <div class="gd-ctrl">
+    <button class="btn btn-ghost btn-sm" onclick="gdGo(${gdStep-1})" ${gdStep===0?"disabled":""}>‹ Back</button>
+    <button class="btn btn-red btn-sm" onclick="gdToggle()">${gdTimer? "❚❚ Pause":"▶ Play"}</button>
+    <button class="btn btn-ghost btn-sm" onclick="gdGo(${gdStep+1})" ${gdStep===g.steps.length-1?"disabled":""}>Next ›</button>
+    <div class="gd-track" onclick="gdGo(Math.floor((event.clientX-this.getBoundingClientRect().left)/this.offsetWidth*${g.steps.length}))"><div class="gd-fill" id="gdFill"></div></div>
+  </div>
+  <div class="gd-chips">${chapters.map(c=>{
+    const end = chapters[chapters.indexOf(c)+1]? chapters[chapters.indexOf(c)+1].at : g.steps.length;
+    return `<button class="gd-chip ${gdStep>=c.at && gdStep<end?"on":""}" onclick="gdGo(${c.at})">${esc(c.ch)}</button>`;
+  }).join("")}</div>`;
+}
+function viewGuide(){
+  const g = GUIDES[gdView || gdKey()];
+  setTimeout(()=>{ gdPaint(); if(!gdTimer) gdPlay(); }, 60);
+  return `<div class="gd-wrap">
+    <div class="section-head"><h2>How to use the system — ${esc(g.name)}</h2>
+      <span class="muted no-print" style="font-size:.78rem">Plays by itself · about ${Math.round(g.steps.length*GD_SECS/60)} min</span></div>
+    <div id="gdBox">${gdInner()}</div>
+    <p class="muted" style="font-size:.76rem;margin-top:14px;line-height:1.6">Made for your role — every step here is something you can do with your own access. Anything you cannot see is simply not part of your job in the system.</p>
+  </div>`;
+}
 function viewData(){
   return `
   ${isMarketing()?`
