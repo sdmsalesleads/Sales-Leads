@@ -700,7 +700,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "27 Jul 2026 · rev T";
+const APP_BUILD = "27 Jul 2026 · rev V";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -780,6 +780,39 @@ function takeSnapshot(){
   syncSnap.target = JSON.stringify(state.teamTarget||0);
   syncSnap.settings = JSON.stringify(state.settings||{});
 }
+/* The database answers with at most 1,000 rows per request, so asking once
+   would silently stop at 1,000 leads. This keeps asking for the next page
+   until the whole table is in hand — there is no upper limit. */
+async function fetchAllRows(table, opts){
+  const PAGE = 1000;
+  let all = [], from = 0;
+  for(let guard=0; guard<500; guard++){          // up to 500,000 rows
+    let q = sb.from(table).select("*").range(from, from+PAGE-1);
+    if(opts && opts.order) q = q.order(opts.order, {ascending:false});
+    const r = await q;
+    if(r.error) return { data: all, error: r.error };
+    const rows = r.data || [];
+    all = all.concat(rows);
+    if(rows.length < PAGE) break;                 // last page reached
+    from += PAGE;
+  }
+  return { data: all, error: null };
+}
+/* Big writes are split so one enormous import never exceeds the request size. */
+async function insertChunked(table, rows, size){
+  const n = size || 500;
+  for(let i=0; i<rows.length; i+=n){
+    const {error} = await sb.from(table).insert(rows.slice(i, i+n));
+    if(error) throw error;
+  }
+}
+async function deleteChunked(table, ids, size){
+  const n = size || 500;
+  for(let i=0; i<ids.length; i+=n){
+    const {error} = await sb.from(table).delete().in("id", ids.slice(i, i+n));
+    if(error) throw error;
+  }
+}
 async function loadAll(){
   if(!sb) return;
   if(gsDbOn()){
@@ -803,12 +836,12 @@ async function loadAll(){
     return;
   }
   const [pr, ld, ex, il, st, bw] = await Promise.all([
-    sb.from("profiles").select("*"),
-    sb.from("leads").select("*"),
-    sb.from("external_sales").select("*"),
+    fetchAllRows("profiles"),
+    fetchAllRows("leads"),
+    fetchAllRows("external_sales"),
     sb.from("import_log").select("*").order("created_at",{ascending:false}).limit(20),
     sb.from("app_settings").select("*"),
-    sb.from("bd_weekly").select("*")
+    fetchAllRows("bd_weekly")
   ]);
   state.bdWeekly = (bw && bw.data)||[];
   const beforeSnap = currentUser? notifSnapshot() : null;
@@ -851,8 +884,7 @@ async function doSync(){
     if(syncSnap.leads[l.id]!==k){ (serverIds.leads.has(l.id)? chg : neu).push({row,k}); } });
   const leadDel = Object.keys(syncSnap.leads).filter(id=>!seenL.has(id));
   if(neu.length){
-    const {error} = await sb.from("leads").insert(neu.map(x=>x.row));
-    if(error) throw error;
+    await insertChunked("leads", neu.map(x=>x.row));        // thousands at once is fine
     neu.forEach(x=>{ syncSnap.leads[x.row.id]=x.k; serverIds.leads.add(x.row.id); });
   }
   for(const x of chg){
@@ -861,8 +893,7 @@ async function doSync(){
     syncSnap.leads[x.row.id]=x.k;
   }
   if(leadDel.length){
-    const {error} = await sb.from("leads").delete().in("id", leadDel);
-    if(error) throw error;
+    await deleteChunked("leads", leadDel);
     leadDel.forEach(id=>{ delete syncSnap.leads[id]; serverIds.leads.delete(id); });
   }
   /* external sales — same pattern */
@@ -2042,19 +2073,33 @@ async function gsAuthToken(){
   try{ const s = await sb.auth.getSession(); return (s && s.data && s.data.session && s.data.session.access_token)||""; }
   catch(e){ return ""; }
 }
-async function gsCall(action, rows){
+async function gsCall(action, rows, extra){
   /* every call carries the signed-in user's token — the script checks it with
      Supabase and decides what this person may see or change */
   const token = await gsAuthToken();
-  const r = await fetch(gsCfg().url, { method:"POST",
-    body: JSON.stringify({ accessToken: token, action: action, rows: rows||[] }) });
+  const body = Object.assign({ accessToken: token, action: action, rows: rows||[] }, extra||{});
+  const r = await fetch(gsCfg().url, { method:"POST", body: JSON.stringify(body) });
   return await r.json();
 }
 async function gsLoadFromSheet(){
-  const res = await gsCall("read");
-  if(!res || !res.ok) throw new Error((res && res.error) || "The workbook did not answer");
-  const d = res.data||{};
-  state.leads    = (d.leads||[]).map(gsToLead);
+  /* Asking for everything in one go would eventually be too big for one reply.
+     This walks the workbook a page at a time, so there is no limit on how many
+     leads you keep — only on how long you are willing to wait. */
+  const PAGE = 400;
+  let offset = 0, allLeads = [], first = null;
+  for(let guard=0; guard<1000; guard++){                 // up to 400,000 leads
+    const res = await gsCall("read", null, { offset: offset, limit: PAGE });
+    if(!res || !res.ok) throw new Error((res && res.error) || "The workbook did not answer");
+    const page = res.data||{};
+    if(offset===0) first = page;
+    allLeads = allLeads.concat(page.leads||[]);
+    if(page.total && gsStat) gsStat.total = page.total;
+    if(!page.more) break;
+    offset += PAGE;
+    if(offset===PAGE*3) toast("Loading "+(page.total||"")+" leads from the workbook\u2026");
+  }
+  const d = first||{};
+  state.leads    = allLeads.map(gsToLead);
   state.extSales = (d.extSales||[]).map(gsToExt);
   state.bdWeekly = (d.bdWeekly||[]).map(gsToBd);
   state.importLog= (d.importLog||[]).map(r=>({d:r["Date"], method:r["Method"], added:r["Rows Added"],
@@ -5595,7 +5640,7 @@ Comment: Interested in food processing plot…" style="width:100%;border:1px sol
       <b>Status:</b> ${gsReady()? '<span style="color:var(--green);font-weight:800">Connected \u2014 syncing</span>' : (state.settings.gsUrl? '<span style="color:var(--amber);font-weight:800">Paused</span>':'<span class="muted">Not connected yet</span>')}<br>
       <b>Last successful sync:</b> ${gsStat.last? esc(new Date(gsStat.last).toLocaleString("en-GB")) : "\u2014"} &nbsp;\u00b7&nbsp;
       <b>Rows sent:</b> ${gsStat.sent||0} &nbsp;\u00b7&nbsp;
-      <b>Waiting to send:</b> ${gsQueue.length}
+      <b>Waiting to send:</b> ${gsQueue.length}${gsStat.total? ` &nbsp;\u00b7&nbsp; <b>Leads in the workbook:</b> ${gsStat.total}`:""}
       ${gsStat.err? `<br><span style="color:var(--red)"><b>Last error:</b> ${esc(gsStat.err)}</span>`:""}
     </div>
     <p class="muted" style="font-size:.74rem;margin-top:8px;line-height:1.6">Rows are matched on the ID column: an existing row is updated in place, a new one is appended, and deletions mark <b>Deleted / Deleted Date / Deleted By</b> rather than removing history. Keep the workbook private to your own Google account \u2014 the team never needs access to it, only to the CRM. If the sheet is unreachable the changes queue on this device and send themselves when it returns.</p>
