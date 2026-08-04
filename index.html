@@ -742,7 +742,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "04 Aug 2026 · rev AD";
+const APP_BUILD = "04 Aug 2026 · rev AE";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1123,6 +1123,10 @@ function canDistributeLead(l){                                 // per-lead: mana
   return false;
 }
 function canEditLeads(){ return isMarketing(); }         // add/remove/edit lead data: Marketing only
+/* Merging is a clean-up job, not a data-entry one: Sales Operations owns the
+   pipeline's tidiness, so they merge too — and they can hand the surviving
+   lead to a salesperson in the same step. */
+function canMergeLeads(){ return canEditLeads() || canDistribute(); }
 /* Channels a salesperson may add themselves. Walk-In is here because the client
    arrived at the office on their own — but it still counts as MARKETING in the
    reports, since the company's presence is what brought them through the door.
@@ -1895,7 +1899,7 @@ function viewLeads(){
       <select id="bulkOwner"><option value="">Choose salesperson\u2026</option>${state.members.filter(hasTarget).map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join("")}</select>
       <button class="btn btn-red btn-sm" onclick="bulkAssign()">Transfer</button>`:""}
     <button class="btn btn-ghost btn-sm" onclick="bulkExport()">\u2b07 Export selected</button>
-    ${canEditLeads() && selCount===2? `<button class="btn btn-red btn-sm" onclick="bulkMerge()">\u21c4 Merge these two</button>`:""}
+    ${canMergeLeads() && selCount===2? `<button class="btn btn-red btn-sm" onclick="bulkMerge()">\u21c4 Merge these two</button>`:""}
     ${canEditLeads()? `<button class="btn btn-ghost btn-sm" onclick="bulkClearDup()">\u2713 Not duplicates</button>
       <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="bulkDelete()">\uD83D\uDDD1 Delete</button>`:""}
     <button class="btn btn-ghost btn-sm" onclick="selectedLeads.clear();render()">Clear selection</button>
@@ -2079,7 +2083,7 @@ function openLeadModal(id){
           <div class="muted" style="font-size:.76rem;margin-top:2px">Owner: <b>${esc(memberName(m2.owner)||"Unassigned")}</b> · added ${esc(fmtDate(m2.created))} · status ${esc(m2.status||"—")}<br>Matched on <b>${esc(mm.why)}${mm.val? ": "+esc(mm.val):""}</b></div>
           <div style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn btn-ghost btn-sm" onclick="openOtherLead('${m2.id}')">↗ Open that lead</button>
-            ${canEditLeads()? `<button class="btn btn-red btn-sm" onclick="openMerge('${m2.id}','${l.id}')">⇄ Merge the two</button>`:""}
+            ${canMergeLeads()? `<button class="btn btn-red btn-sm" onclick="openMerge('${m2.id}','${l.id}')">⇄ Merge the two</button>`:""}
           </div></div>`; }).filter(Boolean).join("") +
       (dupMs.length>shown.length? `<div class="muted" style="font-size:.78rem;margin-top:8px">…and ${dupMs.length-shown.length} more. That many matches usually means a placeholder value was imported on lots of rows rather than a real duplicate — worth checking the number and email on this lead.</div>`:"") +
       `<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">` +
@@ -5484,6 +5488,16 @@ function openMerge(keepId, dropId){
       <li><b>${p.logs}</b> activity entr${p.logs===1?"y":"ies"} added to its history</li>
     </ul>
     <p class="muted" style="font-size:.78rem;line-height:1.55">Filled-in details on the kept lead are never overwritten — only its empty fields are filled from the other one. Swap which lead is kept if the other has the better record.</p>
+    ${canDistribute()? `<div style="margin-top:14px;padding:12px 13px;background:#FBFBFA;border:1px solid var(--line);border-radius:9px">
+      <div class="eyebrow red" style="margin-bottom:7px">Who follows it up from here?</div>
+      <select id="mergeOwner" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 11px;background:#fff">
+        <option value="__keep">Keep the current owner — ${esc(memberName(p.keep.owner)||"Unassigned")}</option>
+        ${p.drop.owner && p.drop.owner!==p.keep.owner? `<option value="${p.drop.owner}">Give it to ${esc(memberName(p.drop.owner))} (owner of the other record)</option>`:""}
+        <option value="">Leave unassigned — decide later</option>
+        ${state.members.filter(m=>!m.pending && ["sales","manager"].includes(m.roleKey)).map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join("")}
+      </select>
+      <div class="muted" style="font-size:.74rem;margin-top:6px">The two records may belong to different salespeople — choose who keeps the client. They are notified and the handover is written into the lead's history.</div>
+    </div>`:""}
     <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
       <button class="btn btn-red" onclick="doMerge('${keepId}','${dropId}')">Merge — keep "${esc(p.keep.name).slice(0,22)}"</button>
       <button class="btn btn-ghost" onclick="openMerge('${dropId}','${keepId}')">⇄ Swap which one is kept</button>
@@ -5493,7 +5507,7 @@ function openMerge(keepId, dropId){
 }
 function closeMerge(){ $("mergeOverlay").classList.remove("open"); }
 function doMerge(keepId, dropId){
-  if(!canEditLeads()){ toast("Your access level cannot merge leads"); return; }
+  if(!canMergeLeads()){ toast("Your access level cannot merge leads"); return; }
   const keep = state.leads.find(l=>l.id===keepId), drop = state.leads.find(l=>l.id===dropId);
   if(!keep || !drop) return;
   const filled = [];
@@ -5505,6 +5519,21 @@ function doMerge(keepId, dropId){
   if(dp && dp!==kp && blankVal(keep.phone2)){ keep.phone2 = drop.phone; if(filled.indexOf("Customer number 2")<0) filled.push("Customer number 2"); }
   /* the earlier creation date is the true one */
   if(drop.created && (!keep.created || drop.created < keep.created)) keep.created = drop.created;
+  /* Sales Operations may reassign the surviving lead in the same step */
+  const ownSel = $("mergeOwner");
+  let handedTo = null;
+  if(ownSel && canDistribute() && ownSel.value!=="__keep"){
+    const newOwner = ownSel.value;
+    if((newOwner||"") !== (keep.owner||"")){
+      keep.owner = newOwner;
+      keep.assignedAt = newOwner? new Date().toISOString() : "";
+      keep.firstContactAt = "";
+      if(newOwner && !keep.next) keep.next = addDays(today(),2);
+      handedTo = newOwner? state.members.find(m=>m.id===newOwner) : null;
+      pushLog(keep, newOwner? ("Assigned to "+memberName(newOwner)+" while merging the duplicate, by "+currentUser.name)
+                            : ("Left unassigned after the merge by "+currentUser.name));
+    }
+  }
   /* histories combine, newest first */
   keep.log = [].concat(keep.log||[], (drop.log||[]).map(e=>Object.assign({}, e, {t:"[merged] "+e.t})))
               .sort((a,b)=>String(b.d+(b.tm||"")).localeCompare(String(a.d+(a.tm||""))));
@@ -5515,7 +5544,8 @@ function doMerge(keepId, dropId){
   state.leads = state.leads.filter(l=>l.id!==dropId);
   if(typeof gsMirrorLead==="function") gsMirrorLead(keep);
   invalidateDupes(); persist(); closeMerge(); closeLeadModal(); render(); updateBell();
-  toast("Merged — one lead kept with both histories");
+  toast("Merged — one lead kept with both histories"+(handedTo? " · now with "+handedTo.name : ""));
+  if(handedTo) notifyAssigned([{m: handedTo, leads:[keep]}]);
   setTimeout(()=>openLeadModal(keepId), 200);
 }
 /* ---- tell the owners by email ---- */
