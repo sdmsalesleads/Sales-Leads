@@ -470,6 +470,12 @@ function logoTryNext(img){
 </div>
 
 <!-- ============ LEAD MODAL ============ -->
+<div class="overlay" id="mergeOverlay">
+  <div class="modal" style="max-width:660px">
+    <div class="m-head"><h3>Merge duplicate leads</h3><button class="x-btn" onclick="closeMerge()">×</button></div>
+    <div class="m-body" id="mergeBody"></div>
+  </div>
+</div>
 <div class="overlay" id="leadOverlay">
   <div class="modal">
     <div class="modal-head">
@@ -730,7 +736,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "04 Aug 2026 · rev Y";
+const APP_BUILD = "04 Aug 2026 · rev Z";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1879,6 +1885,7 @@ function viewLeads(){
       <select id="bulkOwner"><option value="">Choose salesperson\u2026</option>${state.members.filter(hasTarget).map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join("")}</select>
       <button class="btn btn-red btn-sm" onclick="bulkAssign()">Transfer</button>`:""}
     <button class="btn btn-ghost btn-sm" onclick="bulkExport()">\u2b07 Export selected</button>
+    ${canEditLeads() && selCount===2? `<button class="btn btn-red btn-sm" onclick="bulkMerge()">\u21c4 Merge these two</button>`:""}
     ${canEditLeads()? `<button class="btn btn-ghost btn-sm" onclick="bulkClearDup()">\u2713 Not duplicates</button>
       <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="bulkDelete()">\uD83D\uDDD1 Delete</button>`:""}
     <button class="btn btn-ghost btn-sm" onclick="selectedLeads.clear();render()">Clear selection</button>
@@ -1890,7 +1897,7 @@ function viewLeads(){
         const dc = dueClass(l);
         return `<tr class="row-click" onclick="openLeadModal('${l.id}')">
         ${canSelectLeads()?`<td onclick="event.stopPropagation()"><input type="checkbox" ${selectedLeads.has(l.id)?"checked":""} onchange="toggleSel('${l.id}', this.checked)"></td>`:""}
-        <td><b>${esc(l.name)}</b>${isDupFlagged(l)?' <span title="Possible duplicate" style="color:var(--amber);font-weight:800">⚠</span>':""}${l.priority==="VIP"?' <span class="pill" style="color:#fff;background:var(--red);font-size:.66rem;padding:1px 7px">VIP</span>':l.priority==="High"?' <span class="pill" style="color:var(--red);background:var(--red-soft);font-size:.66rem;padding:1px 7px">High</span>':""} ${scoreChip(l)}<div class="muted" style="font-size:.78rem">${esc(l.company||fmtPhone(l.phone)||"")}</div></td>
+        <td><b>${esc(l.name)}</b>${isDupFlagged(l)?` <span title="Possible duplicate — click to review" style="color:var(--amber);font-weight:800;cursor:pointer" onclick="event.stopPropagation();openLeadModal('${l.id}')">⚠</span>`:""}${l.priority==="VIP"?' <span class="pill" style="color:#fff;background:var(--red);font-size:.66rem;padding:1px 7px">VIP</span>':l.priority==="High"?' <span class="pill" style="color:var(--red);background:var(--red-soft);font-size:.66rem;padding:1px 7px">High</span>':""} ${scoreChip(l)}<div class="muted" style="font-size:.78rem">${esc(l.company||fmtPhone(l.phone)||"")}</div></td>
         <td class="hide-sm">${esc(l.source||"—")}</td>
         <td>${esc(l.project||"—")}</td>
         <td class="num hide-sm">${l.land?Number(l.land).toLocaleString():"—"}</td>
@@ -1923,6 +1930,14 @@ function selectedLeadObjects(){
   const out = [];
   selectedLeads.forEach(id=>{ const l = state.leads.find(x=>x.id===id); if(l) out.push(l); });
   return out;
+}
+function bulkMerge(){
+  const rows = selectedLeadObjects();
+  if(rows.length!==2){ toast("Select exactly two leads to merge"); return; }
+  /* the older record is kept by default — it holds the earlier history */
+  const [a,b] = rows.slice().sort((x,y)=>String(x.created||"").localeCompare(String(y.created||"")));
+  selectedLeads.clear();
+  openMerge(a.id, b.id);
 }
 function bulkExport(){
   const rows = selectedLeadObjects();
@@ -2039,9 +2054,17 @@ function openLeadModal(id){
   if(l && dupMs.length){
     l.dup = dupMs.map(x=>x.id);
     dupB.style.display = "block";
-    dupB.innerHTML = `⚠ <b>Possible duplicate lead — confirmed match:</b><br>` +
-      dupMs.map(mm=>{ const m2 = state.leads.find(x=>x.id===mm.id); return m2? `<b>${esc(m2.name)}</b> (${esc(memberName(m2.owner))}${m2.company?", "+esc(m2.company):""}) — <b>${esc(mm.why)}</b>` : ""; }).filter(Boolean).join("<br>") +
-      `<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">` +
+    dupB.innerHTML = `⚠ <b>Possible duplicate — this customer is already in the system:</b>` +
+      dupMs.map(mm=>{ const m2 = state.leads.find(x=>x.id===mm.id); if(!m2) return "";
+        return `<div style="margin-top:8px;padding:8px 10px;background:#fff;border:1px solid #E8D5A8;border-radius:8px">
+          <b>${esc(m2.name)}</b>${m2.company? " · "+esc(m2.company):""}
+          <div class="muted" style="font-size:.76rem;margin-top:2px">Owner: <b>${esc(memberName(m2.owner)||"Unassigned")}</b> · added ${esc(fmtDate(m2.created))} · status ${esc(m2.status||"—")}<br>Matched on <b>${esc(mm.why)}</b></div>
+          <div style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" onclick="openOtherLead('${m2.id}')">↗ Open that lead</button>
+            ${canEditLeads()? `<button class="btn btn-red btn-sm" onclick="openMerge('${m2.id}','${l.id}')">⇄ Merge the two</button>`:""}
+          </div></div>`; }).filter(Boolean).join("") +
+      `<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">` +
+      `<button class="btn btn-ghost btn-sm" onclick="dupEmailFor('${l.id}')">✉ Email the other owner</button>` +
       `<button class="btn btn-ghost btn-sm" onclick="clearDup('${l.id}')">Not a duplicate — keep both</button>` +
       (canEditLeads()? `<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="discardDup('${l.id}')">Discard this lead</button>`:"") +
       `</div>`;
@@ -2500,7 +2523,15 @@ function saveLead(){
       pushLog(l, "Self-generated lead ("+l.source+") added by "+currentUser.name);
     }
     const dn = flagDupes(l);
-    if(dn) toast("⚠ Possible duplicate — "+dn+" matching lead"+(dn>1?"s":"")+" found (open the lead to review)");
+    if(dn){
+      toast("⚠ Possible duplicate — "+dn+" matching lead"+(dn>1?"s":"")+" found");
+      const dupLead = l;
+      setTimeout(()=>{
+        if(confirm("This customer is already in the system ("+dn+" matching lead"+(dn>1?"s":"")+").\n\nDraft an email to the other owner so you can agree who keeps it?"))
+          dupEmail(dupLead, dupMatches(dupLead, null));
+        else openLeadModal(dupLead.id);
+      }, 500);
+    }
   }
   if(!$("f_eoiApp").disabled && $("stagesBlock").style.display!=="none"){ // §23-24: transaction stages, audited
     const ea = $("f_eoiApp").value;
@@ -5338,6 +5369,136 @@ function flagDupes(l){
   return (d.length && !l.dupCleared)? d.length : 0;
 }
 function dupCount(){ return state.leads.filter(l=>isDupFlagged(l)).length; }
+/* =================== Duplicate handling: open · merge · alert =================== */
+function openOtherLead(id){
+  /* jump straight from one copy to the other, keeping the modal flow */
+  closeLeadModal();
+  setTimeout(()=>openLeadModal(id), 120);
+}
+function mergePreview(keepId, dropId){
+  const keep = state.leads.find(l=>l.id===keepId), drop = state.leads.find(l=>l.id===dropId);
+  if(!keep || !drop) return null;
+  const gains = [];
+  MERGE_FIELDS.forEach(f=>{
+    const kv = keep[f.k], dv = drop[f.k];
+    if(!blankVal(dv) && blankVal(kv)) gains.push({k:f.k, label:f.label, val:dv});
+  });
+  return {keep, drop, gains, logs:(drop.log||[]).length};
+}
+const MERGE_FIELDS = [
+  {k:"name",label:"Customer name"}, {k:"company",label:"Company"},
+  {k:"phone",label:"Customer number"}, {k:"phone2",label:"Customer number 2"},
+  {k:"email",label:"Email"}, {k:"custno",label:"Reference no."},
+  {k:"industry",label:"Industry"}, {k:"project",label:"Project"},
+  {k:"land",label:"Requested area"}, {k:"soldArea",label:"Sold area"}, {k:"plotNo",label:"Plot number"},
+  {k:"budget",label:"Budget"}, {k:"notes",label:"Notes"},
+  {k:"qualStatus",label:"Qualification"}, {k:"qualNotes",label:"Qualification notes"},
+  {k:"temperature",label:"Temperature"}, {k:"priority",label:"Priority"},
+  {k:"meetingDate",label:"Meeting date"}, {k:"meetingTime",label:"Meeting time"},
+  {k:"offerDate",label:"Offer date"}, {k:"value",label:"Cash value"}, {k:"totalSold",label:"Total sold"},
+  {k:"wonDate",label:"Won date"}, {k:"lostCat",label:"Lost category"}, {k:"lostReason",label:"Lost reason"}
+];
+function blankVal(v){ return v===undefined || v===null || v==="" || (typeof v==="number" && !isFinite(v)); }
+function openMerge(keepId, dropId){
+  const p = mergePreview(keepId, dropId);
+  if(!p){ toast("Could not load both leads"); return; }
+  const gainRows = p.gains.length
+    ? p.gains.map(g=>`<li><b>${esc(g.label)}:</b> ${esc(String(g.val).slice(0,60))}</li>`).join("")
+    : `<li class="muted">Nothing extra to copy across — the kept lead already has every detail.</li>`;
+  const box = $("mergeBody");
+  box.innerHTML = `
+    <p style="font-size:.86rem;line-height:1.6;margin:0 0 12px">
+      Everything is combined into <b>one lead</b>. The other is removed, and its full history is copied over so nothing is lost.
+    </p>
+    <div class="grid g2" style="gap:10px;margin-bottom:12px">
+      <div class="card card-pad" style="border-color:var(--green)">
+        <div class="eyebrow" style="color:var(--green)">Kept — this lead survives</div>
+        <div style="font-weight:800;margin-top:4px">${esc(p.keep.name)}</div>
+        <div class="muted" style="font-size:.78rem">${esc(p.keep.company||"—")} · ${esc(fmtPhone(p.keep.phone)||"no number")}</div>
+        <div class="muted" style="font-size:.76rem;margin-top:5px">Owner: <b>${esc(memberName(p.keep.owner)||"Unassigned")}</b> · added ${esc(fmtDate(p.keep.created))}</div>
+      </div>
+      <div class="card card-pad" style="border-color:var(--red);opacity:.85">
+        <div class="eyebrow red">Removed — merged into the other</div>
+        <div style="font-weight:800;margin-top:4px">${esc(p.drop.name)}</div>
+        <div class="muted" style="font-size:.78rem">${esc(p.drop.company||"—")} · ${esc(fmtPhone(p.drop.phone)||"no number")}</div>
+        <div class="muted" style="font-size:.76rem;margin-top:5px">Owner: <b>${esc(memberName(p.drop.owner)||"Unassigned")}</b> · added ${esc(fmtDate(p.drop.created))}</div>
+      </div>
+    </div>
+    <div style="font-size:.84rem;margin-bottom:6px"><b>Copied across to the kept lead:</b></div>
+    <ul style="font-size:.82rem;line-height:1.7;margin:0 0 12px;padding-left:20px">${gainRows}
+      <li><b>${p.logs}</b> activity entr${p.logs===1?"y":"ies"} added to its history</li>
+    </ul>
+    <p class="muted" style="font-size:.78rem;line-height:1.55">Filled-in details on the kept lead are never overwritten — only its empty fields are filled from the other one. Swap which lead is kept if the other has the better record.</p>
+    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+      <button class="btn btn-red" onclick="doMerge('${keepId}','${dropId}')">Merge — keep "${esc(p.keep.name).slice(0,22)}"</button>
+      <button class="btn btn-ghost" onclick="openMerge('${dropId}','${keepId}')">⇄ Swap which one is kept</button>
+      <button class="btn btn-ghost" onclick="closeMerge()">Cancel</button>
+    </div>`;
+  $("mergeOverlay").classList.add("open");
+}
+function closeMerge(){ $("mergeOverlay").classList.remove("open"); }
+function doMerge(keepId, dropId){
+  if(!canEditLeads()){ toast("Your access level cannot merge leads"); return; }
+  const keep = state.leads.find(l=>l.id===keepId), drop = state.leads.find(l=>l.id===dropId);
+  if(!keep || !drop) return;
+  const filled = [];
+  MERGE_FIELDS.forEach(f=>{
+    if(!blankVal(drop[f.k]) && blankVal(keep[f.k])){ keep[f.k] = drop[f.k]; filled.push(f.label); }
+  });
+  /* second number: if the other lead had a different phone, keep it rather than lose it */
+  const kp = dupPhoneKey(keep.phone), dp = dupPhoneKey(drop.phone);
+  if(dp && dp!==kp && blankVal(keep.phone2)){ keep.phone2 = drop.phone; if(filled.indexOf("Customer number 2")<0) filled.push("Customer number 2"); }
+  /* the earlier creation date is the true one */
+  if(drop.created && (!keep.created || drop.created < keep.created)) keep.created = drop.created;
+  /* histories combine, newest first */
+  keep.log = [].concat(keep.log||[], (drop.log||[]).map(e=>Object.assign({}, e, {t:"[merged] "+e.t})))
+              .sort((a,b)=>String(b.d+(b.tm||"")).localeCompare(String(a.d+(a.tm||""))));
+  pushLog(keep, "Merged with duplicate \""+drop.name+"\" (owner: "+(memberName(drop.owner)||"unassigned")+")"
+    + (filled.length? " — filled in: "+filled.join(", ") : "") );
+  keep.dupCleared = false;
+  if(typeof gsMirrorNow==="function"){ drop.deleted = true; drop.deletedDate = today(); drop.deletedBy = currentUser.name; gsMirrorNow(drop); }
+  state.leads = state.leads.filter(l=>l.id!==dropId);
+  if(typeof gsMirrorLead==="function") gsMirrorLead(keep);
+  invalidateDupes(); persist(); closeMerge(); closeLeadModal(); render(); updateBell();
+  toast("Merged — one lead kept with both histories");
+  setTimeout(()=>openLeadModal(keepId), 200);
+}
+/* ---- tell the owners by email ---- */
+function dupEmail(l, matches){
+  const rows = matches.map(mm=>{
+    const m2 = state.leads.find(x=>x.id===mm.id);
+    return m2? "  • "+m2.name+(m2.company? " ("+m2.company+")":"")
+      + "\n    owner: "+(memberName(m2.owner)||"unassigned")
+      + " · added "+fmtDate(m2.created)
+      + " · status: "+(m2.status||"—")
+      + "\n    matched on: "+mm.why : "";
+  }).filter(Boolean).join("\n\n");
+  const to = [...new Set(matches.map(mm=>{
+    const m2 = state.leads.find(x=>x.id===mm.id);
+    const om = m2 && state.members.find(x=>x.id===m2.owner);
+    return om && om.email? om.email : "";
+  }).filter(Boolean))].join(",");
+  const body =
+    "A possible duplicate has been found in the CRM.\n\n"+
+    "THIS LEAD\n"+
+    "  • "+l.name+(l.company? " ("+l.company+")":"")+"\n"+
+    "    owner: "+(memberName(l.owner)||"unassigned")+" · added "+fmtDate(l.created)+" · status: "+(l.status||"—")+"\n"+
+    "    number: "+(fmtPhone(l.phone)||"—")+(l.email? " · email: "+l.email:"")+"\n\n"+
+    "ALREADY IN THE SYSTEM\n"+rows+"\n\n"+
+    "Please agree who keeps the client, then open the CRM and either merge the two records "+
+    "or mark them as separate leads.\n\n"+
+    "Raised by "+currentUser.name+" · "+fmtDate(today());
+  openMailto("mailto:"+encodeURIComponent(to)
+    +"?subject="+encodeURIComponent("Duplicate lead — "+l.name)
+    +"&body="+encodeURIComponent(body));
+  pushLog(l, "Duplicate raised by email to "+(to||"the team"));
+  persist();
+  toast("Email drafted"+(to? " to the other owner"+(to.split(",").length>1?"s":"") : " — add the recipients"));
+}
+function dupEmailFor(id){
+  const l = state.leads.find(x=>x.id===id); if(!l) return;
+  dupEmail(l, dupMatches(l, null));
+}
 function clearDup(id){
   const l = state.leads.find(x=>x.id===id); if(!l) return;
   l.dupCleared = true; pushLog(l, "Duplicate warning dismissed — kept as separate lead");
