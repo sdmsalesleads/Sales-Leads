@@ -511,7 +511,7 @@ function logoTryNext(img){
         <div class="field" id="meetingBlock" style="display:none"><label id="meetingLabel" style="color:var(--red)">Meeting date &amp; time *</label>
           <div style="display:flex;gap:8px"><input id="f_meetingDate" type="date" style="flex:1.4"><input id="f_meetingTime" type="time" style="flex:1"></div>
         </div>
-        <div class="field" id="valueField" style="display:none"><label>Cash value (EGP)</label><input id="f_value" type="number" min="0" placeholder="Cash value"></div>
+        <div class="field" id="valueField" style="display:none"><label>Cash value (EGP) <span style="color:var(--red)">*</span></label><input id="f_value" type="number" min="0" placeholder="Required to mark the deal Won"></div>
         <div class="field" id="totalSoldField" style="display:none"><label>Total sold value (EGP)</label><input id="f_totalSold" type="number" min="0" placeholder="Total sold value"></div>
         <div class="field" id="soldAreaField" style="display:none"><label>Sold area (sqm)</label><input id="f_soldArea" type="number" min="0" placeholder="Final sold area"></div>
         <div class="field" id="plotField" style="display:none"><label>Sold plot number</label><input id="f_plotNo" placeholder="Final plot no. after completion"></div>
@@ -742,7 +742,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "04 Aug 2026 · rev AB";
+const APP_BUILD = "04 Aug 2026 · rev AC";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -2589,6 +2589,24 @@ function saveLead(){
     if(s==="Lost" && (!$("f_lostCat").value || !$("f_lostReason").value)){ toast("Select the lost reason category and detailed reason"); return; }
     if($("f_qual").value && !$("f_qualNotes").value.trim()){ toast("Qualification notes are required — explain why"); return; }
     if($("f_qual").value==="Qualified" && !$("f_temp").value){ toast("Choose the lead temperature (Hot / Warm / Cold)"); return; }
+    if(s==="Won"){
+      /* A won deal without its value leaves a hole in every report and in
+         finance's queue, so the value is required at the moment of winning. */
+      if($("f_value").disabled){
+        toast("The deal value is required to mark a deal Won — the salesperson who owns this lead must record it");
+        if(isNewLead) state.leads.pop();
+        return;
+      }
+      const rawV = String($("f_value").value||"").trim();
+      const v = Number(rawV);
+      if(!rawV || !isFinite(v) || v<=0){
+        toast("Enter the cash value of the deal — it is required to mark it Won");
+        const box = $("valueField"); if(box) box.style.display = "";
+        try{ $("f_value").focus(); $("f_value").select(); }catch(e){}
+        if(isNewLead) state.leads.pop();
+        return;
+      }
+    }
     l.status = s;
     l.next = $("f_next").value;
     l.nextTime = $("f_nextTime").value;
