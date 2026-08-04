@@ -510,13 +510,13 @@ create policy leads_insert on public.leads for insert
     -- for anyone (they distribute afterwards)
     or (public.app_role() in ('sales','manager')
         and owner = auth.uid()
-        and source in ('Personal','Management'))
+        and source in ('Personal','Management','Walk-In'))
     or (public.app_role()::text in ('salesops','opsmgr')
-        and source in ('Personal','Management'))
+        and source in ('Personal','Management','Walk-In'))
     -- business development adds its own research-sourced cold leads
     or (public.app_role()::text = 'bizdev'
         and owner = auth.uid()
-        and source in ('Personal','Management','BD Research'))
+        and source in ('Personal','Management','Walk-In','BD Research'))
   );
 drop policy if exists leads_update on public.leads;
 create policy leads_update on public.leads for update

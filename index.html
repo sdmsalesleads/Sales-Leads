@@ -640,7 +640,11 @@ function logoTryNext(img){
 <script>
 /* =================== Constants =================== */
 const SOURCES = ["Website","Billboard","Google SEM","Facebook","Instagram","LinkedIn","YouTube","Radio","Mobile App","Event / Exhibition","Business Development","Management","Referral","Personal","Walk-In", "BD Research"];
-const MARKETING_SOURCES = ["Website","Billboard","Google SEM","Facebook","Instagram","LinkedIn","YouTube","Radio","Mobile App","Event / Exhibition"];
+/* A lead counts as marketing-generated unless the salesperson found it themselves.
+   Only Personal and Management are the salesperson's own doing — everything else,
+   Referral and Walk-In included, reaches us because of the company's marketing. */
+const NON_MARKETING_SOURCES = ["Personal","Management"];
+const MARKETING_SOURCES = SOURCES.filter(s=>!NON_MARKETING_SOURCES.includes(s));
 const INDUSTRIES = ["Engineering","Pharmaceutical","Textile","Chemical","Food & Beverage (F&B)","Logistics","Heavy Industry","Services","Automotive","Warehouse"];
 const PRIORITIES = ["VIP","High","Medium","Low"];
 const STATUS_GROUPS = [
@@ -736,7 +740,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "04 Aug 2026 · rev Z";
+const APP_BUILD = "04 Aug 2026 · rev AA";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1117,8 +1121,12 @@ function canDistributeLead(l){                                 // per-lead: mana
   return false;
 }
 function canEditLeads(){ return isMarketing(); }         // add/remove/edit lead data: Marketing only
-const SELF_SOURCES = ["Personal","Management"];           // channels a salesperson may add themselves
-function selfSources(){ return currentUser && currentUser.bd? ["BD Research","Personal","Management"] : SELF_SOURCES; }
+/* Channels a salesperson may add themselves. Walk-In is here because the client
+   arrived at the office on their own — but it still counts as MARKETING in the
+   reports, since the company's presence is what brought them through the door.
+   Only Personal and Management are the salesperson's own doing. */
+const SELF_SOURCES = ["Personal","Management","Walk-In"];
+function selfSources(){ return currentUser && currentUser.bd? ["BD Research","Personal","Management","Walk-In"] : SELF_SOURCES; }
 function canAddLead(){ return isMarketing() || (currentUser && ["sales","manager","salesops","bizdev"].includes(currentUser.roleKey)); }
 function isSelfAdder(){ return canAddLead() && !isMarketing(); }
 function canConfirmExt(){ return currentUser && (currentUser.admin || currentUser.director || currentUser.exec || currentUser.mgr); }
@@ -1180,7 +1188,7 @@ function periodTabs(){
   return `<div style="display:flex;gap:6px" class="no-print">${["week","quarter","year"].map(p=>
     `<button class="btn btn-sm ${reportPeriod===p?"btn-red":"btn-ghost"}" onclick="setPeriod('${p}')">${periodLabel(p)}</button>`).join("")}</div>`;
 }
-function isMktSource(src){ return MARKETING_SOURCES.includes(src); }
+function isMktSource(src){ return !!src && !NON_MARKETING_SOURCES.includes(src); }
 
 /* =================== Authentication (Supabase) =================== */
 let authMode = "signin";
@@ -3010,7 +3018,7 @@ function viewReports(){
       return `<table>
         <thead><tr><th>Channel</th><th class="num">Leads received</th><th class="num">Won deals</th><th style="width:220px">Conversion</th><th class="num">Won value</th><th class="num">SQM sold</th></tr></thead>
         <tbody>${rows.map(x=>`<tr>
-          <td><b>${esc(x.k)}</b>${!MARKETING_SOURCES.includes(x.k)?' <span class="muted" style="font-size:.76rem">(non-marketing)</span>':""}</td>
+          <td><b>${esc(x.k)}</b>${!isMktSource(x.k)?' <span class="muted" style="font-size:.76rem">(self-generated)</span>':""}</td>
           <td class="num">${x.n}</td>
           <td class="num">${x.w}</td>
           <td><div style="display:flex;align-items:center;gap:8px"><div class="progress" style="flex:1"><div class="p-fill ${x.c>=100?"green":""}" style="width:${Math.min(100,x.c)}%"></div></div><span style="font-size:.8rem;font-weight:700;min-width:44px;text-align:right">${x.c.toFixed(1)}%</span></div></td>
@@ -3051,7 +3059,7 @@ function viewReports(){
         <td class="num">${r.mktPct!=null? r.mktPct.toFixed(1)+"%":"—"}</td>
       </tr>`).join("")}</tbody></table>` : `<div class="empty">Add team members to see the breakdown.</div>`}
   </div>
-  <p class="muted no-print" style="font-size:.78rem;margin-top:8px">"Via marketing" counts won value from ${MARKETING_SOURCES.join(", ")} — Referral is excluded. "Mkt %" is the share of each member's annual target achieved through marketing leads. "External" is confirmed sales closed outside the system (e.g. old leads before the CRM); Achievement = (won value + external) ÷ annual target.</p>
+  <p class="muted no-print" style="font-size:.78rem;margin-top:8px">"Via marketing" counts won value from every channel except <b>${NON_MARKETING_SOURCES.join(" and ")}</b>, which are the leads a salesperson brings in themselves — so Referral and Walk-In do count as marketing. "Mkt %" is the share of each member's annual target achieved through marketing leads. "External" is confirmed sales closed outside the system (e.g. old leads before the CRM); Achievement = (won value + external) ÷ annual target.</p>
 
   <div class="card card-pad" style="margin-bottom:14px">
       <div class="eyebrow red" style="margin-bottom:12px">Self-generated leads — Personal & Management</div>
@@ -6204,7 +6212,7 @@ function exportReportExcel(){
     mktRows.push([periodLabel(p), s.inTotal, s.inMkt, s.inTotal?(s.inMkt/s.inTotal*100).toFixed(1)+"%":"", s.wonCount, s.wonVal, s.wonMktVal, s.wonVal?(s.wonMktVal/s.wonVal*100).toFixed(1)+"%":""]);
   });
   mktRows.push([]);
-  mktRows.push(["Marketing channels: "+MARKETING_SOURCES.join(", ")+" (Referral excluded). Leads In uses the lead date; won figures use the date the deal was won."]);
+  mktRows.push(["Marketing channels: every source except "+NON_MARKETING_SOURCES.join(" and ")+" (which are self-generated by the salesperson) — Referral and Walk-In are counted as marketing. Leads In uses the lead date; won figures use the date the deal was won."]);
   const wsM = XLSX.utils.aoa_to_sheet(mktRows); autoWidth(wsM, mktRows.filter(r=>r.length>1));
   XLSX.utils.book_append_sheet(wb, wsM, "Marketing");
   const prjRows = [["Project","Leads","Won","Won Value (EGP)"]];
