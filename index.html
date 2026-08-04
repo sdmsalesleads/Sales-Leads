@@ -268,6 +268,36 @@ th.num{text-align:right}
   .gd-left{flex:none;width:100%}
   .gd-right{width:100%}
 }
+/* ---- conversion funnel ---- */
+.fn-card{margin-top:14px}
+.fn-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.fn-sub{font-size:.78rem;color:var(--steel);margin-top:3px}
+.fn-overall{text-align:right}
+.fn-big{font-family:'Archivo Expanded','Archivo',sans-serif;font-weight:800;font-size:1.9rem;line-height:1;color:var(--green)}
+.fn-lbl{font-size:.68rem;color:var(--steel);text-transform:uppercase;letter-spacing:.1em;margin-top:3px}
+.fn-body{display:flex;flex-direction:column}
+.fn-row{position:relative}
+.fn-label{display:flex;align-items:baseline;gap:8px;margin-bottom:5px;flex-wrap:wrap}
+.fn-name{font-weight:800;font-size:.86rem;color:var(--ink)}
+.fn-hint{font-size:.7rem;color:var(--steel)}
+.fn-barwrap{display:flex;align-items:center;gap:10px}
+.fn-bar{height:38px;border-radius:9px;display:flex;align-items:center;padding:0 12px;min-width:52px;
+  transition:width .5s cubic-bezier(.2,.8,.3,1);box-shadow:0 2px 8px rgba(0,0,0,.07)}
+.fn-n{color:#fff;font-weight:800;font-size:.92rem;font-variant-numeric:tabular-nums;white-space:nowrap}
+.fn-pct{font-size:.8rem;font-weight:700;color:var(--steel);font-variant-numeric:tabular-nums;white-space:nowrap}
+.fn-step{display:flex;align-items:center;gap:8px;margin:7px 0 9px;padding-left:2px;font-size:.72rem;font-weight:700}
+.fn-step::before{content:"↓";font-size:.9rem;opacity:.55}
+.fn-step.good{color:var(--green)}
+.fn-step.mid{color:var(--amber)}
+.fn-step.low{color:var(--red)}
+.fn-lost{color:var(--steel);font-weight:600}
+.fn-note{margin-top:14px;padding:11px 13px;background:#FFFDF5;border:1px solid #EFE4C8;border-radius:9px;
+  font-size:.8rem;line-height:1.55;color:var(--ink-2)}
+@media (max-width:620px){
+  .fn-hint{display:none}
+  .fn-bar{height:32px}
+  .fn-big{font-size:1.5rem}
+}
 @media print{
   @page{margin:14mm 12mm 16mm}
   .sidebar,.topbar,.filters,.no-print,.game-ribbon,#streakBar,.btn,.spotlight{display:none !important}
@@ -700,7 +730,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "04 Aug 2026 · rev W";
+const APP_BUILD = "04 Aug 2026 · rev Y";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1795,7 +1825,21 @@ function viewLeads(){
   const t=today();
   let rows = [...visibleLeads()];
   const F = leadFilters;
-  if(F.q){ const q=F.q.toLowerCase(); rows = rows.filter(l=>[l.name,l.company,l.phone,l.email,l.notes,l.industry].join(" ").toLowerCase().includes(q)); }
+  if(F.q){
+    const q = F.q.toLowerCase().trim();
+    const qd = arDigits(q).replace(/[^0-9]/g,"");          // what the person typed, digits only
+    rows = rows.filter(l=>{
+      if([l.name,l.company,l.phone,l.phone2,l.custno,l.email,l.notes,l.industry].join(" ").toLowerCase().includes(q)) return true;
+      if(qd.length>=4){
+        /* phone match that ignores +2, 002, a leading 0 and any spaces or
+           dashes: compare on the last 10 digits of each number */
+        const tail = s => { const d = arDigits(String(s||"")).replace(/[^0-9]/g,""); return d.slice(-10); };
+        const qt = qd.slice(-10);
+        return [l.phone, l.phone2, l.custno].some(p=>{ const t = tail(p); return t && qt && (t===qt || t.endsWith(qt) || qt.endsWith(t)); });
+      }
+      return false;
+    });
+  }
   if(F.source) rows = rows.filter(l=>l.source===F.source);
   if(F.status) rows = rows.filter(l=>l.status===F.status);
   if(F.project) rows = rows.filter(l=>l.project===F.project);
@@ -1820,7 +1864,7 @@ function viewLeads(){
     </div>
   </div>
   <div class="filters no-print">
-    <input type="search" id="fl_q" placeholder="Search name, company, phone…" value="${esc(F.q)}">
+    <input type="search" id="fl_q" placeholder="Search name, company, phone (with or without +2)…" value="${esc(F.q)}">
     ${adm?`<select id="fl_owner"><option value="">All owners</option>${fullView()?`<option value="__none" ${F.owner==="__none"?"selected":""}>Unassigned</option>`:""}${teamMembers().map(m=>`<option value="${m.id}" ${F.owner===m.id?"selected":""}>${esc(m.name)}</option>`).join("")}</select>`:""}
     <select id="fl_status"><option value="">All statuses</option>${STATUSES.map(s=>`<option ${F.status===s?"selected":""}>${s}</option>`).join("")}</select>
     <select id="fl_source"><option value="">All sources</option>${SOURCES.map(s=>`<option ${F.source===s?"selected":""}>${s}</option>`).join("")}</select>
@@ -2853,11 +2897,18 @@ function viewReports(){
     const offers = mine.filter(l=>l.offerSent).length;
     const mWonYr = mine.filter(l=>l.status==="Won" && (l.wonDate||l.created||"").startsWith(yr));
     const val = mWonYr.reduce((s,l)=>s+(Number(l.value)||0),0);
+    /* THIS MONTH — what was actually completed in the current month, which is
+       how monthly performance is judged, not the running year total. */
+    const mWonMo = mWonYr.filter(l=>(l.wonDate||l.created||"").slice(0,7)===thisMonth());
+    const monthVal = mWonMo.reduce((s,l)=>s+(Number(l.value)||0),0);
     const mktVal = mWonYr.filter(l=>isMktSource(l.source)).reduce((s,l)=>s+(Number(l.value)||0),0);
     const ext = extConfirmed(m.id, yr);
     const totalVal = val + ext;
     const tg = Number(m.target)||0;
-    return {m, total:mine.length, open:mOpen.length, over:mOver, offers, won:mWonYr.length, val, ext, totalVal, mktVal, tg, pct: tg? totalVal/tg*100:null, mktPct: tg? mktVal/tg*100:null};
+    const moTarget = tg? tg/12 : 0;
+    return {m, total:mine.length, open:mOpen.length, over:mOver, offers, won:mWonYr.length, val, ext, totalVal, mktVal, tg,
+            monthWon:mWonMo.length, monthVal, moTarget, moPct: moTarget? monthVal/moTarget*100 : null,
+            pct: tg? totalVal/tg*100:null, mktPct: tg? mktVal/tg*100:null};
   });
 
   return `
@@ -2871,7 +2922,8 @@ function viewReports(){
   </div>
   <div class="grid g4">
     <div class="card kpi"><div class="k-label">Total leads</div><div class="k-val">${leads.length}</div><div class="k-sub">${open} open in pipeline</div></div>
-    <div class="card kpi k-green"><div class="k-label">Achieved ${yr}</div><div class="k-val">${fmtMoney(wonVal)}</div><div class="k-sub">${wonYr.length} won (${cashConfN} AR-confirmed${wonYr.length-cashConfN?`, <span style="color:var(--amber);font-weight:700">${wonYr.length-cashConfN} pending</span>`:""})${extYr?` + ${fmtMoney(extYr)} external`:""}</div></div>
+    <div class="card kpi k-green"><div class="k-label">Completed this month</div><div class="k-val">${fmtMoney(teamRows.reduce((s,r)=>s+r.monthVal,0))}</div><div class="k-sub">${teamRows.reduce((s,r)=>s+r.monthWon,0)} deal(s) completed in ${monthLabel()}</div></div>
+    <div class="card kpi"><div class="k-label">Achieved ${yr}</div><div class="k-val">${fmtMoney(wonVal)}</div><div class="k-sub">${wonYr.length} won (${cashConfN} AR-confirmed${wonYr.length-cashConfN?`, <span style="color:var(--amber);font-weight:700">${wonYr.length-cashConfN} pending</span>`:""})${extYr?` + ${fmtMoney(extYr)} external`:""}</div></div>
     <div class="card kpi"><div class="k-label">Conversion rate</div><div class="k-val">${conv.toFixed(1)}%</div><div class="k-sub">${won.length} won / ${lost} lost</div></div>
     <div class="card kpi ${teamPct>=100?"k-green":"k-red"}"><div class="k-label">Team target</div><div class="k-val" style="color:var(--ink)">${teamTarget? teamPct.toFixed(1)+"%":"—"}</div><div class="k-sub">${teamTarget? "of "+fmtMoney(teamTarget)+" EGP":"Not set yet"}</div></div>
   </div>
@@ -2948,16 +3000,19 @@ function viewReports(){
   ${marketingSection(leads, "Marketing performance")}
   ${(isDirector()||isOps())? settingsCard() : ""}
 
-  <div class="section-head"><h2>By team member — ${yr}</h2></div>
+  <div class="section-head"><h2>By team member — ${monthLabel()} and ${yr}</h2></div>
   <div class="card" style="overflow:auto">
     ${teamRows.length? `<table>
-      <thead><tr><th>Member</th><th class="num">Leads</th><th class="num">Open</th><th class="num">Overdue</th><th class="num">Offers</th><th class="num">Won</th><th class="num">Won value</th><th class="num">External</th><th class="num">Via marketing</th><th class="num">Target</th><th style="width:140px">Achievement</th><th class="num">Mkt %</th></tr></thead>
+      <thead><tr><th>Member</th><th class="num">Leads</th><th class="num">Open</th><th class="num">Overdue</th><th class="num">Offers</th><th class="num" style="border-left:2px solid var(--red)">Completed this month</th><th class="num">Month target</th><th style="width:120px">Month %</th><th class="num" style="border-left:2px solid var(--line)">Won ${yr}</th><th class="num">Won value ${yr}</th><th class="num">External</th><th class="num">Via marketing</th><th class="num">Target</th><th style="width:140px">Achievement</th><th class="num">Mkt %</th></tr></thead>
       <tbody>${teamRows.map(r=>`<tr>
         <td><b>${esc(r.m.name)}</b><div class="muted" style="font-size:.76rem">${esc(r.m.role||"")}${r.m.email?` · ${esc(r.m.email)}`:""}</div></td>
         <td class="num">${r.total}</td><td class="num">${r.open}</td>
         <td class="num" style="${r.over?"color:var(--red);font-weight:700":""}">${r.over}</td>
         <td class="num">${r.offers}</td>
-        <td class="num">${r.won}</td><td class="num"><b>${fmtMoney(r.val)}</b></td>
+        <td class="num" style="border-left:2px solid var(--red)"><b style="color:${r.monthVal? "var(--green)":"var(--steel)"}">${r.monthVal? fmtMoney(r.monthVal):"—"}</b>${r.monthWon?`<div class="muted" style="font-size:.72rem">${r.monthWon} deal${r.monthWon>1?"s":""}</div>`:""}</td>
+        <td class="num">${r.moTarget? fmtMoney(r.moTarget):"—"}</td>
+        <td>${r.moPct!==null? `<div class="progress" style="height:7px"><div class="p-fill ${r.moPct>=100?"green":""}" style="width:${Math.min(100,r.moPct)}%"></div></div><span class="muted" style="font-size:.72rem">${r.moPct.toFixed(0)}%</span>` : '<span class="muted">—</span>'}</td>
+        <td class="num" style="border-left:2px solid var(--line)">${r.won}</td><td class="num"><b>${fmtMoney(r.val)}</b></td>
         <td class="num">${r.ext?fmtMoney(r.ext):"—"}</td>
         <td class="num">${fmtMoney(r.mktVal)}</td>
         <td class="num">${r.tg?fmtMoney(r.tg):"—"}</td>
@@ -3709,7 +3764,11 @@ function globalSearchRun(q){
   const hits = visibleLeads().filter(l=>
     (l.name||"").toLowerCase().includes(q) || (l.company||"").toLowerCase().includes(q) ||
     (l.custno||"").toLowerCase().includes(q) ||
-    (digits.length>=4 && ((l.phone||"").replace(/[^0-9]/g,"").includes(digits) || (l.phone2||"").replace(/[^0-9]/g,"").includes(digits)))
+    (digits.length>=4 && (function(){
+      const tail = s => { const d = arDigits(String(s||"")).replace(/[^0-9]/g,""); return d.slice(-10); };
+      const qt = digits.slice(-10);
+      return [l.phone, l.phone2, l.custno].some(p=>{ const t = tail(p); return t && (t===qt || t.endsWith(qt) || qt.endsWith(t)); });
+    })())
   ).slice(0,8);
   box.style.display="block";
   box.innerHTML = hits.length? hits.map(l=>`
@@ -3807,38 +3866,75 @@ async function saveBdWeek(wk){
   }catch(e){ toast("Could not save — check your connection and try again"); }
 }
 function funnelCard(pool, title){
-  const stages = [
-    {label:"Leads received",  n: pool.length},
-    {label:"Contacted",       n: pool.filter(l=>l.firstContactAt || (l.status!=="New" && l.status!=="")).length},
-    {label:"Qualified",       n: pool.filter(l=>l.qualStatus==="Qualified").length},
-    {label:"Meeting / visit", n: pool.filter(l=>l.meetingDate || l.status==="Scheduled Meeting" || l.status==="Site Visit Scheduled" || (l.log||[]).some(e=>/^(Scheduled Meeting|Site Visit Scheduled)/.test(e.t||""))).length},
-    {label:"Offer sent",      n: pool.filter(l=>l.offerSent).length},
-    {label:"Won",             n: pool.filter(l=>l.status==="Won").length}
-  ];
-  if(!stages[0].n) return "";
-  const W=560, RH=44, GAP=26, H=stages.length*(RH+GAP);
-  const max = stages[0].n;
-  let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:640px">`;
-  stages.forEach((s,i)=>{
-    const w = Math.max(90, s.n/max*W*0.86);
-    const x = (W-w)/2, y = i*(RH+GAP);
-    const nw = i<stages.length-1? Math.max(90, stages[i+1].n/max*W*0.86) : w;
-    svg += `<path d="M${x},${y} L${x+w},${y} L${(W+nw)/2},${y+RH} L${(W-nw)/2},${y+RH} Z" fill="${i===stages.length-1?"#1E8A5A":"#E01E25"}" opacity="${0.92-i*0.09}"/>`;
-    svg += `<text x="${W/2}" y="${y+RH/2+1}" text-anchor="middle" fill="#fff" font-size="14" font-weight="800">${s.label} — ${s.n}</text>`;
-    if(i<stages.length-1){
-      const pct = s.n? Math.round(stages[i+1].n/s.n*100) : 0;
-      svg += `<text x="${W/2}" y="${y+RH+GAP/2+9}" text-anchor="middle" fill="#8A6A00" font-size="12" font-weight="800">▼ ${pct}%</text>`;
-    }
+  if(!pool || !pool.length) return "";
+  /* Each stage counts everyone who reached AT LEAST that far. A won deal has
+     clearly passed through qualification, a meeting and an offer even if
+     somebody forgot to tick the box — so the funnel can only ever narrow, and
+     a step can never show more than 100%. */
+  const reached = pool.map(l=>{
+    const won        = l.status==="Won";
+    const contracted = won || ["Reservation","Contracted"].includes(l.status);
+    const offer      = contracted || !!l.offerSent;
+    const meeting    = offer || !!l.meetingDate || ["Scheduled Meeting","Site Visit Scheduled","Negotiation"].includes(l.status)
+                       || (l.log||[]).some(e=>/^(Scheduled Meeting|Site Visit Scheduled)/.test(e.t||""));
+    const qualified  = meeting || l.qualStatus==="Qualified";
+    const contacted  = qualified || !!l.firstContactAt || (l.status && l.status!=="New");
+    return {contacted, qualified, meeting, offer, won};
   });
-  svg += `</svg>`;
-  const overall = Math.round(stages[5].n/stages[0].n*1000)/10;
-  return `<div class="card card-pad" style="margin-top:14px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">
-      <span class="eyebrow red">${title||"Conversion funnel"}</span>
-      <span style="font-weight:900;font-size:.86rem">Overall: <span style="color:var(--green)">${overall}%</span> of leads become deals</span>
+  const stages = [
+    {label:"Leads received",  n: pool.length,                              hint:"every lead in this view"},
+    {label:"Contacted",       n: reached.filter(r=>r.contacted).length,    hint:"first contact made"},
+    {label:"Qualified",       n: reached.filter(r=>r.qualified).length,    hint:"confirmed as a real opportunity"},
+    {label:"Meeting / visit", n: reached.filter(r=>r.meeting).length,      hint:"met the client or showed the land"},
+    {label:"Offer sent",      n: reached.filter(r=>r.offer).length,        hint:"commercial offer issued"},
+    {label:"Won",             n: reached.filter(r=>r.won).length,          hint:"deal closed"}
+  ];
+  const total = stages[0].n;
+  const overall = Math.round(stages[5].n/total*1000)/10;
+  const shades = ["#E01E25","#E7434A","#ED6870","#F08A90","#5FA88A","#1E8A5A"];
+
+  /* the widest step-drop, so the biggest leak can be called out by name */
+  let worst = null;
+  for(let i=1;i<stages.length;i++){
+    const lost = stages[i-1].n - stages[i].n;
+    if(lost>0 && (!worst || lost>worst.lost)) worst = {lost, from:stages[i-1].label, to:stages[i].label};
+  }
+
+  const rows = stages.map((s,i)=>{
+    const pctOfTotal = total? s.n/total*100 : 0;
+    const step = i===0? null : (stages[i-1].n? Math.round(s.n/stages[i-1].n*100) : 0);
+    const dropped = i===0? 0 : stages[i-1].n - s.n;
+    return `
+    <div class="fn-row">
+      <div class="fn-label">
+        <span class="fn-name">${esc(s.label)}</span>
+        <span class="fn-hint">${esc(s.hint)}</span>
+      </div>
+      <div class="fn-barwrap">
+        <div class="fn-bar" style="width:${Math.max(pctOfTotal, 1.5)}%;background:${shades[i]}">
+          <span class="fn-n">${s.n.toLocaleString()}</span>
+        </div>
+        <span class="fn-pct">${(Math.round(pctOfTotal*10)/10)}%</span>
+      </div>
+      ${step===null? "" : `<div class="fn-step ${step>=70?"good":step>=35?"mid":"low"}">
+        <span>${step}% carried on</span>${dropped>0? `<span class="fn-lost">−${dropped.toLocaleString()} lost</span>`:""}
+      </div>`}
+    </div>`;
+  }).join("");
+
+  return `<div class="card card-pad fn-card">
+    <div class="fn-head">
+      <div>
+        <div class="eyebrow red" style="margin:0">${esc(title||"Conversion funnel")}</div>
+        <div class="fn-sub">${total.toLocaleString()} leads · ${stages[5].n.toLocaleString()} won</div>
+      </div>
+      <div class="fn-overall">
+        <div class="fn-big">${overall}%</div>
+        <div class="fn-lbl">of leads become deals</div>
+      </div>
     </div>
-    <div style="text-align:center">${svg}</div>
-    <p class="muted no-print" style="font-size:.72rem;margin-top:6px">Each ▼ shows the share surviving to the next stage — the thinnest step is where deals are leaking.</p>
+    <div class="fn-body">${rows}</div>
+    ${worst? `<div class="fn-note"><b>Biggest drop:</b> ${esc(worst.from)} → ${esc(worst.to)}, where ${worst.lost.toLocaleString()} leads stop. That step is where the pipeline is leaking.</div>`:""}
   </div>`;
 }
 /* =================== Lead scoring =================== */
@@ -5184,15 +5280,16 @@ function genericVal(s){
      3. same person name AND same company (both together — never either alone)
    Same company with a different contact is NOT a duplicate; a common name
    alone is NOT a duplicate. */
+function thisMonth(){ return today().slice(0,7); }
+function monthLabel(){ return new Date(today()+"T00:00:00").toLocaleDateString("en-GB",{month:"long",year:"numeric"}); }
 function dupMatches(l, excludeId){
-  /* STRICT duplicate detection — confirmed data only:
-     ① same full phone number (normalized international; phone 2 included; never partial),
-     ② same email address, or ③ client name AND company BOTH identical.
-     Company-alone or name-alone are NOT duplicates. */
+  /* STRICT duplicate detection — contact details only:
+     ① the same full phone number (normalized international; phone 2 included;
+        never a partial match), or ② the same email address.
+     A matching client name or company is NOT a duplicate: names repeat, and the
+     same client may genuinely appear twice for two different plots. */
   const pks = [dupPhoneKey(l.phone), dupPhoneKey(l.phone2)].filter(Boolean);
   const em = (l.email||"").trim().toLowerCase();
-  const co = genericVal(l.company)? "" : l.company.trim().toLowerCase();
-  const nm = genericVal(l.name)? "" : l.name.trim().toLowerCase();
   const out = [];
   state.leads.forEach(x=>{
     if(x.id===(excludeId||l.id)) return;
@@ -5200,10 +5297,6 @@ function dupMatches(l, excludeId){
     const hit = pks.length? xpks.find(k=>pks.includes(k)) : null;
     if(hit){ out.push({id:x.id, why:"same phone number ("+hit+")"}); return; }
     if(em && (x.email||"").trim().toLowerCase()===em){ out.push({id:x.id, why:"same email ("+em+")"}); return; }
-    if(nm && co && !genericVal(x.name) && !genericVal(x.company)
-       && x.name.trim().toLowerCase()===nm && x.company.trim().toLowerCase()===co){
-      out.push({id:x.id, why:"same client name AND company"}); return;
-    }
   });
   return out;
 }
@@ -5220,8 +5313,9 @@ function rebuildDupes(){
     const p1 = dupPhoneKey(l.phone);  if(p1) add("p:"+p1, l.id);
     const p2 = dupPhoneKey(l.phone2); if(p2) add("p:"+p2, l.id);
     const em = (l.email||"").trim().toLowerCase(); if(em) add("e:"+em, l.id);
-    if(!genericVal(l.name) && !genericVal(l.company))
-      add("nc:"+l.name.trim().toLowerCase()+"|"+l.company.trim().toLowerCase(), l.id);
+    /* Names are NOT a duplicate signal — two different people share a name,
+       and one client can appear twice for two different plots. Only a matching
+       phone number or email address means the same customer. */
   });
   buckets.forEach(ids=>{
     if(ids.length<2) return;
