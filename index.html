@@ -700,7 +700,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "27 Jul 2026 · rev V";
+const APP_BUILD = "04 Aug 2026 · rev W";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -992,6 +992,18 @@ function sortLeads(rows, mode){
   if(mode==="name")   return rows.slice().sort((a,b)=>String(a.name||"").localeCompare(String(b.name||"")));
   if(mode==="company")return rows.slice().sort((a,b)=>String(a.company||"").localeCompare(String(b.company||"")));
   if(mode==="value")  return rows.slice().sort((a,b)=>(Number(b.value)||0)-(Number(a.value)||0));
+  if(mode==="land" || mode==="landsm"){
+    /* Requested area. Leads with no area recorded sit at the bottom either way,
+       so an empty field never looks like the smallest plot. */
+    const area = l => { const n = Number(l.soldArea||l.land); return isFinite(n) && n>0? n : null; };
+    return rows.slice().sort((a,b)=>{
+      const x = area(a), y = area(b);
+      if(x===null && y===null) return byNext(a,b);
+      if(x===null) return 1;
+      if(y===null) return -1;
+      return mode==="land"? y-x : x-y;                 // largest first, or smallest first
+    });
+  }
   return rows.slice().sort(byNext);
 }
 function kpiGo(patch, view){
@@ -1814,7 +1826,7 @@ function viewLeads(){
     <select id="fl_source"><option value="">All sources</option>${SOURCES.map(s=>`<option ${F.source===s?"selected":""}>${s}</option>`).join("")}</select>
     <select id="fl_project"><option value="">All projects</option>${PROJECTS.map(p=>`<option ${F.project===p?"selected":""}>${p}</option>`).join("")}</select>
     <select id="fl_dup"><option value="">All leads</option><option value="only" ${F.dup==="only"?"selected":""}>\u26A0 Duplicates only${dupTotal?" ("+dupTotal+")":""}</option></select>
-    <select id="fl_sort"><option value="">Sort: follow-up date</option><option value="dupes" ${F.sort==="dupes"?"selected":""}>Sort: duplicates grouped together</option><option value="newest" ${F.sort==="newest"?"selected":""}>Sort: newest first</option><option value="name" ${F.sort==="name"?"selected":""}>Sort: name A\u2013Z</option><option value="company" ${F.sort==="company"?"selected":""}>Sort: company A\u2013Z</option><option value="value" ${F.sort==="value"?"selected":""}>Sort: highest value</option></select>
+    <select id="fl_sort"><option value="">Sort: follow-up date</option><option value="dupes" ${F.sort==="dupes"?"selected":""}>Sort: duplicates grouped together</option><option value="newest" ${F.sort==="newest"?"selected":""}>Sort: newest first</option><option value="name" ${F.sort==="name"?"selected":""}>Sort: name A\u2013Z</option><option value="company" ${F.sort==="company"?"selected":""}>Sort: company A\u2013Z</option><option value="value" ${F.sort==="value"?"selected":""}>Sort: highest value</option><option value="land" ${F.sort==="land"?"selected":""}>Sort: land size \u2014 largest first</option><option value="landsm" ${F.sort==="landsm"?"selected":""}>Sort: land size \u2014 smallest first</option></select>
     <select id="fl_due"><option value="">Any follow-up</option><option value="overdue" ${F.due==="overdue"?"selected":""}>Overdue</option><option value="today" ${F.due==="today"?"selected":""}>Due today</option><option value="none" ${F.due==="none"?"selected":""}>No date set</option></select>
   </div>
   ${canSelectLeads() && selCount? `<div class="bulkbar no-print">
