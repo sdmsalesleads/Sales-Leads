@@ -742,7 +742,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "04 Aug 2026 · rev AC";
+const APP_BUILD = "04 Aug 2026 · rev AD";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -2069,15 +2069,19 @@ function openLeadModal(id){
   if(l && dupMs.length){
     l.dup = dupMs.map(x=>x.id);
     dupB.style.display = "block";
-    dupB.innerHTML = `⚠ <b>Possible duplicate — this customer is already in the system:</b>` +
-      dupMs.map(mm=>{ const m2 = state.leads.find(x=>x.id===mm.id); if(!m2) return "";
+    const shown = dupMs.slice(0,6);
+    dupB.innerHTML = `⚠ <b>Possible duplicate of this lead${dupMs.length>1? " — "+dupMs.length+" matching records":""}:</b>` +
+      `<div class="muted" style="font-size:.78rem;margin-top:3px">This lead: <b>${esc(fmtPhone(bestPhone(l))||"no number")}</b>${dupEmailKey(l.email)? " · <b>"+esc(l.email)+"</b>":""}</div>` +
+      shown.map(mm=>{ const m2 = state.leads.find(x=>x.id===mm.id); if(!m2) return "";
         return `<div style="margin-top:8px;padding:8px 10px;background:#fff;border:1px solid #E8D5A8;border-radius:8px">
           <b>${esc(m2.name)}</b>${m2.company? " · "+esc(m2.company):""}
-          <div class="muted" style="font-size:.76rem;margin-top:2px">Owner: <b>${esc(memberName(m2.owner)||"Unassigned")}</b> · added ${esc(fmtDate(m2.created))} · status ${esc(m2.status||"—")}<br>Matched on <b>${esc(mm.why)}</b></div>
+          <div style="font-size:.8rem;margin-top:3px">${esc(fmtPhone(bestPhone(m2))||"no number")}${m2.email? " · "+esc(m2.email):""}</div>
+          <div class="muted" style="font-size:.76rem;margin-top:2px">Owner: <b>${esc(memberName(m2.owner)||"Unassigned")}</b> · added ${esc(fmtDate(m2.created))} · status ${esc(m2.status||"—")}<br>Matched on <b>${esc(mm.why)}${mm.val? ": "+esc(mm.val):""}</b></div>
           <div style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn btn-ghost btn-sm" onclick="openOtherLead('${m2.id}')">↗ Open that lead</button>
             ${canEditLeads()? `<button class="btn btn-red btn-sm" onclick="openMerge('${m2.id}','${l.id}')">⇄ Merge the two</button>`:""}
           </div></div>`; }).filter(Boolean).join("") +
+      (dupMs.length>shown.length? `<div class="muted" style="font-size:.78rem;margin-top:8px">…and ${dupMs.length-shown.length} more. That many matches usually means a placeholder value was imported on lots of rows rather than a real duplicate — worth checking the number and email on this lead.</div>`:"") +
       `<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">` +
       `<button class="btn btn-ghost btn-sm" onclick="dupEmailFor('${l.id}')">✉ Email the other owner</button>` +
       `<button class="btn btn-ghost btn-sm" onclick="clearDup('${l.id}')">Not a duplicate — keep both</button>` +
@@ -5327,6 +5331,17 @@ function buildLeadFromRecord(r){
   };
 }
 /* ---- Duplicate detection ---- */
+function dupEmailKey(s){
+  /* Only a genuine address counts. Sheets are full of "n/a", "-", "none" and
+     the same office address repeated on hundreds of rows — treating those as a
+     match made every lead look like a duplicate of every other. */
+  const e = String(s||"").trim().toLowerCase();
+  if(!e || genericVal(e)) return "";
+  if(!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(e)) return "";      // must actually be an address
+  if(DUP_IGNORE_EMAILS.includes(e)) return "";
+  return e;
+}
+const DUP_IGNORE_EMAILS = ["info@","no@no.com","none@none.com","test@test.com","na@na.com","email@email.com","x@x.com"];
 function dupPhoneKey(s){
   const p = phoneIntl(s);
   if(p) return p;                                   // properly formatted → compare full international number
@@ -5353,14 +5368,14 @@ function dupMatches(l, excludeId){
      A matching client name or company is NOT a duplicate: names repeat, and the
      same client may genuinely appear twice for two different plots. */
   const pks = [dupPhoneKey(l.phone), dupPhoneKey(l.phone2)].filter(Boolean);
-  const em = (l.email||"").trim().toLowerCase();
+  const em = dupEmailKey(l.email);
   const out = [];
   state.leads.forEach(x=>{
     if(x.id===(excludeId||l.id)) return;
     const xpks = [dupPhoneKey(x.phone), dupPhoneKey(x.phone2)].filter(Boolean);
     const hit = pks.length? xpks.find(k=>pks.includes(k)) : null;
-    if(hit){ out.push({id:x.id, why:"same phone number ("+hit+")"}); return; }
-    if(em && (x.email||"").trim().toLowerCase()===em){ out.push({id:x.id, why:"same email ("+em+")"}); return; }
+    if(hit){ out.push({id:x.id, why:"same customer number", val:fmtPhone(hit)||hit}); return; }
+    if(em && dupEmailKey(x.email)===em){ out.push({id:x.id, why:"same email", val:em}); return; }
   });
   return out;
 }
@@ -5376,7 +5391,7 @@ function rebuildDupes(){
   state.leads.forEach(l=>{
     const p1 = dupPhoneKey(l.phone);  if(p1) add("p:"+p1, l.id);
     const p2 = dupPhoneKey(l.phone2); if(p2) add("p:"+p2, l.id);
-    const em = (l.email||"").trim().toLowerCase(); if(em) add("e:"+em, l.id);
+    const em = dupEmailKey(l.email); if(em) add("e:"+em, l.id);
     /* Names are NOT a duplicate signal — two different people share a name,
        and one client can appear twice for two different plots. Only a matching
        phone number or email address means the same customer. */
@@ -5511,7 +5526,7 @@ function dupEmail(l, matches){
       + "\n    owner: "+(memberName(m2.owner)||"unassigned")
       + " · added "+fmtDate(m2.created)
       + " · status: "+(m2.status||"—")
-      + "\n    matched on: "+mm.why : "";
+      + "\n    matched on: "+mm.why+(mm.val? " ("+mm.val+")":"") : "";
   }).filter(Boolean).join("\n\n");
   const to = [...new Set(matches.map(mm=>{
     const m2 = state.leads.find(x=>x.id===mm.id);
