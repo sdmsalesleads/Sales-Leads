@@ -470,10 +470,10 @@ function logoTryNext(img){
 </div>
 
 <!-- ============ LEAD MODAL ============ -->
-<div class="overlay" id="mergeOverlay">
-  <div class="modal" style="max-width:660px">
-    <div class="m-head"><h3>Merge duplicate leads</h3><button class="x-btn" onclick="closeMerge()">×</button></div>
-    <div class="m-body" id="mergeBody"></div>
+<div class="overlay" id="mergeOverlay" style="z-index:140">
+  <div class="modal" style="width:min(680px,100%)">
+    <div class="modal-head"><h3>Merge duplicate leads</h3><button class="x-btn" onclick="closeMerge()">×</button></div>
+    <div style="padding:20px 24px 24px" id="mergeBody"></div>
   </div>
 </div>
 <div class="overlay" id="leadOverlay">
@@ -641,9 +641,11 @@ function logoTryNext(img){
 /* =================== Constants =================== */
 const SOURCES = ["Website","Billboard","Google SEM","Facebook","Instagram","LinkedIn","YouTube","Radio","Mobile App","Event / Exhibition","Business Development","Management","Referral","Personal","Walk-In", "BD Research"];
 /* A lead counts as marketing-generated unless the salesperson found it themselves.
-   Only Personal and Management are the salesperson's own doing — everything else,
-   Referral and Walk-In included, reaches us because of the company's marketing. */
-const NON_MARKETING_SOURCES = ["Personal","Management"];
+   Referral and Walk-In DO count as marketing — the company's presence is what
+   brought the client. Personal and Management are the salesperson's own doing,
+   and the two Business Development channels belong to BD, which keeps its own
+   credit rather than having it counted as marketing. */
+const NON_MARKETING_SOURCES = ["Personal","Management","Business Development","BD Research"];
 const MARKETING_SOURCES = SOURCES.filter(s=>!NON_MARKETING_SOURCES.includes(s));
 const INDUSTRIES = ["Engineering","Pharmaceutical","Textile","Chemical","Food & Beverage (F&B)","Logistics","Heavy Industry","Services","Automotive","Warehouse"];
 const PRIORITIES = ["VIP","High","Medium","Low"];
@@ -740,7 +742,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "04 Aug 2026 · rev AA";
+const APP_BUILD = "04 Aug 2026 · rev AB";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1900,12 +1902,17 @@ function viewLeads(){
   </div>`:""}
   <div class="card" style="overflow:auto">
     ${rows.length? `<table>
-      <thead><tr>${canSelectLeads()?`<th style="width:34px"><input type="checkbox" onclick="toggleAllSel(this.checked, ${JSON.stringify(rows.map(r=>r.id)).replace(/"/g,"&quot;")})"></th>`:""}<th>Lead</th><th class="hide-sm">Source</th><th>Project</th><th class="num hide-sm">Land (sqm)</th><th>Status</th>${adm?'<th class="hide-sm">Owner</th>':""}<th>Follow-up</th>${canSeeMoney()?`<th class="num">Value</th>`:""}</tr></thead>
+      <thead><tr>${canSelectLeads()?`<th style="width:34px"><input type="checkbox" onclick="toggleAllSel(this.checked, ${JSON.stringify(rows.map(r=>r.id)).replace(/"/g,"&quot;")})"></th>`:""}<th>Lead</th><th>Contact</th><th class="hide-sm">Source</th><th>Project</th><th class="num hide-sm">Land (sqm)</th><th>Status</th>${adm?'<th class="hide-sm">Owner</th>':""}<th>Follow-up</th>${canSeeMoney()?`<th class="num">Value</th>`:""}</tr></thead>
       <tbody>${rows.map(l=>{
         const dc = dueClass(l);
         return `<tr class="row-click" onclick="openLeadModal('${l.id}')">
         ${canSelectLeads()?`<td onclick="event.stopPropagation()"><input type="checkbox" ${selectedLeads.has(l.id)?"checked":""} onchange="toggleSel('${l.id}', this.checked)"></td>`:""}
-        <td><b>${esc(l.name)}</b>${isDupFlagged(l)?` <span title="Possible duplicate — click to review" style="color:var(--amber);font-weight:800;cursor:pointer" onclick="event.stopPropagation();openLeadModal('${l.id}')">⚠</span>`:""}${l.priority==="VIP"?' <span class="pill" style="color:#fff;background:var(--red);font-size:.66rem;padding:1px 7px">VIP</span>':l.priority==="High"?' <span class="pill" style="color:var(--red);background:var(--red-soft);font-size:.66rem;padding:1px 7px">High</span>':""} ${scoreChip(l)}<div class="muted" style="font-size:.78rem">${esc(l.company||fmtPhone(l.phone)||"")}</div></td>
+        <td><b>${esc(l.name)}</b>${isDupFlagged(l)?` <span title="Possible duplicate — click to review" style="color:var(--amber);font-weight:800;cursor:pointer" onclick="event.stopPropagation();openLeadModal('${l.id}')">⚠</span>`:""}${l.priority==="VIP"?' <span class="pill" style="color:#fff;background:var(--red);font-size:.66rem;padding:1px 7px">VIP</span>':l.priority==="High"?' <span class="pill" style="color:var(--red);background:var(--red-soft);font-size:.66rem;padding:1px 7px">High</span>':""} ${scoreChip(l)}<div class="muted" style="font-size:.78rem">${esc(l.company||"")}</div></td>
+        <td style="white-space:nowrap">
+          ${bestPhone(l)? `<div style="font-variant-numeric:tabular-nums;font-size:.82rem">${esc(fmtPhone(bestPhone(l)))}</div>`:'<span class="muted" style="font-size:.78rem">no number</span>'}
+          ${l.phone2 && dupPhoneKey(l.phone2)!==dupPhoneKey(l.phone)? `<div class="muted" style="font-size:.74rem;font-variant-numeric:tabular-nums">${esc(fmtPhone(l.phone2))}</div>`:""}
+          ${l.email? `<div class="muted" style="font-size:.74rem;max-width:190px;overflow:hidden;text-overflow:ellipsis">${esc(l.email)}</div>`:""}
+        </td>
         <td class="hide-sm">${esc(l.source||"—")}</td>
         <td>${esc(l.project||"—")}</td>
         <td class="num hide-sm">${l.land?Number(l.land).toLocaleString():"—"}</td>
@@ -5379,9 +5386,15 @@ function flagDupes(l){
 function dupCount(){ return state.leads.filter(l=>isDupFlagged(l)).length; }
 /* =================== Duplicate handling: open · merge · alert =================== */
 function openOtherLead(id){
-  /* jump straight from one copy to the other, keeping the modal flow */
+  /* jump straight from one copy to the other. Duplicates usually look almost
+     identical, so say out loud which record is now on screen. */
+  const other = state.leads.find(l=>l.id===id);
+  if(!other){ toast("That lead is no longer visible to you"); return; }
   closeLeadModal();
-  setTimeout(()=>openLeadModal(id), 120);
+  setTimeout(()=>{
+    openLeadModal(id);
+    toast("Now showing the other record — added "+fmtDate(other.created)+", owner "+(memberName(other.owner)||"unassigned"));
+  }, 120);
 }
 function mergePreview(keepId, dropId){
   const keep = state.leads.find(l=>l.id===keepId), drop = state.leads.find(l=>l.id===dropId);
@@ -5410,6 +5423,7 @@ function blankVal(v){ return v===undefined || v===null || v==="" || (typeof v===
 function openMerge(keepId, dropId){
   const p = mergePreview(keepId, dropId);
   if(!p){ toast("Could not load both leads"); return; }
+  $("leadOverlay").classList.remove("open");     // one dialog at a time
   const gainRows = p.gains.length
     ? p.gains.map(g=>`<li><b>${esc(g.label)}:</b> ${esc(String(g.val).slice(0,60))}</li>`).join("")
     : `<li class="muted">Nothing extra to copy across — the kept lead already has every detail.</li>`;
