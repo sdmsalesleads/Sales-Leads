@@ -742,7 +742,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "04 Aug 2026 · rev AF";
+const APP_BUILD = "04 Aug 2026 · rev AG";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -851,8 +851,15 @@ async function insertChunked(table, rows, size){
 async function deleteChunked(table, ids, size){
   const n = size || 500;
   for(let i=0; i<ids.length; i+=n){
-    const {error} = await sb.from(table).delete().in("id", ids.slice(i, i+n));
+    const batch = ids.slice(i, i+n);
+    /* ask for the removed rows back: if the database rules block the delete it
+       succeeds with nothing removed, which would silently reappear on refresh */
+    const {data, error} = await sb.from(table).delete().in("id", batch).select("id");
     if(error) throw error;
+    if(data && data.length < batch.length){
+      throw new Error("the database did not allow removing "+(batch.length-(data?data.length:0))+
+        " record(s) — your access level cannot delete leads. Run the latest supabase_schema.sql, then try again.");
+    }
   }
 }
 async function loadAll(){

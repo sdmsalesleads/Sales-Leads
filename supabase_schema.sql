@@ -524,7 +524,10 @@ create policy leads_update on public.leads for update
   with check (true);  -- column rules enforced by the leads_enforce trigger
 drop policy if exists leads_delete on public.leads;
 create policy leads_delete on public.leads for delete
-  using (public.app_role() in ('marketing','marketingmgr'));
+  using (public.app_role()::text in
+    ('marketing','marketingmgr',           -- own the lead data
+     'salesops','opsmgr','director','admin' -- merge duplicates and clean the pipeline
+    ));
 
 -- lead_activity (read-only audit; written by triggers)
 drop policy if exists activity_select on public.lead_activity;
