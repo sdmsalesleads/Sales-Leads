@@ -639,13 +639,17 @@ function logoTryNext(img){
 
 <script>
 /* =================== Constants =================== */
-const SOURCES = ["Website","Billboard","Google SEM","Facebook","Instagram","LinkedIn","YouTube","Radio","Mobile App","Event / Exhibition","Business Development","Management","Referral","Personal","Walk-In", "BD Research"];
+const SOURCES = ["Website","Billboard","Google SEM","Facebook","Instagram","LinkedIn","YouTube","Radio","Mobile App","Event / Exhibition","Management","Referral","Personal","Walk-In","BD Research"];
+/* "Business Development" and "BD Research" were two names for the same team.
+   Only BD Research remains; anything imported under the old name is read as it. */
+const SOURCE_ALIASES = { "Business Development": "BD Research", "BD": "BD Research", "Business development": "BD Research" };
+function normSource(s){ const v = String(s||"").trim(); return SOURCE_ALIASES[v] || v; }
 /* A lead counts as marketing-generated unless the salesperson found it themselves.
    Referral and Walk-In DO count as marketing — the company's presence is what
    brought the client. Personal and Management are the salesperson's own doing,
    and the two Business Development channels belong to BD, which keeps its own
    credit rather than having it counted as marketing. */
-const NON_MARKETING_SOURCES = ["Personal","Management","Business Development","BD Research"];
+const NON_MARKETING_SOURCES = ["Personal","Management","BD Research","Business Development"];  // last one only for rows imported under the old name
 const MARKETING_SOURCES = SOURCES.filter(s=>!NON_MARKETING_SOURCES.includes(s));
 const INDUSTRIES = ["Engineering","Pharmaceutical","Textile","Chemical","Food & Beverage (F&B)","Logistics","Heavy Industry","Services","Automotive","Warehouse"];
 const PRIORITIES = ["VIP","High","Medium","Low"];
@@ -742,7 +746,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "04 Aug 2026 · rev AH";
+const APP_BUILD = "05 Aug 2026 · rev AI";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -767,7 +771,7 @@ function memberToProfile(m){ return { name:m.name||"", role:m.roleKey||"pending"
   department:m.dept||"", phone:m.phone||"", annual_target:Number(m.target)||0, manager_id:m.managerId||null }; }
 
 /* ---- lead / external-sale mapping (camelCase app <-> snake_case db) ---- */
-function leadFromDb(r){ return { id:r.id, name:r.name||"", company:r.company||"", custno:r.custno||"",
+function leadFromDb(r){ if(r && r.source) r = Object.assign({}, r, {source: normSource(r.source)}); return { id:r.id, name:r.name||"", company:r.company||"", custno:r.custno||"",
   phone:r.phone||"", phone2:r.phone2||"", email:r.email||"", source:r.source||"", project:r.project||"",
   land:r.land==null?"":Number(r.land), industry:r.industry||"", priority:r.priority||"",
   status:r.status||"New", owner:r.owner||"", next:r.next_followup||"", nextTime:r.next_time||"",
@@ -1140,6 +1144,8 @@ function canMergeLeads(){ return canEditLeads() || canDistribute(); }
    Only Personal and Management are the salesperson's own doing. */
 const SELF_SOURCES = ["Personal","Management","Walk-In"];
 function selfSources(){ return currentUser && currentUser.bd? ["BD Research","Personal","Management","Walk-In"] : SELF_SOURCES; }
+/* who may own a lead: the sales team and business development — nobody else */
+function canOwnLeads(m){ return ["sales","manager","bizdev","bdmgr"].includes(m.roleKey); }
 function canAddLead(){ return isMarketing() || (currentUser && ["sales","manager","salesops","bizdev"].includes(currentUser.roleKey)); }
 function isSelfAdder(){ return canAddLead() && !isMarketing(); }
 function canConfirmExt(){ return currentUser && (currentUser.admin || currentUser.director || currentUser.exec || currentUser.mgr); }
@@ -1793,7 +1799,7 @@ function viewAdminDashboard(){
         </div>
         ${canDistribute()?`<select onchange="assignLead('${l.id}', this.value)" style="border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:#fff">
           <option value="">Assign to…</option>
-          ${state.members.filter(hasTarget).map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join("")}
+          ${state.members.filter(m=>!m.pending && canOwnLeads(m)).map(m=>`<option value="${m.id}">${esc(m.name)}${m.bd? " · Business Development":""}</option>`).join("")}
         </select>`:`<span class="pill" style="color:var(--amber);background:var(--amber-soft)">Sales Operations distributes</span>`}
         <button class="btn btn-ghost btn-sm" onclick="openLeadModal('${l.id}')">Open</button>
       </div>`).join("") + (un.length>12? `<div class="cs-item muted" style="justify-content:center;font-size:.85rem">+ ${un.length-12} more in the Leads page</div>`:"")
@@ -1893,7 +1899,7 @@ function viewLeads(){
   </div>
   <div class="filters no-print">
     <input type="search" id="fl_q" placeholder="Search name, company, phone (with or without +2)…" value="${esc(F.q)}">
-    ${adm?`<select id="fl_owner"><option value="">All owners</option>${fullView()?`<option value="__none" ${F.owner==="__none"?"selected":""}>Unassigned</option>`:""}${teamMembers().map(m=>`<option value="${m.id}" ${F.owner===m.id?"selected":""}>${esc(m.name)}</option>`).join("")}</select>`:""}
+    ${adm?`<select id="fl_owner"><option value="">All owners</option>${fullView()?`<option value="__none" ${F.owner==="__none"?"selected":""}>Unassigned</option>`:""}${teamMembers().filter(canOwnLeads).map(m=>`<option value="${m.id}" ${F.owner===m.id?"selected":""}>${esc(m.name)}${m.bd? " · BD":""}</option>`).join("")}</select>`:""}
     <select id="fl_status"><option value="">All statuses</option>${STATUSES.map(s=>`<option ${F.status===s?"selected":""}>${s}</option>`).join("")}</select>
     <select id="fl_source"><option value="">All sources</option>${SOURCES.map(s=>`<option ${F.source===s?"selected":""}>${s}</option>`).join("")}</select>
     <select id="fl_project"><option value="">All projects</option>${PROJECTS.map(p=>`<option ${F.project===p?"selected":""}>${p}</option>`).join("")}</select>
@@ -1904,7 +1910,7 @@ function viewLeads(){
   ${canSelectLeads() && selCount? `<div class="bulkbar no-print">
     <b>${selCount} selected</b>
     ${canDistribute()? `\u2014 transfer to
-      <select id="bulkOwner"><option value="">Choose salesperson\u2026</option>${state.members.filter(hasTarget).map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join("")}</select>
+      <select id="bulkOwner"><option value="">Choose salesperson\u2026</option>${state.members.filter(m=>!m.pending && canOwnLeads(m)).map(m=>`<option value="${m.id}">${esc(m.name)}${m.bd? " · Business Development":""}</option>`).join("")}</select>
       <button class="btn btn-red btn-sm" onclick="bulkAssign()">Transfer</button>`:""}
     <button class="btn btn-ghost btn-sm" onclick="bulkExport()">\u2b07 Export selected</button>
     ${canMergeLeads() && selCount===2? `<button class="btn btn-red btn-sm" onclick="bulkMerge()">\u21c4 Merge these two</button>`:""}
@@ -2022,7 +2028,7 @@ function openLeadModal(id){
   const canShared = canCore || isOwnerUser || (isManager() && !!l && scopeIds().has(l.owner)); // §22: rep edits name/company/phone2/project/area anytime
   const canStages = !!l && !currentUser.mkt && (isOwnerUser || isOps() || isDirector() || (isManager() && scopeIds().has(l.owner)) || isAdmin());
   const canValue = (canFollow && !currentUser.mkt) || (canConfirmCash() && !!l && l.status==="Won");
-  fillSelect($("f_owner"), state.members.filter(m=>!m.pending && (["sales","manager"].includes(m.roleKey) || (l && m.id===l.owner))).map(m=>({v:m.id,t:m.name})), canDistribute()? "Unassigned" : "Unassigned (Sales Operations distributes)");
+  fillSelect($("f_owner"), state.members.filter(m=>!m.pending && (canOwnLeads(m) || (l && m.id===l.owner))).map(m=>({v:m.id,t:m.name+(m.bd? " · Business Development":"")})), canDistribute()? "Unassigned" : "Unassigned (Sales Operations distributes)");
   $("leadModalTitle").textContent = l? (canCore?"Edit lead":canFollow?"Update lead":"Lead details") : "Add lead";
   $("deleteLeadBtn").style.display = (l && canEditLeads())? "inline-flex":"none";
   $("leadLogWrap").style.display = l? "block":"none";
@@ -2042,7 +2048,8 @@ function openLeadModal(id){
   $("f_phone").value = l?(fmtPhone(l.phone)||bestPhone(l)||l.phone||""):"";
   $("f_phone2").value = l?fmtPhone(l.phone2)||l.phone2||"":"";
   $("f_email").value = l?l.email||"":"";
-  $("f_source").value = l?l.source||SOURCES[0]:SOURCES[0];
+  $("f_source").value = l? (normSource(l.source)||SOURCES[0])
+                         : ((!id && isSelfAdder())? (currentUser.bd? "BD Research" : "Personal") : SOURCES[0]);
   $("f_project").value = l?l.project||"":"";
   $("f_land").value = l?l.land||"":"";
   $("f_industry").value = l?l.industry||"":"";
@@ -2235,7 +2242,7 @@ function gsToLead(r){
   const num = v => v===""||v===null? "" : Number(v);
   return { id:g("Lead ID"), name:g("Lead Name"), company:g("Company"),
     phone:g("Customer Number"), phone2:g("Customer Number 2"), email:g("Email"),
-    industry:g("Industry"), source:g("Lead Source"), project:g("Project Interested In"),
+    industry:g("Industry"), source:normSource(g("Lead Source")), project:g("Project Interested In"),
     land:num(g("Requested Area (sqm)")), soldArea:num(g("Sold Area (sqm)")), plotNo:g("Plot Number"),
     status:g("Status")||"New", qualStatus:g("Qualification"), qualNotes:g("Qualification Notes"),
     temperature:g("Temperature"), priority:g("Priority"),
@@ -5525,7 +5532,7 @@ function openMerge(keepId, dropId){
         <option value="__keep">Keep the current owner — ${esc(memberName(p.keep.owner)||"Unassigned")}</option>
         ${p.drop.owner && p.drop.owner!==p.keep.owner? `<option value="${p.drop.owner}">Give it to ${esc(memberName(p.drop.owner))} (owner of the other record)</option>`:""}
         <option value="">Leave unassigned — decide later</option>
-        ${state.members.filter(m=>!m.pending && ["sales","manager"].includes(m.roleKey)).map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join("")}
+        ${state.members.filter(m=>!m.pending && canOwnLeads(m)).map(m=>`<option value="${m.id}">${esc(m.name)}${m.bd? " · Business Development":""}</option>`).join("")}
       </select>
       <div class="muted" style="font-size:.74rem;margin-top:6px">The two records may belong to different salespeople — choose who keeps the client. They are notified and the handover is written into the lead's history.</div>
     </div>`:""}
@@ -6226,7 +6233,7 @@ function importExcel(file){
         let l = rowId? state.leads.find(x=>x.id===rowId) : null;
         const isNewLead = !l;
         if(!l){ l = { id: rowId||uid(), created: normDate(g(ci.created))||today(), log: [] }; state.leads.push(l); }
-        const src = g(ci.source), prj = g(ci.project), st = g(ci.status);
+        const src = normSource(g(ci.source)), prj = g(ci.project), st = g(ci.status);
         const prevStatus = l.status;
         const landRaw = g(ci.land), landInfo = parseAreaInfo(landRaw);
         const ownerRaw = String(g(ci.owner)==null? "":g(ci.owner)).trim();
