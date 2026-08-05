@@ -746,7 +746,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "05 Aug 2026 · rev AJ";
+const APP_BUILD = "05 Aug 2026 · rev AK";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1895,6 +1895,7 @@ function viewLeads(){
   const selCount = selectedLeads.size;
 
   return `
+  ${dupBanner()}
   <div class="section-head" style="margin-top:0">
     <h2>${adm?(fullView()?"All leads":"My team's leads"):"My leads"} <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0">— ${rows.length} of ${visibleLeads().length}</span></h2>
     <div style="display:flex;gap:8px">
@@ -5442,6 +5443,35 @@ function flagDupes(l){
   return (d.length && !l.dupCleared)? d.length : 0;
 }
 function dupCount(){ return state.leads.filter(l=>isDupFlagged(l)).length; }
+/* how many customers are duplicated, and how many records that accounts for */
+function dupSummary(){
+  const flagged = visibleLeads().filter(l=>isDupFlagged(l));
+  if(!flagged.length) return {records:0, customers:0};
+  const seen = new Set(); let customers = 0;
+  flagged.forEach(l=>{
+    if(seen.has(l.id)) return;
+    customers++;
+    seen.add(l.id);
+    dupMatches(l, null).forEach(m=>seen.add(m.id));
+  });
+  return {records: flagged.length, customers};
+}
+function dupBanner(){
+  const d = dupSummary();
+  if(!d.records) return "";
+  const on = leadFilters.dup==="only";
+  return `<div class="card card-pad" style="margin-bottom:12px;border-left:4px solid var(--amber);background:#FFFDF5;display:flex;
+    align-items:center;gap:12px;flex-wrap:wrap">
+    <div style="font-size:1.3rem">\u26A0</div>
+    <div style="flex:1;min-width:200px">
+      <b style="font-size:.92rem">${d.customers} customer${d.customers>1?"s are":" is"} in the system more than once</b>
+      <div class="muted" style="font-size:.8rem;margin-top:2px">${d.records} records altogether \u2014 merge each one to leave a single lead with a single owner.</div>
+    </div>
+    <button class="btn ${on?"btn-ghost":"btn-red"} btn-sm" onclick="leadFilters.dup='${on?"":"only"}';leadFilters.sort='${on?"":"dupes"}';render()">
+      ${on? "Show all leads" : "Review the duplicates"}
+    </button>
+  </div>`;
+}
 /* =================== Duplicate handling: open · merge · alert =================== */
 function openOtherLead(id){
   /* jump straight from one copy to the other. Duplicates usually look almost
@@ -5622,10 +5652,12 @@ function doMerge(keepId, dropId){
     persist(); render();
   }, 900);
   closeMerge(); closeLeadModal(); render(); updateBell();
-  toast(others.length+" duplicate"+(others.length>1?"s":"")+" merged and removed — one lead left"
-    + (handedTo? " · now with "+handedTo.name : ""));
   if(handedTo) notifyAssigned([{m: handedTo, leads:[keep]}]);
-  setTimeout(()=>openLeadModal(keepId), 200);
+  /* said last so it is the message left on screen, not the assignment notice */
+  toast("\u2713 Merged and saved \u2014 "+others.length+" duplicate"+(others.length>1?"s":"")+" removed, one lead left ("
+    + keep.name + ")" + (handedTo? " \u00b7 now with "+handedTo.name : ""));
+  /* nothing reopens — the work is done and saved, so the person is left on
+     their list rather than back inside a lead they just finished with */
 }
 /* ---- tell the owners by email ---- */
 function dupEmail(l, matches){
