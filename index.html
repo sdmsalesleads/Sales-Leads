@@ -742,7 +742,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "04 Aug 2026 · rev AE";
+const APP_BUILD = "04 Aug 2026 · rev AF";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -5433,6 +5433,23 @@ function openOtherLead(id){
     toast("Now showing the other record — added "+fmtDate(other.created)+", owner "+(memberName(other.owner)||"unassigned"));
   }, 120);
 }
+function dupCluster(keepId, seedId){
+  /* every record of this customer, including copies linked only through
+     another copy (A shares a number with B, B shares an email with C) */
+  const keep = state.leads.find(l=>l.id===keepId);
+  if(!keep) return [];
+  const out = [], seen = new Set([keepId]);
+  const queue = (seedId? [seedId] : []).concat(dupMatches(keep, null).map(m=>m.id));
+  while(queue.length){
+    const id = queue.shift();
+    if(!id || seen.has(id)) continue;
+    const l = state.leads.find(x=>x.id===id);
+    if(!l) continue;
+    seen.add(id); out.push(l);
+    dupMatches(l, null).forEach(m=>{ if(!seen.has(m.id)) queue.push(m.id); });
+  }
+  return out;
+}
 function mergePreview(keepId, dropId){
   const keep = state.leads.find(l=>l.id===keepId), drop = state.leads.find(l=>l.id===dropId);
   if(!keep || !drop) return null;
@@ -5461,6 +5478,8 @@ function openMerge(keepId, dropId){
   const p = mergePreview(keepId, dropId);
   if(!p){ toast("Could not load both leads"); return; }
   $("leadOverlay").classList.remove("open");     // one dialog at a time
+  /* every copy that will be absorbed, not just the clicked one */
+  const also = dupCluster(keepId, dropId).filter(l=>l.id!==dropId);
   const gainRows = p.gains.length
     ? p.gains.map(g=>`<li><b>${esc(g.label)}:</b> ${esc(String(g.val).slice(0,60))}</li>`).join("")
     : `<li class="muted">Nothing extra to copy across — the kept lead already has every detail.</li>`;
@@ -5487,6 +5506,10 @@ function openMerge(keepId, dropId){
     <ul style="font-size:.82rem;line-height:1.7;margin:0 0 12px;padding-left:20px">${gainRows}
       <li><b>${p.logs}</b> activity entr${p.logs===1?"y":"ies"} added to its history</li>
     </ul>
+    ${also.length? `<div style="margin-top:2px;margin-bottom:12px;padding:10px 12px;background:#FFF8F8;border:1px solid #F0D2D3;border-radius:9px;font-size:.82rem;line-height:1.6">
+      <b style="color:var(--red)">${also.length} further copy${also.length>1?"/copies":""} of this customer will be merged in and removed as well</b> — ${also.length+1} records in total disappear, leaving one:<br>
+      ${also.map(x=>"• "+esc(x.name)+(x.company? " · "+esc(x.company):"")+" — "+esc(memberName(x.owner)||"unassigned")).join("<br>")}
+    </div>`:""}
     <p class="muted" style="font-size:.78rem;line-height:1.55">Filled-in details on the kept lead are never overwritten — only its empty fields are filled from the other one. Swap which lead is kept if the other has the better record.</p>
     ${canDistribute()? `<div style="margin-top:14px;padding:12px 13px;background:#FBFBFA;border:1px solid var(--line);border-radius:9px">
       <div class="eyebrow red" style="margin-bottom:7px">Who follows it up from here?</div>
@@ -5499,7 +5522,7 @@ function openMerge(keepId, dropId){
       <div class="muted" style="font-size:.74rem;margin-top:6px">The two records may belong to different salespeople — choose who keeps the client. They are notified and the handover is written into the lead's history.</div>
     </div>`:""}
     <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
-      <button class="btn btn-red" onclick="doMerge('${keepId}','${dropId}')">Merge — keep "${esc(p.keep.name).slice(0,22)}"</button>
+      <button class="btn btn-red" onclick="doMerge('${keepId}','${dropId}')">Merge ${also.length? "all "+(also.length+1)+" copies":""} — keep "${esc(p.keep.name).slice(0,22)}"</button>
       <button class="btn btn-ghost" onclick="openMerge('${dropId}','${keepId}')">⇄ Swap which one is kept</button>
       <button class="btn btn-ghost" onclick="closeMerge()">Cancel</button>
     </div>`;
@@ -5508,20 +5531,30 @@ function openMerge(keepId, dropId){
 function closeMerge(){ $("mergeOverlay").classList.remove("open"); }
 function doMerge(keepId, dropId){
   if(!canMergeLeads()){ toast("Your access level cannot merge leads"); return; }
-  const keep = state.leads.find(l=>l.id===keepId), drop = state.leads.find(l=>l.id===dropId);
-  if(!keep || !drop) return;
+  const keep = state.leads.find(l=>l.id===keepId);
+  if(!keep) return;
+
+  /* Absorb EVERY copy of this customer, not only the one that was clicked —
+     otherwise a third record would keep the duplicate warning alive and the
+     client could still be called twice. */
+  const others = dupCluster(keepId, dropId);
+  if(!others.length){ toast("Nothing left to merge"); closeMerge(); return; }
+
   const filled = [];
-  MERGE_FIELDS.forEach(f=>{
-    if(!blankVal(drop[f.k]) && blankVal(keep[f.k])){ keep[f.k] = drop[f.k]; filled.push(f.label); }
+  others.forEach(drop=>{
+    MERGE_FIELDS.forEach(f=>{
+      if(!blankVal(drop[f.k]) && blankVal(keep[f.k])){ keep[f.k] = drop[f.k]; if(filled.indexOf(f.label)<0) filled.push(f.label); }
+    });
+    /* a different phone number is kept as the second number rather than lost */
+    const kp = dupPhoneKey(keep.phone), dp = dupPhoneKey(drop.phone);
+    if(dp && dp!==kp && blankVal(keep.phone2)){ keep.phone2 = drop.phone; if(filled.indexOf("Customer number 2")<0) filled.push("Customer number 2"); }
+    /* the earliest creation date is the true one */
+    if(drop.created && (!keep.created || drop.created < keep.created)) keep.created = drop.created;
   });
-  /* second number: if the other lead had a different phone, keep it rather than lose it */
-  const kp = dupPhoneKey(keep.phone), dp = dupPhoneKey(drop.phone);
-  if(dp && dp!==kp && blankVal(keep.phone2)){ keep.phone2 = drop.phone; if(filled.indexOf("Customer number 2")<0) filled.push("Customer number 2"); }
-  /* the earlier creation date is the true one */
-  if(drop.created && (!keep.created || drop.created < keep.created)) keep.created = drop.created;
-  /* Sales Operations may reassign the surviving lead in the same step */
+
+  /* ONE owner survives — whoever was chosen here */
   const ownSel = $("mergeOwner");
-  let handedTo = null;
+  let handedTo = null, ownerChanged = false;
   if(ownSel && canDistribute() && ownSel.value!=="__keep"){
     const newOwner = ownSel.value;
     if((newOwner||"") !== (keep.owner||"")){
@@ -5530,21 +5563,33 @@ function doMerge(keepId, dropId){
       keep.firstContactAt = "";
       if(newOwner && !keep.next) keep.next = addDays(today(),2);
       handedTo = newOwner? state.members.find(m=>m.id===newOwner) : null;
-      pushLog(keep, newOwner? ("Assigned to "+memberName(newOwner)+" while merging the duplicate, by "+currentUser.name)
-                            : ("Left unassigned after the merge by "+currentUser.name));
+      ownerChanged = true;
     }
   }
-  /* histories combine, newest first */
-  keep.log = [].concat(keep.log||[], (drop.log||[]).map(e=>Object.assign({}, e, {t:"[merged] "+e.t})))
-              .sort((a,b)=>String(b.d+(b.tm||"")).localeCompare(String(a.d+(a.tm||""))));
-  pushLog(keep, "Merged with duplicate \""+drop.name+"\" (owner: "+(memberName(drop.owner)||"unassigned")+")"
+
+  /* every history joins the survivor, newest first */
+  let allLogs = keep.log||[];
+  others.forEach(drop=>{ allLogs = allLogs.concat((drop.log||[]).map(e=>Object.assign({}, e, {t:"[merged] "+e.t}))); });
+  keep.log = allLogs.sort((a,b)=>String(b.d+(b.tm||"")).localeCompare(String(a.d+(a.tm||""))));
+
+  const names = others.map(d=>d.name+" ("+(memberName(d.owner)||"unassigned")+")");
+  pushLog(keep, "Merged "+others.length+" duplicate record"+(others.length>1?"s":"")+" into this lead: "+names.join("; ")
     + (filled.length? " — filled in: "+filled.join(", ") : "") );
+  if(ownerChanged) pushLog(keep, handedTo? ("Sole owner set to "+handedTo.name+" while merging, by "+currentUser.name)
+                                         : ("Left unassigned after the merge by "+currentUser.name));
+
+  /* the copies are removed — soft-deleted in the workbook so the history survives */
+  others.forEach(drop=>{
+    if(typeof gsMirrorNow==="function"){ drop.deleted = true; drop.deletedDate = today(); drop.deletedBy = currentUser.name; gsMirrorNow(drop); }
+  });
+  const goneIds = new Set(others.map(d=>d.id));
+  state.leads = state.leads.filter(l=>!goneIds.has(l.id));
+
   keep.dupCleared = false;
-  if(typeof gsMirrorNow==="function"){ drop.deleted = true; drop.deletedDate = today(); drop.deletedBy = currentUser.name; gsMirrorNow(drop); }
-  state.leads = state.leads.filter(l=>l.id!==dropId);
   if(typeof gsMirrorLead==="function") gsMirrorLead(keep);
   invalidateDupes(); persist(); closeMerge(); closeLeadModal(); render(); updateBell();
-  toast("Merged — one lead kept with both histories"+(handedTo? " · now with "+handedTo.name : ""));
+  toast(others.length+" duplicate"+(others.length>1?"s":"")+" merged and removed — one lead left"
+    + (handedTo? " · now with "+handedTo.name : ""));
   if(handedTo) notifyAssigned([{m: handedTo, leads:[keep]}]);
   setTimeout(()=>openLeadModal(keepId), 200);
 }
