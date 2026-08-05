@@ -746,7 +746,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "05 Aug 2026 · rev AK";
+const APP_BUILD = "05 Aug 2026 · rev AL";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1896,6 +1896,7 @@ function viewLeads(){
 
   return `
   ${dupBanner()}
+  ${leadFilters.dup==="only"? dupGroupsCard() : ""}
   <div class="section-head" style="margin-top:0">
     <h2>${adm?(fullView()?"All leads":"My team's leads"):"My leads"} <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0">— ${rows.length} of ${visibleLeads().length}</span></h2>
     <div style="display:flex;gap:8px">
@@ -2102,7 +2103,7 @@ function openLeadModal(id){
         return `<div style="margin-top:8px;padding:8px 10px;background:#fff;border:1px solid #E8D5A8;border-radius:8px">
           <b>${esc(m2.name)}</b>${m2.company? " · "+esc(m2.company):""}
           <div style="font-size:.8rem;margin-top:3px">${esc(fmtPhone(bestPhone(m2))||"no number")}${m2.email? " · "+esc(m2.email):""}</div>
-          <div class="muted" style="font-size:.76rem;margin-top:2px">Owner: <b>${esc(memberName(m2.owner)||"Unassigned")}</b> · added ${esc(fmtDate(m2.created))} · status ${esc(m2.status||"—")}<br>Matched on <b>${esc(mm.why)}${mm.val? ": "+esc(mm.val):""}</b></div>
+          <div class="muted" style="font-size:.76rem;margin-top:2px">Owner: <b>${esc(memberName(m2.owner)||"Unassigned")}</b> · status <b>${esc(m2.status||"New")}</b> · added ${esc(fmtDate(m2.created))}<br>${esc(workLabel(m2))}<br>Matched on <b>${esc(mm.why)}${mm.val? ": "+esc(mm.val):""}</b></div>
           <div style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn btn-ghost btn-sm" onclick="openOtherLead('${m2.id}')">↗ Open that lead</button>
             ${canMergeLeads()? `<button class="btn btn-red btn-sm" onclick="openMerge('${m2.id}','${l.id}')">⇄ Merge the two</button>`:""}
@@ -5456,6 +5457,73 @@ function dupSummary(){
   });
   return {records: flagged.length, customers};
 }
+/* How much real work a record has had. Whoever has actually worked the client
+   should normally keep it, so this is what Sales Operations judges by. */
+function workScore(l){
+  const log = l.log||[];
+  const real = log.filter(e=>!/^(Lead added|Imported from Excel|Self-generated lead|Assigned to|Transferred to|Merged|Duplicate)/.test(e.t||""));
+  let s = real.length*3;
+  if(l.firstContactAt) s += 6;
+  if(l.qualStatus==="Qualified") s += 8;
+  if(l.meetingDate) s += 12;
+  if(l.offerSent) s += 15;
+  if(["Negotiation","Reservation","Contracted"].includes(l.status)) s += 15;
+  if(l.status==="Won") s += 40;
+  if(Number(l.value)>0) s += 10;
+  return {score:s, touches:real.length, last: real.length? real[0].d : ""};
+}
+function workLabel(l){
+  const w = workScore(l);
+  const bits = [];
+  bits.push(w.touches? w.touches+" activit"+(w.touches===1?"y":"ies") : "never worked");
+  if(l.meetingDate) bits.push("meeting booked");
+  if(l.offerSent) bits.push("offer sent");
+  if(l.qualStatus==="Qualified") bits.push("qualified");
+  if(w.last) bits.push("last touched "+fmtDate(w.last));
+  return bits.join(" · ");
+}
+/* every duplicate cluster in view, each with all of its copies */
+function dupGroups(){
+  const pool = visibleLeads().filter(l=>isDupFlagged(l));
+  const seen = new Set(), groups = [];
+  pool.forEach(l=>{
+    if(seen.has(l.id)) return;
+    const members = [l].concat(dupCluster(l.id, null));
+    const uniq = []; const ids = new Set();
+    members.forEach(m=>{ if(m && !ids.has(m.id)){ ids.add(m.id); uniq.push(m); } });
+    uniq.forEach(m=>seen.add(m.id));
+    if(uniq.length>1){
+      uniq.sort((a,b)=>workScore(b).score-workScore(a).score || String(a.created||"").localeCompare(String(b.created||"")));
+      groups.push(uniq);
+    }
+  });
+  return groups;
+}
+function dupGroupsCard(){
+  const groups = dupGroups();
+  if(!groups.length) return "";
+  return `<div class="card card-pad" style="margin-bottom:14px">
+    <div class="section-head" style="margin:0 0 4px"><h2 style="font-size:1rem">Duplicate customers — ${groups.length} to resolve</h2></div>
+    <p class="muted" style="font-size:.8rem;margin:0 0 12px">Each block is one customer and <b>all</b> of their records. Merging a block deals with every copy at once — you never have to merge the same customer twice. The record with the most work done is listed first and suggested as the one to keep.</p>
+    ${groups.map(g=>{
+      const best = g[0];
+      return `<div style="border:1px solid #E8D5A8;background:#FFFDF5;border-radius:10px;padding:11px 12px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+          <b style="font-size:.92rem">${esc(best.name)}${best.company? " · "+esc(best.company):""}</b>
+          <span class="muted" style="font-size:.78rem">${g.length} records · ${esc(fmtPhone(bestPhone(best))||"no number")}</span>
+        </div>
+        ${g.map((l,i)=>`<div class="gd-row" style="display:flex;gap:9px;align-items:center;padding:7px 9px;border:1px solid ${i===0?"var(--green)":"var(--line)"};border-radius:8px;margin-bottom:5px;background:#fff;flex-wrap:wrap">
+          <div style="flex:1;min-width:190px">
+            <div style="font-weight:700;font-size:.82rem">${esc(memberName(l.owner)||"Unassigned")}${i===0?' <span style="color:var(--green);font-size:.7rem;font-weight:800">· MOST WORK DONE</span>':""}</div>
+            <div class="muted" style="font-size:.74rem">${esc(l.status||"New")} · ${esc(workLabel(l))} · added ${esc(fmtDate(l.created))}</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="openLeadModal('${l.id}')">Open</button>
+        </div>`).join("")}
+        ${canMergeLeads()? `<button class="btn btn-red btn-sm" style="margin-top:4px" onclick="openMerge('${best.id}','${g[1].id}')">\u21c4 Merge all ${g.length} into ${esc(memberName(best.owner)||"the top record")}</button>`:""}
+      </div>`;
+    }).join("")}
+  </div>`;
+}
 function dupBanner(){
   const d = dupSummary();
   if(!d.records) return "";
@@ -5544,28 +5612,44 @@ function openMerge(keepId, dropId){
         <div class="eyebrow" style="color:var(--green)">Kept — this lead survives</div>
         <div style="font-weight:800;margin-top:4px">${esc(p.keep.name)}</div>
         <div class="muted" style="font-size:.78rem">${esc(p.keep.company||"—")} · ${esc(fmtPhone(p.keep.phone)||"no number")}</div>
-        <div class="muted" style="font-size:.76rem;margin-top:5px">Owner: <b>${esc(memberName(p.keep.owner)||"Unassigned")}</b> · added ${esc(fmtDate(p.keep.created))}</div>
+        <div class="muted" style="font-size:.76rem;margin-top:5px">Owner: <b>${esc(memberName(p.keep.owner)||"Unassigned")}</b> · status <b>${esc(p.keep.status||"New")}</b> · added ${esc(fmtDate(p.keep.created))}</div>
+        <div style="font-size:.76rem;margin-top:4px;color:${workScore(p.keep).score>=workScore(p.drop).score? "var(--green)":"var(--steel)"};font-weight:700">${esc(workLabel(p.keep))}</div>
       </div>
       <div class="card card-pad" style="border-color:var(--red);opacity:.85">
         <div class="eyebrow red">Removed — merged into the other</div>
         <div style="font-weight:800;margin-top:4px">${esc(p.drop.name)}</div>
         <div class="muted" style="font-size:.78rem">${esc(p.drop.company||"—")} · ${esc(fmtPhone(p.drop.phone)||"no number")}</div>
-        <div class="muted" style="font-size:.76rem;margin-top:5px">Owner: <b>${esc(memberName(p.drop.owner)||"Unassigned")}</b> · added ${esc(fmtDate(p.drop.created))}</div>
+        <div class="muted" style="font-size:.76rem;margin-top:5px">Owner: <b>${esc(memberName(p.drop.owner)||"Unassigned")}</b> · status <b>${esc(p.drop.status||"New")}</b> · added ${esc(fmtDate(p.drop.created))}</div>
+        <div style="font-size:.76rem;margin-top:4px;color:${workScore(p.drop).score>workScore(p.keep).score? "var(--red)":"var(--steel)"};font-weight:700">${esc(workLabel(p.drop))}</div>
       </div>
     </div>
     <div style="font-size:.84rem;margin-bottom:6px"><b>Copied across to the kept lead:</b></div>
     <ul style="font-size:.82rem;line-height:1.7;margin:0 0 12px;padding-left:20px">${gainRows}
       <li><b>${p.logs}</b> activity entr${p.logs===1?"y":"ies"} added to its history</li>
     </ul>
+    ${(function(){
+      const all = [p.keep, p.drop].concat(also);
+      const best = all.slice().sort((a,b)=>workScore(b).score-workScore(a).score)[0];
+      if(workScore(best).score<=0) return "";
+      const same = best.id===p.keep.id;
+      return `<div style="margin:2px 0 12px;padding:10px 12px;background:#F3FAF6;border:1px solid #CBE7DA;border-radius:9px;font-size:.82rem;line-height:1.6">
+        <b style="color:var(--green)">Most work done: ${esc(memberName(best.owner)||"Unassigned")}</b> — ${esc(workLabel(best))}.
+        ${same? "That is the record being kept." : "Consider swapping, or give the merged lead to them below."}
+      </div>`;
+    })()}
     ${also.length? `<div style="margin-top:2px;margin-bottom:12px;padding:10px 12px;background:#FFF8F8;border:1px solid #F0D2D3;border-radius:9px;font-size:.82rem;line-height:1.6">
       <b style="color:var(--red)">${also.length} further copy${also.length>1?"/copies":""} of this customer will be merged in and removed as well</b> — ${also.length+1} records in total disappear, leaving one:<br>
-      ${also.map(x=>"• "+esc(x.name)+(x.company? " · "+esc(x.company):"")+" — "+esc(memberName(x.owner)||"unassigned")).join("<br>")}
+      ${also.map(x=>"• "+esc(memberName(x.owner)||"unassigned")+" — "+esc(x.status||"New")+" · "+esc(workLabel(x))).join("<br>")}
     </div>`:""}
     <p class="muted" style="font-size:.78rem;line-height:1.55">Filled-in details on the kept lead are never overwritten — only its empty fields are filled from the other one. Swap which lead is kept if the other has the better record.</p>
     ${canDistribute()? `<div style="margin-top:14px;padding:12px 13px;background:#FBFBFA;border:1px solid var(--line);border-radius:9px">
       <div class="eyebrow red" style="margin-bottom:7px">Who follows it up from here?</div>
       <select id="mergeOwner" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 11px;background:#fff">
         <option value="__keep">Keep the current owner — ${esc(memberName(p.keep.owner)||"Unassigned")}</option>
+        ${(function(){ const all=[p.keep,p.drop].concat(also);
+          const best=all.slice().sort((a,b)=>workScore(b).score-workScore(a).score)[0];
+          return (best && best.owner && best.owner!==p.keep.owner && workScore(best).score>0)?
+            `<option value="${best.owner}">${esc(memberName(best.owner))} — did the most work on this client</option>`:""; })()}
         ${p.drop.owner && p.drop.owner!==p.keep.owner? `<option value="${p.drop.owner}">Give it to ${esc(memberName(p.drop.owner))} (owner of the other record)</option>`:""}
         <option value="">Leave unassigned — decide later</option>
         ${state.members.filter(m=>!m.pending && canOwnLeads(m)).map(m=>`<option value="${m.id}">${esc(m.name)}${m.bd? " · Business Development":""}</option>`).join("")}
