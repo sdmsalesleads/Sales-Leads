@@ -742,7 +742,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "04 Aug 2026 · rev AG";
+const APP_BUILD = "04 Aug 2026 · rev AH";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -895,9 +895,9 @@ async function loadAll(){
   state.bdWeekly = (bw && bw.data)||[];
   const beforeSnap = currentUser? notifSnapshot() : null;
   state.members = (pr.data||[]).map(profileToMember);
-  state.leads = (ld.data||[]).map(leadFromDb);
+  state.leads = (ld.data||[]).map(leadFromDb).filter(l=>!isMergedAway(l));   // merged-away copies stay gone
   state.extSales = (ex.data||[]).map(extFromDb);
-  serverIds.leads = new Set(state.leads.map(l=>l.id));
+  serverIds.leads = new Set((ld.data||[]).map(r=>r.id));   // includes merged rows so the cleanup delete still fires
   serverIds.ext = new Set(state.extSales.map(e=>e.id));
   if(beforeSnap) notifDiff(beforeSnap);
   state.importLog = (il.data||[]).map(r=>({d:r.created_at, method:r.method, added:r.added,
@@ -1150,6 +1150,7 @@ function teamMembers(){
   return state.members.filter(m=>m.id===currentUser.id);
 }
 function scopeIds(){ return new Set(teamMembers().map(m=>m.id)); }
+function isMergedAway(l){ return !!(l && ((l.stageMeta && l.stageMeta.mergedInto) || l.deleted)); }
 function visibleLeads(){
   if(isFinance()) return state.leads.filter(l=>l.status==="Won");
   if(fullView()) return state.leads;
@@ -2208,7 +2209,7 @@ async function gsLoadFromSheet(){
     if(offset===PAGE*3) toast("Loading "+(page.total||"")+" leads from the workbook\u2026");
   }
   const d = first||{};
-  state.leads    = allLeads.map(gsToLead);
+  state.leads    = allLeads.map(gsToLead).filter(l=>!isMergedAway(l));   // merged-away copies stay gone
   state.extSales = (d.extSales||[]).map(gsToExt);
   state.bdWeekly = (d.bdWeekly||[]).map(gsToBd);
   state.importLog= (d.importLog||[]).map(r=>({d:r["Date"], method:r["Method"], added:r["Rows Added"],
@@ -5585,16 +5586,32 @@ function doMerge(keepId, dropId){
   if(ownerChanged) pushLog(keep, handedTo? ("Sole owner set to "+handedTo.name+" while merging, by "+currentUser.name)
                                          : ("Left unassigned after the merge by "+currentUser.name));
 
-  /* the copies are removed — soft-deleted in the workbook so the history survives */
+  /* STEP 1 — stamp each copy as merged away. This is an ordinary edit, which
+     every role that can merge is allowed to make, so it always saves. Even if
+     the tidy-up delete in step 2 is refused, the merge survives a refresh
+     because these records are filtered out everywhere. */
+  const stamp = new Date().toISOString();
   others.forEach(drop=>{
-    if(typeof gsMirrorNow==="function"){ drop.deleted = true; drop.deletedDate = today(); drop.deletedBy = currentUser.name; gsMirrorNow(drop); }
+    drop.stageMeta = drop.stageMeta || {};
+    drop.stageMeta.mergedInto = keepId;
+    drop.stageMeta.mergedAt = stamp;
+    drop.stageMeta.mergedBy = currentUser.name;
+    drop.deleted = true; drop.deletedDate = today(); drop.deletedBy = currentUser.name;
+    pushLog(drop, "Merged into \""+keep.name+"\" by "+currentUser.name+" — this copy is closed");
+    if(typeof gsMirrorNow==="function") gsMirrorNow(drop);
   });
-  const goneIds = new Set(others.map(d=>d.id));
-  state.leads = state.leads.filter(l=>!goneIds.has(l.id));
-
   keep.dupCleared = false;
   if(typeof gsMirrorLead==="function") gsMirrorLead(keep);
-  invalidateDupes(); persist(); closeMerge(); closeLeadModal(); render(); updateBell();
+  invalidateDupes(); persist();                       // saves the survivor AND the stamped copies
+
+  /* STEP 2 — now take them out of the working set; the next save removes the
+     rows for good where the database allows it. */
+  const goneIds = new Set(others.map(d=>d.id));
+  setTimeout(()=>{
+    state.leads = state.leads.filter(l=>!goneIds.has(l.id));
+    persist(); render();
+  }, 900);
+  closeMerge(); closeLeadModal(); render(); updateBell();
   toast(others.length+" duplicate"+(others.length>1?"s":"")+" merged and removed — one lead left"
     + (handedTo? " · now with "+handedTo.name : ""));
   if(handedTo) notifyAssigned([{m: handedTo, leads:[keep]}]);
