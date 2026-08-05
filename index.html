@@ -746,7 +746,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "05 Aug 2026 · rev AI";
+const APP_BUILD = "05 Aug 2026 · rev AJ";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -771,7 +771,7 @@ function memberToProfile(m){ return { name:m.name||"", role:m.roleKey||"pending"
   department:m.dept||"", phone:m.phone||"", annual_target:Number(m.target)||0, manager_id:m.managerId||null }; }
 
 /* ---- lead / external-sale mapping (camelCase app <-> snake_case db) ---- */
-function leadFromDb(r){ if(r && r.source) r = Object.assign({}, r, {source: normSource(r.source)}); return { id:r.id, name:r.name||"", company:r.company||"", custno:r.custno||"",
+function leadFromDb(r){ if(r && r.source) r = Object.assign({}, r, {source: normSource(r.source)}); return { mergedInto:r.merged_into||"", id:r.id, name:r.name||"", company:r.company||"", custno:r.custno||"",
   phone:r.phone||"", phone2:r.phone2||"", email:r.email||"", source:r.source||"", project:r.project||"",
   land:r.land==null?"":Number(r.land), industry:r.industry||"", priority:r.priority||"",
   status:r.status||"New", owner:r.owner||"", next:r.next_followup||"", nextTime:r.next_time||"",
@@ -805,6 +805,7 @@ function leadToDb(l){ return { id:l.id, name:l.name||"", company:l.company||"", 
   eoi_date:l.eoiDate||null, reservation_date:l.resDate||null, contract_date:l.contractDate||null,
   total_sold_value:(l.totalSold===""||l.totalSold==null)?null:Number(l.totalSold),
   stage_meta:l.stageMeta||{}, contract_reminded_at:l.contractRemindedAt||null,
+  merged_into:l.mergedInto||null,
   lead_date:l.created||today(),
   last_contact:l.lastContact||null, notes:l.notes||"", log:l.log||[], dup:l.dup||[],
   dup_cleared:!!l.dupCleared }; }
@@ -861,8 +862,12 @@ async function deleteChunked(table, ids, size){
     const {data, error} = await sb.from(table).delete().in("id", batch).select("id");
     if(error) throw error;
     if(data && data.length < batch.length){
-      throw new Error("the database did not allow removing "+(batch.length-(data?data.length:0))+
-        " record(s) — your access level cannot delete leads. Run the latest supabase_schema.sql, then try again.");
+      /* The change itself is already saved; only the tidy-up removal was
+         refused, so say that plainly rather than crying "not saved". */
+      const e = new Error((batch.length-(data?data.length:0))+" old record(s) could not be removed from the database — "+
+        "they stay hidden and nothing is lost. Run the latest supabase_schema.sql to clear them for good.");
+      e.soft = true;
+      throw e;
     }
   }
 }
@@ -922,6 +927,7 @@ function persist(){
   persistChain = persistChain.then(doSync).catch(e=>{
     console.error("Sync error", e);
     const msg = e.message||"check your connection";
+    if(e && e.soft){ toast("Saved · "+msg); return; }        // the edit landed; only the clean-up was refused
     toast("⚠ NOT SAVED — the server rejected the change: "+msg+" — it will retry; if this repeats, the database rules need updating (run the latest supabase_schema.sql).");
   });
 }
@@ -1156,7 +1162,7 @@ function teamMembers(){
   return state.members.filter(m=>m.id===currentUser.id);
 }
 function scopeIds(){ return new Set(teamMembers().map(m=>m.id)); }
-function isMergedAway(l){ return !!(l && ((l.stageMeta && l.stageMeta.mergedInto) || l.deleted)); }
+function isMergedAway(l){ return !!(l && (l.mergedInto || (l.stageMeta && l.stageMeta.mergedInto) || l.deleted)); }
 function visibleLeads(){
   if(isFinance()) return state.leads.filter(l=>l.status==="Won");
   if(fullView()) return state.leads;
@@ -2254,7 +2260,7 @@ function gsToLead(r){
     value:num(g("Cash Value (EGP)")), totalSold:num(g("Total Sold Value (EGP)")),
     wonDate:g("Won Date"), cashStatus:g("Cash Status"), cashBy:g("Cash Confirmed By"), cashDate:g("Cash Confirmed Date"),
     lostCat:g("Lost Category"), lostReason:g("Lost Reason"),
-    bdReady:g("BD Ready")==="Yes", dupCleared:false, notes:g("Notes"),
+    bdReady:g("BD Ready")==="Yes", mergedInto:g("Merged Into"), dupCleared:false, notes:g("Notes"),
     created:g("Created Date")||today(), log:log,
     stageMeta:{ reservationDate:g("Reservation Date"), eoiDate:g("EOI Date"), contractDate:g("Contract Date") },
     deleted:g("Deleted")==="Yes" };
@@ -2344,7 +2350,7 @@ function gsLeadRow(l){
     "Won Date": l.wonDate||"", "Cash Status": l.cashStatus||"",
     "Cash Confirmed By": l.cashBy||"", "Cash Confirmed Date": l.cashDate||"",
     "Lost Category": l.lostCat||"", "Lost Reason": l.lostReason||"",
-    "BD Ready": gsYN(l.bdReady), "Duplicate Flag": gsYN(isDupFlagged(l)), "Notes": l.notes||"",
+    "BD Ready": gsYN(l.bdReady), "Duplicate Flag": gsYN(isDupFlagged(l)), "Merged Into": l.mergedInto||"", "Notes": l.notes||"",
     "Last Activity": last? last.t : "", "Last Activity Date": last? (last.d+" "+(last.tm||"")).trim() : "",
     "Activities Count": log.length,
     /* every call, WhatsApp, note, meeting and status change, newest first */
@@ -5599,10 +5605,7 @@ function doMerge(keepId, dropId){
      because these records are filtered out everywhere. */
   const stamp = new Date().toISOString();
   others.forEach(drop=>{
-    drop.stageMeta = drop.stageMeta || {};
-    drop.stageMeta.mergedInto = keepId;
-    drop.stageMeta.mergedAt = stamp;
-    drop.stageMeta.mergedBy = currentUser.name;
+    drop.mergedInto = keepId;                     // its own field, writable by everyone who may merge
     drop.deleted = true; drop.deletedDate = today(); drop.deletedBy = currentUser.name;
     pushLog(drop, "Merged into \""+keep.name+"\" by "+currentUser.name+" — this copy is closed");
     if(typeof gsMirrorNow==="function") gsMirrorNow(drop);

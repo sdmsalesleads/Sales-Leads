@@ -88,6 +88,7 @@ create table if not exists public.leads (
   meeting_date date,
   meeting_time text not null default '',
   bd_ready boolean not null default false,
+  merged_into text,                     -- set when this record was merged into another lead
   offer_sent boolean not null default false,
   offer_date date,
   value numeric,
@@ -263,6 +264,9 @@ create or replace function public.enforce_lead_permissions() returns trigger
 language plpgsql security definer set search_path = public as $$
 declare r public.user_role := public.app_role();
         is_mkt boolean := r in ('marketing','marketingmgr');
+        -- Sales Operations and above merge duplicates, which rewrites the
+        -- surviving lead's details, so they may edit lead data directly.
+        is_curator boolean := r::text in ('salesops','opsmgr','director','admin');
         is_owner boolean := old.owner = auth.uid();
         is_team_mgr boolean := r::text in ('manager','director','bdmgr')
                                and old.owner in (select public.team_ids(auth.uid()));
@@ -271,15 +275,21 @@ begin
   if (new.custno, new.phone, new.email, new.source, new.priority, new.lead_date)
      is distinct from
      (old.custno, old.phone, old.email, old.source, old.priority, old.lead_date)
-     and not is_mkt then
-    raise exception 'Only the Marketing team can edit this lead data';
+     and not (is_mkt or is_curator) then
+    raise exception 'Only Marketing or Sales Operations can edit this lead data';
   end if;
   -- shared lead data: marketing OR the assigned salesperson / their manager
   if (new.name, new.company, new.phone2, new.project, new.land)
      is distinct from
      (old.name, old.company, old.phone2, old.project, old.land)
-     and not (is_mkt or is_owner or is_team_mgr) then
-    raise exception 'Only marketing or the assigned salesperson can edit these fields';
+     and not (is_mkt or is_owner or is_team_mgr or is_curator) then
+    raise exception 'Only marketing, the assigned salesperson or Sales Operations can edit these fields';
+  end if;
+  -- merging duplicates: marketing, Sales Operations, managers of the lead, or
+  -- the salesperson who owns it may mark a record as merged into another
+  if new.merged_into is distinct from old.merged_into
+     and not (is_mkt or is_curator or is_owner or is_team_mgr) then
+    raise exception 'You are not allowed to merge this lead';
   end if;
   -- distribution
   if new.owner is distinct from old.owner then
@@ -302,7 +312,7 @@ begin
       old.industry, old.qual_status, old.temperature, old.qual_notes,
       old.lost_cat, old.lost_reason, old.assigned_at, old.first_contact_at,
       old.reassign_count, old.bd_ready)
-     and not (is_mkt or is_owner or is_team_mgr or r::text in ('salesops','opsmgr','admin')) then
+     and not (is_mkt or is_owner or is_team_mgr or is_curator) then
     raise exception 'You can only update leads assigned to you';
   end if;
   -- transaction stages & commercial values: owner / manager / Sales Ops
@@ -313,7 +323,7 @@ begin
      (old.eoi_applicable, old.eoi_date, old.reservation_date, old.contract_date,
       old.total_sold_value, old.stage_meta, old.contract_reminded_at,
       old.value, old.sold_area, old.plot_no)
-     and not (is_owner or is_team_mgr or r::text in ('salesops','opsmgr','admin')
+     and not (is_owner or is_team_mgr or is_curator
               or (r::text in ('finance','finmgr','cfo') and old.status = 'Won')) then
     raise exception 'Not allowed to edit transaction or commercial fields';
   end if;
@@ -326,7 +336,7 @@ begin
       null; -- AR team: confirm, edit, reopen — all allowed
     elsif new.cash_status = 'pending'
           and coalesce(new.cash_by,'') = '' and new.cash_date is null
-          and (is_owner or is_team_mgr or is_mkt or r::text in ('salesops','opsmgr','admin')) then
+          and (is_owner or is_team_mgr or is_mkt or is_curator) then
       null; -- won transition marks the deal as awaiting AR — allowed
     else
       raise exception 'Only Accounts Receivable confirms cash values';
@@ -597,6 +607,9 @@ drop policy if exists deal_docs_delete on storage.objects;
 create policy deal_docs_delete on storage.objects for delete
   using (bucket_id = 'deal-docs'
          and public.app_role() in ('salesops','admin','director'));
+
+-- merge marker for existing databases
+alter table public.leads add column if not exists merged_into text;
 
 -- ============ Department manager tier (reports-to before C-level) ============
 do $$ begin
