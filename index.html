@@ -746,7 +746,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "05 Aug 2026 · rev AL";
+const APP_BUILD = "05 Aug 2026 · rev AN";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1623,7 +1623,10 @@ function viewDashboard(){
 
   <div class="section-head">
     <h2>Today's call sheet</h2>
-    ${canAddLead()?`<button class="btn btn-red btn-sm" onclick="openLeadModal()">+ Add lead</button>`:""}
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="exportLeadsExcel()" title="Download every lead you own as an Excel file">\u2b07 Download my leads</button>
+      ${canAddLead()?`<button class="btn btn-red btn-sm" onclick="openLeadModal()">+ Add lead</button>`:""}
+    </div>
   </div>
   <div class="card callsheet">
     <div class="cs-head"><span class="eyebrow red">Who to call today</span><span class="cs-date">${new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</span></div>
@@ -1891,6 +1894,7 @@ function viewLeads(){
   if(F.dup==="only") rows = rows.filter(l=>isDupFlagged(l));
   rows = sortLeads(rows, F.sort);
   const adm = canManage();
+  lastFilteredIds = rows.map(l=>l.id);            // so the export matches the list on screen
   const dupTotal = visibleLeads().filter(l=>isDupFlagged(l)).length;
   const selCount = selectedLeads.size;
 
@@ -1900,7 +1904,7 @@ function viewLeads(){
   <div class="section-head" style="margin-top:0">
     <h2>${adm?(fullView()?"All leads":"My team's leads"):"My leads"} <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0">— ${rows.length} of ${visibleLeads().length}</span></h2>
     <div style="display:flex;gap:8px">
-      ${adm?`<button class="btn btn-ghost btn-sm" onclick="exportLeadsExcel()">Export to Excel</button>`:""}
+      <button class="btn btn-ghost btn-sm" onclick="exportFiltered()">\u2b07 ${adm? "Export to Excel" : "Download my leads"}${rows.length!==visibleLeads().length? " ("+rows.length+")":""}</button>
       ${isMarketing()?`<button class="btn btn-ghost btn-sm" onclick="setView('data')">Import from Excel</button>`:""}
       ${canAddLead()?`<button class="btn btn-red btn-sm" onclick="openLeadModal()">+ Add lead</button>`:""}
     </div>
@@ -5410,7 +5414,16 @@ function findDupes(l, excludeId){ return dupMatches(l, excludeId).map(m=>m.id); 
 /* live engine — duplicates are COMPUTED from current data on every render,
    so a fixed phone number clears its warning instantly; nothing stale sticks */
 let dupDirty = true, _dupMap = new Map();
-function invalidateDupes(){ dupDirty = true; }
+let dupGen = 0, _dupSummary = null, _dupGroups = null, _dupCacheGen = -1, _dupCacheUser = "";
+function invalidateDupes(){ dupDirty = true; dupGen++; _dupSummary = null; _dupGroups = null; }
+function dupCacheOK(){
+  /* the summary and the grouping are expensive on a big book, so they are
+     worked out once per change rather than on every re-render */
+  const who = currentUser? currentUser.id : "";
+  if(_dupCacheGen===dupGen && _dupCacheUser===who) return true;
+  _dupCacheGen = dupGen; _dupCacheUser = who; _dupSummary = null; _dupGroups = null;
+  return false;
+}
 function rebuildDupes(){
   _dupMap = new Map();
   const buckets = new Map();
@@ -5446,16 +5459,17 @@ function flagDupes(l){
 function dupCount(){ return state.leads.filter(l=>isDupFlagged(l)).length; }
 /* how many customers are duplicated, and how many records that accounts for */
 function dupSummary(){
+  if(dupCacheOK() && _dupSummary) return _dupSummary;
   const flagged = visibleLeads().filter(l=>isDupFlagged(l));
-  if(!flagged.length) return {records:0, customers:0};
+  if(!flagged.length) return (_dupSummary = {records:0, customers:0});
   const seen = new Set(); let customers = 0;
   flagged.forEach(l=>{
     if(seen.has(l.id)) return;
     customers++;
     seen.add(l.id);
-    dupMatches(l, null).forEach(m=>seen.add(m.id));
+    leadDups(l).forEach(id=>seen.add(id));          // uses the prebuilt index, not a fresh scan
   });
-  return {records: flagged.length, customers};
+  return (_dupSummary = {records: flagged.length, customers});
 }
 /* How much real work a record has had. Whoever has actually worked the client
    should normally keep it, so this is what Sales Operations judges by. */
@@ -5484,6 +5498,7 @@ function workLabel(l){
 }
 /* every duplicate cluster in view, each with all of its copies */
 function dupGroups(){
+  if(dupCacheOK() && _dupGroups) return _dupGroups;
   const pool = visibleLeads().filter(l=>isDupFlagged(l));
   const seen = new Set(), groups = [];
   pool.forEach(l=>{
@@ -5497,7 +5512,7 @@ function dupGroups(){
       groups.push(uniq);
     }
   });
-  return groups;
+  return (_dupGroups = groups);
 }
 function dupGroupsCard(){
   const groups = dupGroups();
@@ -5557,15 +5572,18 @@ function dupCluster(keepId, seedId){
      another copy (A shares a number with B, B shares an email with C) */
   const keep = state.leads.find(l=>l.id===keepId);
   if(!keep) return [];
+  /* walk the prebuilt duplicate index rather than rescanning every lead —
+     the difference is seconds on a book of a few thousand */
+  const byId = new Map(state.leads.map(l=>[l.id, l]));
   const out = [], seen = new Set([keepId]);
-  const queue = (seedId? [seedId] : []).concat(dupMatches(keep, null).map(m=>m.id));
+  const queue = (seedId? [seedId] : []).concat(leadDups(keep));
   while(queue.length){
     const id = queue.shift();
     if(!id || seen.has(id)) continue;
-    const l = state.leads.find(x=>x.id===id);
+    const l = byId.get(id);
     if(!l) continue;
     seen.add(id); out.push(l);
-    dupMatches(l, null).forEach(m=>{ if(!seen.has(m.id)) queue.push(m.id); });
+    leadDups(l).forEach(x=>{ if(!seen.has(x)) queue.push(x); });
   }
   return out;
 }
@@ -6265,9 +6283,17 @@ function downloadTemplate(){
   XLSX.writeFile(wb, "Elsewedy_CRM_Lead_Template.xlsx");
 }
 
-function exportLeadsExcel(){
+let lastFilteredIds = null;                       // what the Leads page is showing right now
+function exportFiltered(){
+  const ids = lastFilteredIds;
+  const rows = (ids && ids.length)? ids.map(id=>state.leads.find(l=>l.id===id)).filter(Boolean) : null;
+  exportLeadsExcel(rows);
+}
+function exportLeadsExcel(filtered){
   if(typeof XLSX==="undefined"){ toast("Excel library not loaded — check internet connection"); return; }
-  const scope = visibleLeads();
+  /* what you can see is what you get: a salesperson exports their own leads,
+     a manager their team's, and Sales Operations or a director everything. */
+  const scope = (filtered && Array.isArray(filtered) && filtered.length)? filtered : visibleLeads();
   if(!scope.length){ toast("No leads to export yet"); return; }
   const wb = XLSX.utils.book_new();
   const rows = [XLSX_HEADERS, ...scope.map(leadToRow)];
@@ -6276,7 +6302,7 @@ function exportLeadsExcel(){
   XLSX.utils.book_append_sheet(wb, ws, "Leads");
   makeRefSheet(wb);
   XLSX.writeFile(wb, "Elsewedy_CRM_Leads"+(fullView()?"":"_"+currentUser.name.replace(/\s+/g,"_"))+"_"+today()+".xlsx");
-  toast("Exported "+scope.length+" leads");
+  toast("Downloaded "+scope.length+" lead"+(scope.length===1?"":"s")+" \u2014 check your downloads folder");
 }
 function normDate(v){
   if(v==null || v==="") return "";
