@@ -753,7 +753,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "06 Aug 2026 · rev AO";
+const APP_BUILD = "06 Aug 2026 · rev AP";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -929,6 +929,14 @@ async function loadAll(){
 /* ---- persist(): diff-syncs local changes to Supabase. Every mutation in the
    app already calls persist(), so this one function keeps the server current. ---- */
 let persistChain = Promise.resolve();
+/* Same save, but the caller gets the real outcome instead of fire-and-forget.
+   The chain itself is kept healthy so later saves still run. */
+function persistNow(){
+  invalidateDupes();
+  const p = persistChain.then(doSync);
+  persistChain = p.catch(()=>{});
+  return p;
+}
 function persist(){
   invalidateDupes();
   persistChain = persistChain.then(doSync).catch(e=>{
@@ -5753,20 +5761,35 @@ function doMerge(keepId, dropId){
   if(typeof gsMirrorLead==="function") gsMirrorLead(keep);
   invalidateDupes(); persist();                       // saves the survivor AND the stamped copies
 
-  /* STEP 2 — now take them out of the working set; the next save removes the
-     rows for good where the database allows it. */
   const goneIds = new Set(others.map(d=>d.id));
-  setTimeout(()=>{
-    state.leads = state.leads.filter(l=>!goneIds.has(l.id));
-    persist(); render();
-  }, 900);
   closeMerge(); closeLeadModal(); render(); updateBell();
-  if(handedTo) notifyAssigned([{m: handedTo, leads:[keep]}]);
-  /* said last so it is the message left on screen, not the assignment notice */
-  toast("\u2713 Merged and saved \u2014 "+others.length+" duplicate"+(others.length>1?"s":"")+" removed, one lead left ("
-    + keep.name + ")" + (handedTo? " \u00b7 now with "+handedTo.name : ""));
-  /* nothing reopens — the work is done and saved, so the person is left on
-     their list rather than back inside a lead they just finished with */
+  mergeSaveThenReport(keep, others, goneIds, handedTo);
+}
+/* Wait for the server before claiming anything. If it refuses, the screen is put
+   back the way the database actually has it, with the real reason shown — never
+   a success message for a change that did not save. */
+async function mergeSaveThenReport(keep, others, goneIds, handedTo){
+  toast("Merging \u2026");
+  try{
+    await persistNow();                                   // survivor + the stamped copies
+    state.leads = state.leads.filter(l=>!goneIds.has(l.id));
+    render();
+    try{ await persistNow(); }                            // remove the rows for good
+    catch(e){ if(!(e && e.soft)) throw e; }               // a refused clean-up is not a failure
+    if(handedTo) notifyAssigned([{m: handedTo, leads:[keep]}]);
+    toast("\u2713 Merged and saved \u2014 "+others.length+" duplicate"+(others.length>1?"s":"")+" removed, one lead left ("
+      + keep.name + ")" + (handedTo? " \u00b7 now with "+handedTo.name : ""));
+  }catch(err){
+    const msg = (err && err.message) || "the server did not accept the change";
+    let advice = "";
+    if(/merged_into|does not exist|schema cache/i.test(msg))
+      advice = " \u2014 your database is missing the merge column. Run the latest supabase_schema.sql in Supabase, then merge again.";
+    else if(/permission|policy|not allowed|row-level|Only /i.test(msg))
+      advice = " \u2014 the database rules have not been updated for your role. Run the latest supabase_schema.sql, then merge again.";
+    toast("\u26A0 MERGE NOT SAVED: "+msg+advice);
+    try{ await loadAll(); }catch(e){}                     // show what the database really holds
+    render(); updateBell();
+  }
 }
 /* ---- tell the owners by email ---- */
 function dupEmail(l, matches){
