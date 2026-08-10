@@ -224,8 +224,33 @@ th.num{text-align:right}
 
 /* Filters */
 .filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
-.filters input[type=search]{border:1px solid var(--line);border-radius:8px;padding:9px 12px;min-width:220px;background:#fff}
-.filters select{border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:#fff}
+/* one size and shape for every control in the filter row */
+.filters input[type=search], .filters select, .filters .srcpick > summary{
+  font-family:inherit; font-size:.9rem; line-height:1.2; height:38px; box-sizing:border-box;
+  border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink);
+}
+.filters input[type=search]{padding:9px 12px;min-width:220px}
+.filters select{padding:9px 10px}
+/* the multi-select source picker: matched to the native dropdowns beside it,
+   down to the chevron, so the filter row reads as one set of controls */
+.filters .srcpick{position:relative}
+.filters .srcpick > summary{
+  list-style:none; cursor:pointer; display:flex; align-items:center;
+  padding:9px 30px 9px 10px; white-space:nowrap; position:relative;
+}
+.filters .srcpick > summary::-webkit-details-marker{display:none}
+.filters .srcpick > summary::after{
+  content:""; position:absolute; right:11px; top:50%; width:8px; height:8px; margin-top:-5px;
+  border-right:1.6px solid #5A616B; border-bottom:1.6px solid #5A616B; transform:rotate(45deg);
+}
+.filters .srcpick[open] > summary::after{transform:rotate(-135deg); margin-top:-2px}
+/* the red outline marks that a filter is active — it stays while sources are chosen */
+.filters .srcpick.on > summary{border-color:var(--red); box-shadow:0 0 0 1px var(--red)}
+.filters .srcpick .srcmenu{
+  position:absolute; z-index:60; top:calc(100% + 6px); left:0; background:#fff;
+  border:1px solid var(--line); border-radius:10px; box-shadow:0 14px 34px rgba(0,0,0,.14);
+  padding:10px; min-width:240px; max-height:320px; overflow:auto;
+}
 
 /* Log */
 .log{display:flex;flex-direction:column;gap:10px;max-height:220px;overflow:auto}
@@ -759,7 +784,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "06 Aug 2026 · rev AS";
+const APP_BUILD = "07 Aug 2026 · rev AT";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1069,13 +1094,9 @@ function closeSrcPicker(){ srcPickerOpen = false; render(); }
 function sourceFilterUI(){
   const sel = srcSelected();
   const label = !sel.length? "All sources" : sel.length===1? sel[0] : sel.length+" sources";
-  return `<details class="srcpick" ${srcPickerOpen?"open":""} ontoggle="srcPickerOpen=this.open" style="position:relative">
-    <summary style="list-style:none;cursor:pointer;border:1px solid var(--line);border-radius:8px;padding:7px 11px;
-      background:#fff;font-size:.82rem;white-space:nowrap;${sel.length?"border-color:var(--red);font-weight:700":""}">
-      ${esc(label)} \u25be
-    </summary>
-    <div style="position:absolute;z-index:60;top:110%;left:0;background:#fff;border:1px solid var(--line);border-radius:10px;
-      box-shadow:0 14px 34px rgba(0,0,0,.14);padding:10px;min-width:230px;max-height:320px;overflow:auto">
+  return `<details class="srcpick ${sel.length?"on":""}" ${srcPickerOpen?"open":""} ontoggle="srcPickerOpen=this.open">
+    <summary>${esc(label)}</summary>
+    <div class="srcmenu">
       <div style="display:flex;gap:6px;margin-bottom:8px">
         <button class="btn btn-ghost btn-sm" onclick="setAllSources(true)">Select all</button>
         <button class="btn btn-ghost btn-sm" onclick="setAllSources(false)">Clear</button>
