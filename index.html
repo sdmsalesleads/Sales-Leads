@@ -759,7 +759,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "06 Aug 2026 · rev AR";
+const APP_BUILD = "06 Aug 2026 · rev AS";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1054,19 +1054,22 @@ let editingMemberId = null;
 let currentView = "dashboard";
 let leadFilters = { q:"", source:"", sources:[], status:"", project:"", owner:"", due:"", dup:"", sort:"" };
 /* pick any combination of channels: empty means every source */
+let srcPickerOpen = false;                 // the list is rebuilt on every render, so remember its state
 function srcSelected(){ return Array.isArray(leadFilters.sources)? leadFilters.sources : []; }
 function toggleSource(s, on){
   const cur = new Set(srcSelected());
   if(on) cur.add(s); else cur.delete(s);
   leadFilters.sources = [...cur];
   leadFilters.source = "";
+  srcPickerOpen = true;                    // stay open so several can be ticked in a row
   render();
 }
-function setAllSources(on){ leadFilters.sources = on? SOURCES.slice() : []; leadFilters.source=""; render(); }
+function setAllSources(on){ leadFilters.sources = on? SOURCES.slice() : []; leadFilters.source=""; srcPickerOpen = true; render(); }
+function closeSrcPicker(){ srcPickerOpen = false; render(); }
 function sourceFilterUI(){
   const sel = srcSelected();
   const label = !sel.length? "All sources" : sel.length===1? sel[0] : sel.length+" sources";
-  return `<details class="srcpick" style="position:relative">
+  return `<details class="srcpick" ${srcPickerOpen?"open":""} ontoggle="srcPickerOpen=this.open" style="position:relative">
     <summary style="list-style:none;cursor:pointer;border:1px solid var(--line);border-radius:8px;padding:7px 11px;
       background:#fff;font-size:.82rem;white-space:nowrap;${sel.length?"border-color:var(--red);font-weight:700":""}">
       ${esc(label)} \u25be
@@ -1076,6 +1079,7 @@ function sourceFilterUI(){
       <div style="display:flex;gap:6px;margin-bottom:8px">
         <button class="btn btn-ghost btn-sm" onclick="setAllSources(true)">Select all</button>
         <button class="btn btn-ghost btn-sm" onclick="setAllSources(false)">Clear</button>
+        <button class="btn btn-red btn-sm" style="margin-left:auto" onclick="closeSrcPicker()">Done</button>
       </div>
       ${SOURCES.map(s=>`<label style="display:flex;align-items:center;gap:8px;padding:5px 2px;font-size:.82rem;cursor:pointer">
         <input type="checkbox" ${sel.includes(s)?"checked":""} onchange="toggleSource('${s.replace(/'/g,"\\'")}', this.checked)"> ${esc(s)}
@@ -1544,7 +1548,9 @@ function closeSidebar(){
 }
 function toggleNotif(){ $("notifPanel").classList.toggle("open"); }
 document.addEventListener("click", e=>{
-  if(!e.target.closest("#bellBtn") && !e.target.closest("#notifPanel")) $("notifPanel").classList.remove("open");
+  const t = e.target;
+  if(!t || typeof t.closest!=="function") return;
+  if(!t.closest("#bellBtn") && !t.closest("#notifPanel")) $("notifPanel").classList.remove("open");
 });
 /* =================== Smart notifications (installed-app friendly) =================== */
 function notifOK(){ return typeof Notification!=="undefined" && Notification.permission==="granted"; }
@@ -3958,7 +3964,11 @@ document.addEventListener("keydown", e=>{
   if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==="k" && currentUser){ e.preventDefault(); const i=$("gsInput"); if(i){ i.focus(); i.select(); } }
 });
 document.addEventListener("click", e=>{
-  if(!e.target.closest("#gsWrap")){ const b=$("gsResults"); if(b){ b.style.display="none"; } }
+  const t = e.target;
+  const inside = sel => !!(t && typeof t.closest==="function" && t.closest(sel));
+  if(!inside("#gsWrap")){ const b=$("gsResults"); if(b){ b.style.display="none"; } }
+  /* clicking anywhere outside the source list closes it */
+  if(srcPickerOpen && !inside(".srcpick")){ srcPickerOpen = false; const d=document.querySelector(".srcpick"); if(d) d.open=false; }
 });
 
 /* =================== Conversion funnel =================== */
