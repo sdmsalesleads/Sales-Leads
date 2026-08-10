@@ -649,7 +649,13 @@ function logoTryNext(img){
 const SOURCES = ["Website","Billboard","Google SEM","Facebook","Instagram","LinkedIn","YouTube","Radio","Mobile App","Event / Exhibition","Management","Referral","Personal","Walk-In","BD Research"];
 /* "Business Development" and "BD Research" were two names for the same team.
    Only BD Research remains; anything imported under the old name is read as it. */
-const SOURCE_ALIASES = { "Business Development": "BD Research", "BD": "BD Research", "Business development": "BD Research" };
+const SOURCE_ALIASES = {
+  "Business Development": "BD Research", "BD": "BD Research", "Business development": "BD Research",
+  /* the paid-search channel has been written several ways over the years */
+  "Google": "Google SEM", "google": "Google SEM", "Google Ads": "Google SEM", "Google ads": "Google SEM",
+  "Adwords": "Google SEM", "AdWords": "Google SEM", "SEM": "Google SEM", "Google Search": "Google SEM",
+  "Google SEM ": "Google SEM"
+};
 function normSource(s){ const v = String(s||"").trim(); return SOURCE_ALIASES[v] || v; }
 /* A lead counts as marketing-generated unless the salesperson found it themselves.
    Referral and Walk-In DO count as marketing — the company's presence is what
@@ -753,7 +759,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "06 Aug 2026 · rev AP";
+const APP_BUILD = "06 Aug 2026 · rev AR";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -812,7 +818,7 @@ function leadToDb(l){ return { id:l.id, name:l.name||"", company:l.company||"", 
   eoi_date:l.eoiDate||null, reservation_date:l.resDate||null, contract_date:l.contractDate||null,
   total_sold_value:(l.totalSold===""||l.totalSold==null)?null:Number(l.totalSold),
   stage_meta:l.stageMeta||{}, contract_reminded_at:l.contractRemindedAt||null,
-  merged_into:l.mergedInto||null,
+  ...(HAS_MERGED_COL && l.mergedInto? {merged_into:l.mergedInto} : {}),
   lead_date:l.created||today(),
   last_contact:l.lastContact||null, notes:l.notes||"", log:l.log||[], dup:l.dup||[],
   dup_cleared:!!l.dupCleared }; }
@@ -933,7 +939,11 @@ let persistChain = Promise.resolve();
    The chain itself is kept healthy so later saves still run. */
 function persistNow(){
   invalidateDupes();
-  const p = persistChain.then(doSync);
+  const p = persistChain.then(doSync).catch(async e=>{
+    /* an older database rejects the new column — learn that once and save again */
+    if(noteMissingMergedCol(e && e.message)){ return doSync(); }
+    throw e;
+  });
   persistChain = p.catch(()=>{});
   return p;
 }
@@ -941,6 +951,7 @@ function persist(){
   invalidateDupes();
   persistChain = persistChain.then(doSync).catch(e=>{
     console.error("Sync error", e);
+    if(noteMissingMergedCol(e && e.message)) return doSync().catch(()=>{});   // retry without the new column
     const msg = e.message||"check your connection";
     if(e && e.soft){ toast("Saved · "+msg); return; }        // the edit landed; only the clean-up was refused
     toast("⚠ NOT SAVED — the server rejected the change: "+msg+" — it will retry; if this repeats, the database rules need updating (run the latest supabase_schema.sql).");
@@ -1041,7 +1052,37 @@ let currentUser = null;
 let editingLeadId = null;
 let editingMemberId = null;
 let currentView = "dashboard";
-let leadFilters = { q:"", source:"", status:"", project:"", owner:"", due:"", dup:"", sort:"" };
+let leadFilters = { q:"", source:"", sources:[], status:"", project:"", owner:"", due:"", dup:"", sort:"" };
+/* pick any combination of channels: empty means every source */
+function srcSelected(){ return Array.isArray(leadFilters.sources)? leadFilters.sources : []; }
+function toggleSource(s, on){
+  const cur = new Set(srcSelected());
+  if(on) cur.add(s); else cur.delete(s);
+  leadFilters.sources = [...cur];
+  leadFilters.source = "";
+  render();
+}
+function setAllSources(on){ leadFilters.sources = on? SOURCES.slice() : []; leadFilters.source=""; render(); }
+function sourceFilterUI(){
+  const sel = srcSelected();
+  const label = !sel.length? "All sources" : sel.length===1? sel[0] : sel.length+" sources";
+  return `<details class="srcpick" style="position:relative">
+    <summary style="list-style:none;cursor:pointer;border:1px solid var(--line);border-radius:8px;padding:7px 11px;
+      background:#fff;font-size:.82rem;white-space:nowrap;${sel.length?"border-color:var(--red);font-weight:700":""}">
+      ${esc(label)} \u25be
+    </summary>
+    <div style="position:absolute;z-index:60;top:110%;left:0;background:#fff;border:1px solid var(--line);border-radius:10px;
+      box-shadow:0 14px 34px rgba(0,0,0,.14);padding:10px;min-width:230px;max-height:320px;overflow:auto">
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button class="btn btn-ghost btn-sm" onclick="setAllSources(true)">Select all</button>
+        <button class="btn btn-ghost btn-sm" onclick="setAllSources(false)">Clear</button>
+      </div>
+      ${SOURCES.map(s=>`<label style="display:flex;align-items:center;gap:8px;padding:5px 2px;font-size:.82rem;cursor:pointer">
+        <input type="checkbox" ${sel.includes(s)?"checked":""} onchange="toggleSource('${s.replace(/'/g,"\\'")}', this.checked)"> ${esc(s)}
+      </label>`).join("")}
+    </div>
+  </details>`;
+}
 function canSelectLeads(){ return canManage(); }          // anyone who oversees leads can work on several at once
 function dupGroupKey(l){
   /* leads that duplicate each other share this key, so sorting clusters them */
@@ -1081,7 +1122,7 @@ function sortLeads(rows, mode){
   return rows.slice().sort(byNext);
 }
 function kpiGo(patch, view){
-  Object.assign(leadFilters, {q:"", source:"", status:"", project:"", owner:"", due:"", dup:"", sort:""}, patch||{});
+  Object.assign(leadFilters, {q:"", source:"", sources:[], status:"", project:"", owner:"", due:"", dup:"", sort:""}, patch||{});
   setView(view||"leads");
 }
 let selectedLeads = new Set();
@@ -1177,7 +1218,22 @@ function teamMembers(){
   return state.members.filter(m=>m.id===currentUser.id);
 }
 function scopeIds(){ return new Set(teamMembers().map(m=>m.id)); }
-function isMergedAway(l){ return !!(l && (l.mergedInto || (l.stageMeta && l.stageMeta.mergedInto) || l.deleted)); }
+/* The merged_into column only exists once the latest SQL has been run. Until
+   then we simply never send it — otherwise EVERY lead save would be rejected,
+   not just merges. The fallback tag below does the same job without it. */
+let HAS_MERGED_COL = true;
+function noteMissingMergedCol(msg){
+  if(/merged_into|schema cache|column .* does not exist/i.test(String(msg||""))){ HAS_MERGED_COL = false; return true; }
+  return false;
+}
+const MERGE_TAG = "Merged duplicate";
+/* A merged-away copy is recognised three ways, so it stays gone even on a
+   database that has not had the newest columns added yet:
+   the merged_into column, the lost-reason tag (plain existing columns), or the
+   in-memory delete flag. */
+function isMergedAway(l){
+  return !!(l && (l.mergedInto || l.lostCat===MERGE_TAG || (l.stageMeta && l.stageMeta.mergedInto) || l.deleted));
+}
 function visibleLeads(){
   if(isFinance()) return state.leads.filter(l=>l.status==="Won");
   if(fullView()) return state.leads;
@@ -1887,7 +1943,10 @@ function viewLeads(){
     const q = F.q.toLowerCase().trim();
     const qd = arDigits(q).replace(/[^0-9]/g,"");          // what the person typed, digits only
     rows = rows.filter(l=>{
-      if([l.name,l.company,l.phone,l.phone2,l.custno,l.email,l.notes,l.industry].join(" ").toLowerCase().includes(q)) return true;
+      /* the normalised source is searched too, so "Google SEM" also finds the
+         rows still written as "Google" or "Google Ads" */
+      if([l.name,l.company,l.phone,l.phone2,l.custno,l.email,l.notes,l.industry,
+          l.source,normSource(l.source),l.project,l.status].join(" ").toLowerCase().includes(q)) return true;
       if(qd.length>=4){
         /* phone match that ignores +2, 002, a leading 0 and any spaces or
            dashes: compare on the last 10 digits of each number */
@@ -1906,6 +1965,8 @@ function viewLeads(){
   if(F.due==="overdue") rows = rows.filter(l=>l.next && l.next<t && l.status!=="Won" && l.status!=="Lost");
   if(F.due==="today") rows = rows.filter(l=>l.next===t && l.status!=="Won" && l.status!=="Lost");
   if(F.due==="none") rows = rows.filter(l=>!l.next && l.status!=="Won" && l.status!=="Lost");
+  const srcSel = srcSelected();
+  if(srcSel.length) rows = rows.filter(l=>srcSel.includes(normSource(l.source)));
   if(F.dup==="only") rows = rows.filter(l=>isDupFlagged(l));
   rows = sortLeads(rows, F.sort);
   const adm = canManage();
@@ -1928,7 +1989,7 @@ function viewLeads(){
     <input type="search" id="fl_q" placeholder="Search name, company, phone (with or without +2)…" value="${esc(F.q)}">
     ${adm?`<select id="fl_owner"><option value="">All owners</option>${fullView()?`<option value="__none" ${F.owner==="__none"?"selected":""}>Unassigned</option>`:""}${teamMembers().filter(canOwnLeads).map(m=>`<option value="${m.id}" ${F.owner===m.id?"selected":""}>${esc(m.name)}${m.bd? " · BD":""}</option>`).join("")}</select>`:""}
     <select id="fl_status"><option value="">All statuses</option>${STATUSES.map(s=>`<option ${F.status===s?"selected":""}>${s}</option>`).join("")}</select>
-    <select id="fl_source"><option value="">All sources</option>${SOURCES.map(s=>`<option ${F.source===s?"selected":""}>${s}</option>`).join("")}</select>
+    ${sourceFilterUI()}
     <select id="fl_project"><option value="">All projects</option>${PROJECTS.map(p=>`<option ${F.project===p?"selected":""}>${p}</option>`).join("")}</select>
     <select id="fl_dup"><option value="">All leads</option><option value="only" ${F.dup==="only"?"selected":""}>\u26A0 Duplicates only${dupTotal?" ("+dupTotal+")":""}</option></select>
     <select id="fl_sort"><option value="">Sort: follow-up date</option><option value="dupes" ${F.sort==="dupes"?"selected":""}>Sort: duplicates grouped together</option><option value="newest" ${F.sort==="newest"?"selected":""}>Sort: newest first</option><option value="name" ${F.sort==="name"?"selected":""}>Sort: name A\u2013Z</option><option value="company" ${F.sort==="company"?"selected":""}>Sort: company A\u2013Z</option><option value="value" ${F.sort==="value"?"selected":""}>Sort: highest value</option><option value="land" ${F.sort==="land"?"selected":""}>Sort: land size \u2014 largest first</option><option value="landsm" ${F.sort==="landsm"?"selected":""}>Sort: land size \u2014 smallest first</option></select>
@@ -2029,7 +2090,7 @@ function bulkDelete(){
   toast(rows.length+" lead"+(rows.length===1?"":"s")+" deleted");
 }
 function bindLeadFilters(){
-  const map = {fl_q:"q", fl_owner:"owner", fl_status:"status", fl_source:"source", fl_project:"project", fl_due:"due", fl_dup:"dup", fl_sort:"sort"};
+  const map = {fl_q:"q", fl_owner:"owner", fl_status:"status", fl_project:"project", fl_due:"due", fl_dup:"dup", fl_sort:"sort"};
   Object.entries(map).forEach(([id,key])=>{
     const el=$(id); if(!el) return;
     el.addEventListener(id==="fl_q"?"input":"change", ()=>{ leadFilters[key]=el.value; render(); const el2=$(id); if(el2 && id==="fl_q"){ el2.focus(); el2.setSelectionRange(el2.value.length, el2.value.length);} });
@@ -5752,7 +5813,10 @@ function doMerge(keepId, dropId){
      because these records are filtered out everywhere. */
   const stamp = new Date().toISOString();
   others.forEach(drop=>{
-    drop.mergedInto = keepId;                     // its own field, writable by everyone who may merge
+    drop.mergedInto = keepId;                     // the proper column, when the database has it
+    drop.status = "Lost";                         // and a fallback using columns every database already has
+    drop.lostCat = MERGE_TAG;
+    drop.lostReason = "Merged into "+keep.name+" by "+currentUser.name;
     drop.deleted = true; drop.deletedDate = today(); drop.deletedBy = currentUser.name;
     pushLog(drop, "Merged into \""+keep.name+"\" by "+currentUser.name+" — this copy is closed");
     if(typeof gsMirrorNow==="function") gsMirrorNow(drop);
@@ -5771,7 +5835,16 @@ function doMerge(keepId, dropId){
 async function mergeSaveThenReport(keep, others, goneIds, handedTo){
   toast("Merging \u2026");
   try{
-    await persistNow();                                   // survivor + the stamped copies
+    try{ await persistNow(); }                            // survivor + the stamped copies
+    catch(e){
+      const m = (e && e.message) || "";
+      if(/merged_into|schema cache|does not exist/i.test(m)){
+        /* older database: forget the new column and rely on the fallback tag */
+        others.forEach(d=>{ d.mergedInto = ""; });
+        keep.mergedInto = "";
+        await persistNow();
+      } else throw e;
+    }
     state.leads = state.leads.filter(l=>!goneIds.has(l.id));
     render();
     try{ await persistNow(); }                            // remove the rows for good
