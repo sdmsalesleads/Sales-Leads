@@ -784,7 +784,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "07 Aug 2026 · rev AT";
+const APP_BUILD = "07 Aug 2026 · rev AU";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -809,7 +809,13 @@ function memberToProfile(m){ return { name:m.name||"", role:m.roleKey||"pending"
   department:m.dept||"", phone:m.phone||"", annual_target:Number(m.target)||0, manager_id:m.managerId||null }; }
 
 /* ---- lead / external-sale mapping (camelCase app <-> snake_case db) ---- */
-function leadFromDb(r){ if(r && r.source) r = Object.assign({}, r, {source: normSource(r.source)}); return { mergedInto:r.merged_into||"", id:r.id, name:r.name||"", company:r.company||"", custno:r.custno||"",
+function leadFromDb(r){
+  /* The stored value is kept exactly as it is. Old spellings like "Google" are
+     translated only where they are COMPARED (search, filters, reports) — never
+     written back, or every save by a salesperson would try to change the
+     source, which the database reserves for Marketing and Sales Operations. */
+  return { srv:{custno:r.custno||"", phone:r.phone||"", email:r.email||"", source:r.source||"", priority:r.priority||"", created:r.lead_date||""},
+    mergedInto:r.merged_into||"", id:r.id, name:r.name||"", company:r.company||"", custno:r.custno||"",
   phone:r.phone||"", phone2:r.phone2||"", email:r.email||"", source:r.source||"", project:r.project||"",
   land:r.land==null?"":Number(r.land), industry:r.industry||"", priority:r.priority||"",
   status:r.status||"New", owner:r.owner||"", next:r.next_followup||"", nextTime:r.next_time||"",
@@ -827,7 +833,17 @@ function leadFromDb(r){ if(r && r.source) r = Object.assign({}, r, {source: norm
   created:r.lead_date||"",
   lastContact:r.last_contact||"", notes:r.notes||"", log:Array.isArray(r.log)?r.log:[],
   dup:Array.isArray(r.dup)?r.dup:[], dupCleared:!!r.dup_cleared }; }
-function leadToDb(l){ return { id:l.id, name:l.name||"", company:l.company||"", custno:l.custno||"",
+/* Marketing and Sales Operations own the customer's identity details; everyone
+   else may work the lead but not rewrite who it is. */
+function canEditIdentity(){ return isMarketing() || canDistribute() || (currentUser && (currentUser.admin || currentUser.director)); }
+function leadToDb(l){
+  if(l.srv && !canEditIdentity()){
+    /* send the values the database already holds, so a reformatted phone or a
+       translated source can never turn an ordinary update into a rejected one */
+    l = Object.assign({}, l, {custno:l.srv.custno, phone:l.srv.phone, email:l.srv.email,
+                              source:l.srv.source, priority:l.srv.priority, created:l.srv.created||l.created});
+  }
+  return { id:l.id, name:l.name||"", company:l.company||"", custno:l.custno||"",
   phone:l.phone||"", phone2:l.phone2||"", email:l.email||"", source:l.source||"", project:l.project||"",
   land:(l.land===""||l.land==null)?null:Number(l.land), industry:l.industry||"", priority:l.priority||"",
   status:l.status||"New", owner:l.owner||null, next_followup:l.next||null, next_time:l.nextTime||"",
@@ -962,11 +978,29 @@ async function loadAll(){
 let persistChain = Promise.resolve();
 /* Same save, but the caller gets the real outcome instead of fire-and-forget.
    The chain itself is kept healthy so later saves still run. */
+/* If the database ever refuses because of the identity rule, fall back to the
+   values it already holds and save again — the person's real work (status,
+   notes, follow-ups) must never be lost to a formatting difference. */
+function healIdentityDrift(msg){
+  if(!/Only Marketing or Sales Operations|edit this lead data/i.test(String(msg||""))) return false;
+  let fixed = 0;
+  state.leads.forEach(l=>{
+    if(!l.srv) return;
+    if(l.custno!==l.srv.custno || l.phone!==l.srv.phone || l.email!==l.srv.email ||
+       l.source!==l.srv.source || l.priority!==l.srv.priority){
+      l.custno=l.srv.custno; l.phone=l.srv.phone; l.email=l.srv.email;
+      l.source=l.srv.source; l.priority=l.srv.priority;
+      fixed++;
+    }
+  });
+  return fixed>0;
+}
 function persistNow(){
   invalidateDupes();
   const p = persistChain.then(doSync).catch(async e=>{
     /* an older database rejects the new column — learn that once and save again */
     if(noteMissingMergedCol(e && e.message)){ return doSync(); }
+    if(healIdentityDrift(e && e.message)){ return doSync(); }
     throw e;
   });
   persistChain = p.catch(()=>{});
@@ -977,6 +1011,7 @@ function persist(){
   persistChain = persistChain.then(doSync).catch(e=>{
     console.error("Sync error", e);
     if(noteMissingMergedCol(e && e.message)) return doSync().catch(()=>{});   // retry without the new column
+    if(healIdentityDrift(e && e.message)) return doSync().catch(()=>{});      // restore identity fields and retry
     const msg = e.message||"check your connection";
     if(e && e.soft){ toast("Saved · "+msg); return; }        // the edit landed; only the clean-up was refused
     toast("⚠ NOT SAVED — the server rejected the change: "+msg+" — it will retry; if this repeats, the database rules need updating (run the latest supabase_schema.sql).");
@@ -1310,7 +1345,7 @@ function periodTabs(){
   return `<div style="display:flex;gap:6px" class="no-print">${["week","quarter","year"].map(p=>
     `<button class="btn btn-sm ${reportPeriod===p?"btn-red":"btn-ghost"}" onclick="setPeriod('${p}')">${periodLabel(p)}</button>`).join("")}</div>`;
 }
-function isMktSource(src){ return !!src && !NON_MARKETING_SOURCES.includes(src); }
+function isMktSource(src){ const s = normSource(src); return !!s && !NON_MARKETING_SOURCES.includes(s); }
 
 /* =================== Authentication (Supabase) =================== */
 let authMode = "signin";
@@ -2755,8 +2790,12 @@ function saveLead(){
       l.meetingTime = $("f_meetingTime").value;
       if(!l.next) l.next = l.meetingDate;                       // follow-up defaults to the meeting day
     } else { l.meetingDate = ""; l.meetingTime = ""; }
-    if(l.phone)  l.phone  = phoneIntl(l.phone)  || l.phone;    // always stored in international form
-    if(l.phone2) l.phone2 = phoneIntl(l.phone2) || l.phone2;
+    /* only tidy the numbers when this person is allowed to change them, and only
+       when they actually typed something different */
+    if(canEditIdentity()){
+      if(l.phone)  l.phone  = phoneIntl(l.phone)  || l.phone;
+      if(l.phone2) l.phone2 = phoneIntl(l.phone2) || l.phone2;
+    }
     l.offerSent = $("f_offer").checked;
     l.offerDate = $("f_offer").checked? ($("f_offerDate").value||today()) : "";
     l.industry = $("f_industry").value;
