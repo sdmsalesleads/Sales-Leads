@@ -534,41 +534,54 @@ function logoTryNext(img){
 /* ---- offer pack: cover and project pages ---- */
 .pk-doc{display:flex;flex-direction:column;gap:18px;align-items:center}
 .pk-page{width:820px;min-height:1160px;background:#fff;color:#15181c;box-sizing:border-box;
-  font-family:Arial,Helvetica,sans-serif;position:relative;padding:46px 52px;
-  box-shadow:0 10px 40px rgba(0,0,0,.28);display:flex;flex-direction:column}
-.pk-logo{font-weight:800;font-size:19px;letter-spacing:.14em;line-height:1;color:#15181c}
-.pk-logo span{display:block;font-size:8.5px;letter-spacing:.34em;color:#9a9a9a;font-weight:700;margin-top:4px}
-.pk-logo.sm{font-size:13px}.pk-logo.sm span{font-size:6.5px;margin-top:3px}
+  font-family:'Archivo','Helvetica Neue',Arial,sans-serif;position:relative;padding:46px 52px;
+  box-shadow:0 10px 40px rgba(0,0,0,.28);display:flex;flex-direction:column;
+  -webkit-font-smoothing:antialiased}
+.pk-mark{height:46px;width:auto;display:block}
+.pk-mark.sm{height:30px}
 /* cover */
 .pk-cover{padding:0;justify-content:space-between}
 .pk-cover-top{display:flex;justify-content:space-between;align-items:flex-start;padding:46px 52px 0}
 .pk-cover-date{font-size:11px;color:#8a9099;letter-spacing:.06em}
 .pk-cover-mid{padding:0 52px;margin-top:auto;margin-bottom:auto}
-.pk-kicker{font-size:10px;font-weight:800;letter-spacing:.28em;text-transform:uppercase;color:#C00000}
-.pk-title{font-size:44px;line-height:1.05;font-weight:800;letter-spacing:-.01em;margin:14px 0 0}
+.pk-kicker{font-size:9.5px;font-weight:700;letter-spacing:.34em;text-transform:uppercase;color:#C00000}
+.pk-title{font-family:'Cormorant Garamond',Georgia,serif;font-size:58px;line-height:1.02;font-weight:600;
+  letter-spacing:-.005em;margin:18px 0 0;color:#15181c}
 .pk-rule{width:96px;height:4px;background:#C00000;margin:22px 0 26px}
 .pk-prep{display:flex;gap:44px;flex-wrap:wrap}
 .pk-prep div{font-size:12px}
-.pk-prep span{display:block;font-size:9px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#9a9a9a;margin-bottom:5px}
-.pk-prep b{display:block;font-size:15px}
+.pk-prep span{display:block;font-size:8.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#a5a5a5;margin-bottom:6px}
+.pk-prep b{display:block;font-family:'Cormorant Garamond',Georgia,serif;font-size:22px;font-weight:600;line-height:1.15}
 .pk-prep i{display:block;font-style:normal;font-size:11px;color:#7a7f85;margin-top:2px}
 .pk-cover-foot{margin-top:auto}
 .pk-strip{height:9px;background:linear-gradient(90deg,#C00000 0 62%,#15181c 62% 100%)}
 .pk-foot-row{display:flex;justify-content:space-between;padding:12px 52px 34px;font-size:9.5px;color:#8a9099;letter-spacing:.05em}
 /* project page */
 .pk-head{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #15181c;padding-bottom:10px}
-.pk-head-t{font-size:9.5px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:#C00000}
-.pk-h2{font-size:29px;font-weight:800;margin:22px 0 2px;letter-spacing:-.01em}
+.pk-head-t{font-size:9px;font-weight:700;letter-spacing:.26em;text-transform:uppercase;color:#C00000}
+.pk-h2{font-family:'Cormorant Garamond',Georgia,serif;font-size:38px;font-weight:600;margin:24px 0 2px;letter-spacing:0}
 .pk-sub{font-size:12px;color:#7a7f85;margin-bottom:20px}
 .pk-two{display:grid;grid-template-columns:300px 1fr;gap:26px;align-items:start}
-.pk-mapbox{border:1px solid #E2E0DC;border-radius:6px;overflow:hidden;background:#F5F4F2}
-.pk-map{width:100%;height:auto;display:block}
+.pk-mapbox{border:1px solid #E2E0DC;border-radius:4px;overflow:hidden;background:#F5F4F2}
+.pk-mapbox > .pk-mapscale{width:298px;height:298px}
+.pk-mapimg{position:relative;width:768px;height:768px;overflow:hidden;transform-origin:top left}
+.pk-tiles{display:grid;grid-template-columns:repeat(3,256px);grid-template-rows:repeat(3,256px);width:768px;height:768px}
+.pk-tiles img{display:block;width:256px;height:256px}
+.pk-pin{position:absolute;transform:translate(-50%,-50%);pointer-events:none}
+.pk-pin-dot{position:absolute;left:-7px;top:-7px;width:14px;height:14px;border-radius:50%;background:#C00000;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.pk-pin-ring{position:absolute;left:-19px;top:-19px;width:38px;height:38px;border-radius:50%;border:2px solid rgba(192,0,0,.55)}
+.pk-pin-lbl{position:absolute;left:26px;top:-11px;background:#fff;border-left:3px solid #C00000;
+  padding:4px 10px;font-size:13px;font-weight:700;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.25);
+  font-family:'Archivo',Arial,sans-serif}
+.pk-mapcredit{position:absolute;right:0;bottom:0;background:rgba(255,255,255,.82);font-size:9px;color:#5a5f65;padding:2px 6px}
+.pk-mapscale{width:300px;height:300px;overflow:hidden;position:relative}
+.pk-mapscale .pk-mapimg{transform:scale(0.3906)}
 .pk-coord{padding:9px 11px;font-size:9.5px;color:#7a7f85;border-top:1px solid #E2E0DC;line-height:1.55;background:#fff}
 .pk-coord a{color:#C00000;text-decoration:none;font-weight:700}
 .pk-facts{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:20px}
 .pk-fact{border-left:3px solid #C00000;padding:2px 0 2px 10px}
 .pk-fact span{display:block;font-size:8.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#9a9a9a}
-.pk-fact b{font-size:14px}
+.pk-fact b{font-family:'Cormorant Garamond',Georgia,serif;font-size:20px;font-weight:600}
 .pk-lbl{font-size:9px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:#C00000;margin:0 0 8px}
 .pk-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px}
 .pk-chips span{border:1px solid #DCD9D4;border-radius:2px;padding:4px 9px;font-size:10px;font-weight:600}
@@ -1011,7 +1024,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "18 Aug 2026 · rev BE";
+const APP_BUILD = "18 Aug 2026 · rev BF";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -3721,38 +3734,41 @@ const PARK_FACTS = {
          "15 km from Ain Sokhna Port","470,000 m² logistics zone"] }
 };
 /* a clean vector locator map — no external tiles, so it prints and travels */
-function parkMapSvg(key){
+function parkMapImg(key){
+  /* A genuine map, stitched from open map tiles around the exact coordinates.
+     Three by three tiles at street-region zoom, with the plot marked. */
   const f = PARK_FACTS[key]; if(!f) return "";
-  /* Egypt bounding box for the mini locator */
-  const B = {w:24.7, e:35.9, s:21.7, n:31.9};
-  const X = lon => ((lon-B.w)/(B.e-B.w))*300;
-  const Y = lat => ((B.n-lat)/(B.n-B.s))*300;
-  const px = X(f.coord[1]), py = Y(f.coord[0]);
-  const pin = (lon,lat,label,me) => {
-    const x=X(lon), y=Y(lat);
-    return `<g><circle cx="${x}" cy="${y}" r="${me?5:2.6}" fill="${me?'#C00000':'#9aa0a6'}"/>
-      ${me? `<circle cx="${x}" cy="${y}" r="10" fill="none" stroke="#C00000" stroke-width="1.2" opacity=".55"/>`:""}
-      <text x="${x+ (me?12:5)}" y="${y+3}" font-size="${me?10:7.5}" font-weight="${me?800:500}"
-        fill="${me?'#C00000':'#7a7f85'}">${label}</text></g>`;
-  };
-  const cities = [[31.2357,30.0444,"Cairo"],[29.9187,31.2001,"Alexandria"],[32.5498,29.9668,"Suez"],
-                  [32.3019,30.5852,"Port Said"],[31.3260,30.7865,"Damietta"]];
-  return `<svg viewBox="0 0 300 300" class="pk-map">
-    <rect x="0" y="0" width="300" height="300" fill="#F5F4F2"/>
-    <path d="M ${X(25.0)} ${Y(31.6)} L ${X(34.9)} ${Y(31.5)} L ${X(34.3)} ${Y(27.8)} L ${X(35.7)} ${Y(23.1)}
-             L ${X(33.0)} ${Y(21.9)} L ${X(24.9)} ${Y(21.9)} Z" fill="#E8E6E2" stroke="#CFCCC6" stroke-width="1"/>
-    <path d="M ${X(32.3)} ${Y(31.2)} L ${X(32.55)} ${Y(29.9)}" stroke="#9BC4E2" stroke-width="2.2" fill="none"/>
-    <path d="M ${X(31.0)} ${Y(31.5)} L ${X(31.2)} ${Y(30.0)} L ${X(32.9)} ${Y(24.0)}" stroke="#9BC4E2" stroke-width="1.6" fill="none" opacity=".8"/>
-    ${cities.map(c=>pin(c[0],c[1],c[2],false)).join("")}
-    ${pin(f.coord[1], f.coord[0], f.name, true)}
-  </svg>`;
+  const z = 12, lat = f.coord[0], lon = f.coord[1];
+  const n = Math.pow(2, z);
+  const xf = (lon+180)/360*n;
+  const latRad = lat*Math.PI/180;
+  const yf = (1 - Math.log(Math.tan(latRad) + 1/Math.cos(latRad))/Math.PI)/2*n;
+  const cx = Math.floor(xf), cy = Math.floor(yf);
+  const offX = (xf-cx)*256, offY = (yf-cy)*256;      // where the pin sits in the centre tile
+  const rows = [];
+  for(let dy=-1; dy<=1; dy++){
+    const row = [];
+    for(let dx=-1; dx<=1; dx++){
+      row.push(`<img src="https://tile.openstreetmap.org/${z}/${cx+dx}/${cy+dy}.png" width="256" height="256" loading="eager" referrerpolicy="no-referrer" alt="">`);
+    }
+    rows.push(row.join(""));
+  }
+  const pinX = 256 + offX, pinY = 256 + offY;
+  return `<div class="pk-mapimg">
+    <div class="pk-tiles">${rows.join("")}</div>
+    <div class="pk-pin" style="left:${pinX}px;top:${pinY}px">
+      <span class="pk-pin-dot"></span><span class="pk-pin-ring"></span>
+      <span class="pk-pin-lbl">${esc(f.name)}</span>
+    </div>
+    <div class="pk-mapcredit">© OpenStreetMap contributors</div>
+  </div>`;
 }
 function offerCoverPage(c, l){
   const t = c.t, f = PARK_FACTS[t.key] || {};
   const d = new Date((OSTATE.date||today())+"T00:00:00");
   return `<div class="pk-page pk-cover">
     <div class="pk-cover-top">
-      <div class="pk-logo">ELSEWEDY<span>INDUSTRIAL DEVELOPMENT</span></div>
+      <img class="pk-mark" src="${SDM_LOGOS[0]}" alt="Elsewedy Industrial Development" referrerpolicy="no-referrer">
       <div class="pk-cover-date">${d.toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}</div>
     </div>
     <div class="pk-cover-mid">
@@ -3776,13 +3792,13 @@ function offerParkPage(c){
   if(!f) return "";
   const gmap = "https://www.google.com/maps/search/?api=1&query="+f.coord[0]+","+f.coord[1];
   return `<div class="pk-page">
-    <div class="pk-head"><div class="pk-logo sm">ELSEWEDY<span>INDUSTRIAL DEVELOPMENT</span></div>
+    <div class="pk-head"><img class="pk-mark sm" src="${SDM_LOGOS[0]}" alt="Elsewedy Industrial Development" referrerpolicy="no-referrer">
       <div class="pk-head-t">The location</div></div>
     <h2 class="pk-h2">${esc(f.name)}</h2>
     <div class="pk-sub">${esc(f.city)} · ${esc(f.gov)} Governorate</div>
     <div class="pk-two">
       <div class="pk-mapbox">
-        ${parkMapSvg(t.key)}
+        <div class="pk-mapscale">${parkMapImg(t.key)}</div>
         <div class="pk-coord">${f.coord[0].toFixed(4)}° N, ${f.coord[1].toFixed(4)}° E<br>
           <a href="${gmap}">Open in Google Maps</a></div>
       </div>
@@ -3793,15 +3809,9 @@ function offerParkPage(c){
           <div class="pk-fact"><span>Governorate</span><b>${esc(f.gov)}</b></div>
           <div class="pk-fact"><span>Your plot</span><b>${ofmt(c.area,0)} m²</b></div>
         </div>
-        <div class="pk-lbl">Industries hosted</div>
-        <div class="pk-chips">${f.inds.map(i=>`<span>${esc(i)}</span>`).join("")}</div>
         <div class="pk-lbl">Why this location</div>
         <ul class="pk-adv">${f.adv.map(a=>`<li>${esc(a)}</li>`).join("")}</ul>
       </div>
-    </div>
-    <div class="pk-util">
-      <div class="pk-lbl">Included with every plot</div>
-      <div class="pk-chips light"><span>Water</span><span>Roads</span><span>Sewage</span><span>Street lighting</span><span>Electricity to plot boundary</span></div>
     </div>
     <div class="pk-page-foot"><span>${esc(t.project)}</span><span>2</span></div>
   </div>`;
@@ -4095,7 +4105,10 @@ function offerPrint(){
   const w = window.open("", "_blank");
   if(!w){ toast("Allow pop-ups to print the offer"); return; }
   const css = (document.getElementById("offerDocCss")||{}).innerHTML || "";
-  w.document.write("<!doctype html><html><head><meta charset='utf-8'><title>Offer</title><style>"+css+
+  w.document.write("<!doctype html><html><head><meta charset='utf-8'><title>Offer</title>"
+    + "<link rel='preconnect' href='https://fonts.googleapis.com'><link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>"
+    + "<link href='https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap' rel='stylesheet'>"
+    + "<style>"+css+
     "body{margin:0;background:#fff}.offer-doc{box-shadow:none;width:auto;max-width:100%}@page{size:A4;margin:6mm}</style></head><body>"
     + offerPackHtml() + "</body></html>");
   w.document.close();
