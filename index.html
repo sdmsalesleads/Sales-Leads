@@ -604,28 +604,31 @@ function logoTryNext(img){
 }
 
 /* offer document (print-faithful) */
-.offer-doc{background:#fff;color:#111;width:820px;max-width:100%;margin:0 auto;padding:18px 22px;font-family:Arial,Helvetica,sans-serif;font-size:10px;box-shadow:0 10px 40px rgba(0,0,0,.35);line-height:1.16;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.offer-doc{background:#fff;color:#111;width:820px;max-width:100%;margin:0 auto;padding:18px 22px;
+  font-family:'Archivo','Helvetica Neue',Arial,sans-serif;font-size:9px;
+  box-shadow:0 10px 40px rgba(0,0,0,.35);line-height:1.2;-webkit-font-smoothing:antialiased;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact}
 .offer-doc .od-header{width:calc(100% + 44px);margin:-18px -22px 8px;display:block;aspect-ratio:2024 / 184}
 .offer-doc table.od-info{width:100%;border-collapse:collapse;margin-bottom:7px}
-.offer-doc table.od-info td{padding:1px 6px;font-size:10px;font-weight:700;vertical-align:middle}
-.offer-doc table.od-info .lbl{white-space:nowrap;width:150px}
+.offer-doc table.od-info td{padding:1px 6px;font-size:9px;font-weight:600;vertical-align:middle;letter-spacing:.005em}
+.offer-doc table.od-info .lbl{white-space:nowrap;width:150px;font-weight:700;color:#2a2d31}
 .offer-doc table.od-info .val{text-align:center}
 .offer-doc table.od-info .unit{text-align:center;width:52px}
 .offer-doc table.od-info .datek{text-align:right;white-space:nowrap;width:60px}
 .offer-doc table.od-info .hl{background:#e9e9e9}
 .offer-doc table.od-info .bx{border:1px solid #000;text-align:right;padding-right:10px}
 .offer-doc table.od-t{width:100%;border-collapse:collapse;margin:2px 0 3px}
-.offer-doc table.od-t th{background:#dcdcdc;border:1px solid #9a9a9a;padding:2px 5px;font-size:9.5px;font-weight:700;text-align:center}
-.offer-doc table.od-t td{border:1px solid #9a9a9a;padding:2px 5px;text-align:center;font-size:9.5px}
+.offer-doc table.od-t th{background:#dcdcdc;border:1px solid #9a9a9a;padding:3px 5px;font-size:8.5px;font-weight:700;text-align:center;letter-spacing:.02em}
+.offer-doc table.od-t td{border:1px solid #9a9a9a;padding:3px 5px;text-align:center;font-size:8.5px}
 .offer-doc table.od-t td.l{text-align:left}
 .offer-doc table.od-t tr.tot td{font-weight:700}
 .offer-doc .nl{list-style:none;margin:3px 0 4px;padding:0}
-.offer-doc .nl li{position:relative;padding-left:13px;margin-bottom:1.5px;font-size:9.5px;line-height:1.2}
+.offer-doc .nl li{position:relative;padding-left:13px;margin-bottom:2px;font-size:8.5px;line-height:1.35}
 .offer-doc .nl li:before{content:"*";position:absolute;left:0;font-weight:700}
 .offer-doc .b{font-weight:700}
 .offer-doc .red{color:#C00000;font-weight:700}
-.offer-doc .od-sec{background:#e9e9e9;font-weight:700;font-size:10px;padding:2px 8px;text-decoration:underline;display:inline-block;margin:5px 0 2px}
-.offer-doc .od-valid{color:#C00000;font-weight:800;font-size:13px;background:#ffff00;display:inline-block;padding:2px 8px}
+.offer-doc .od-sec{background:#e9e9e9;font-weight:700;font-size:9px;padding:3px 9px;text-decoration:none;display:inline-block;margin:7px 0 3px;letter-spacing:.06em;text-transform:uppercase}
+.offer-doc .od-valid{color:#C00000;font-weight:700;font-size:11px;background:#FFF3B0;display:inline-block;padding:3px 9px}
 .offer-doc .od-october{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 22px;background:#fff;aspect-ratio:auto;height:auto}
 .offer-doc .od-october .odo-bar{flex:1;background:#FFBF00;color:#fff;font-weight:800;font-size:14px;letter-spacing:.02em;padding:6px 16px}
 .offer-doc .od-october .odo-logo{text-align:right;line-height:1.05;color:#1b1b1b;white-space:nowrap}
@@ -635,10 +638,10 @@ function logoTryNext(img){
 .offer-doc .od-s360head .ods-bar{flex:1;height:auto;min-width:0}
 .offer-doc .od-s360head .ods-logo{height:54px;width:auto;flex:0 0 auto}
 .offer-doc table.od-sign{width:100%;border-collapse:collapse;margin-top:7px;text-align:center}
-.offer-doc table.od-sign td{padding:4px;font-size:10.5px;font-weight:700}
+.offer-doc table.od-sign td{padding:5px 4px;font-size:9px;font-weight:600;letter-spacing:.02em}
 .offer-doc table.od-sign .nm{padding-top:13px}
-.offer-doc .od-appr{background:#e9e9e9;font-weight:700;font-size:10.5px;padding:3px 10px;display:inline-block;margin:9px 0 6px}
-.offer-doc .od-fin div{padding:2px 0;font-size:10.5px;font-weight:700}
+.offer-doc .od-appr{background:#e9e9e9;font-weight:600;font-size:9px;padding:4px 11px;display:inline-block;margin:9px 0 6px}
+.offer-doc .od-fin div{padding:3px 0;font-size:9px;font-weight:600}
 
 #offerScale{position:relative;margin:0 auto}#offerPrintWrap .offer-doc{box-shadow:none;padding:0}#offerPrintWrap .od-header{margin:0 0 8px;width:100%}@page{size:A4;margin:6mm}}
 
@@ -1024,7 +1027,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "18 Aug 2026 · rev BF";
+const APP_BUILD = "18 Aug 2026 · rev BG";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -3718,7 +3721,7 @@ const PARK_FACTS = {
     adv:["6 km from Industria East Al Robeky Zone","Integrated industrial community",
          "Direct access to vital highways & ring roads","5,000 m² starting plots"] },
   newsadat:{ name:"Industria New Sadat", city:"Sadat City", gov:"Monufia",
-    coord:[30.436792,30.582108], area:"Official data unavailable",
+    coord:[30.436792,30.582108], area:"≈ 1 million m²",
     inds:["Pharmaceuticals","Chemicals","Food processing"],
     adv:["Expansion of the Sadat City cluster","Balanced Cairo–Alexandria access",
          "Delta talent catchment","Serviced industrial land"] },
