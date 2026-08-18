@@ -362,6 +362,48 @@ th.num{text-align:right}
   .rep-kpis{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
   .rk-val{font-size:1.25rem}
 }
+/* ---- contract management ---- */
+.ct-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:11px;margin-bottom:12px}
+.ct-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 15px;cursor:pointer;transition:.15s}
+.ct-card:hover{border-color:var(--red);box-shadow:0 8px 20px rgba(0,0,0,.07)}
+.ct-card.on{border-color:var(--red);box-shadow:0 0 0 1px var(--red)}
+.ct-card.warn{background:#FFFDF5;border-color:#EFE4C8}
+.ct-card.bad{background:#FFF6F6;border-color:#F0D2D3}
+.ct-card.ok{background:#F3FAF6;border-color:#CBE7DA}
+.ct-c-n{font-family:'Archivo Expanded','Archivo',sans-serif;font-weight:800;font-size:1.6rem;line-height:1}
+.ct-c-l{font-size:.78rem;font-weight:700;margin-top:4px}
+.ct-c-s{font-size:.72rem;color:var(--steel);margin-top:2px}
+.ct-group{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.ct-g-title{font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--red);margin-bottom:7px}
+.ct-line{display:flex;justify-content:space-between;align-items:center;padding:7px 9px;border-radius:8px;font-size:.84rem;cursor:pointer;border:1px solid transparent}
+.ct-line:hover{background:var(--soft);border-color:var(--line)}
+.ct-line.on{background:#FFF6F6;border-color:var(--red);font-weight:700}
+.ct-pill{display:inline-block;padding:3px 9px;border-radius:999px;font-size:.72rem;font-weight:700;background:var(--soft);border:1px solid var(--line)}
+.ct-pill.ok{background:#F3FAF6;border-color:#CBE7DA;color:#14663F}
+.ct-pill.hold{background:#FFFDF5;border-color:#EFE4C8;color:#8A6A00}
+.ct-pill.new{background:#FFF6F6;border-color:#F0D2D3;color:var(--red-dark)}
+.ct-head{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.ct-badges{display:flex;gap:8px;flex-wrap:wrap}
+.ct-badge{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:7px 11px;min-width:96px}
+.ct-badge span{display:block;font-size:.66rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--steel)}
+.ct-badge b{font-size:.92rem}
+.ct-badge.warn{background:#FFF6F6;border-color:#F0D2D3}
+.ct-badge.warn b{color:var(--red)}
+.ct-kv{display:flex;justify-content:space-between;gap:10px;font-size:.83rem;padding:5px 0;border-bottom:1px solid var(--line)}
+.ct-kv span{color:var(--steel)}
+.ct-step{display:flex;align-items:center;gap:11px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;background:#fff}
+.ct-step.done{background:#F7FBF9;border-color:#CBE7DA}
+.ct-step.here{border-color:var(--red);box-shadow:0 0 0 1px var(--red);background:#FFF8F8}
+.ct-step.todo{opacity:.62}
+.ct-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;flex:0 0 auto;
+  background:var(--line);color:var(--steel);font-size:.8rem}
+.ct-step.done .ct-dot{background:var(--green);color:#fff}
+.ct-step.here .ct-dot{background:var(--red);color:#fff}
+.ct-step-name{font-weight:800;font-size:.86rem}
+.ct-now{font-size:.62rem;background:var(--red);color:#fff;padding:2px 6px;border-radius:999px;letter-spacing:.06em;vertical-align:1px}
+.ct-hist{display:flex;flex-direction:column;gap:2px;max-height:340px;overflow:auto}
+.ct-hrow{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.ct-hdot{width:9px;height:9px;border-radius:50%;background:var(--red);margin-top:6px;flex:0 0 auto}
 @media print{
   @page{margin:14mm 12mm 16mm}
   .sidebar,.topbar,.filters,.no-print,.game-ribbon,#streakBar,.btn,.spotlight{display:none !important}
@@ -536,6 +578,12 @@ function logoTryNext(img){
 </div>
 
 <!-- ============ LEAD MODAL ============ -->
+<div class="overlay" id="ctOverlay" style="z-index:150">
+  <div class="modal" style="width:min(940px,100%)">
+    <div class="modal-head"><h3>Contract</h3><button class="x-btn" onclick="closeContract()">×</button></div>
+    <div style="padding:18px 22px 24px;max-height:80vh;overflow:auto" id="ctBody"></div>
+  </div>
+</div>
 <div class="overlay" id="mergeOverlay" style="z-index:140">
   <div class="modal" style="width:min(680px,100%)">
     <div class="modal-head"><h3>Merge duplicate leads</h3><button class="x-btn" onclick="closeMerge()">×</button></div>
@@ -818,7 +866,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "10 Aug 2026 · rev AV";
+const APP_BUILD = "18 Aug 2026 · rev AW";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1516,6 +1564,7 @@ const NAV_ITEMS = [
   {v:"calendar", ic:"▦", label:()=>"Calendar", show:()=>canSeeCalendar()},
   {v:"achievements", ic:"🏅", label:()=>"Achievements", show:()=>gamEligible()},
   {v:"guide", ic:"🎓", label:()=>"How to use", show:()=>!!currentUser},
+  {v:"contracts", ic:"📜", label:()=>isOps()? "Contracts":"Contracts & Ops", show:()=>canSeeContracts()},
   {v:"bdtrack", ic:"📋", label:()=>"BD Tracker", show:()=>(currentUser&&currentUser.bd)||isOps()||isAdmin()||(currentUser&&currentUser.director)||(currentUser&&currentUser.exec)},
   {v:"hierarchy", ic:"◬", label:()=>"Hierarchy", show:()=>canManage()},
   {v:"myreport", ic:"▣", label:()=>"My Report", show:()=>!canManage() && !isFinance()},
@@ -1556,6 +1605,7 @@ function render(){
   else if(currentView==="achievements" && gamEligible()) c.innerHTML = viewAchievements();
   else if(currentView==="bdtrack") c.innerHTML = viewBdTrack();
   else if(currentView==="guide") c.innerHTML = viewGuide();
+  else if(currentView==="contracts") c.innerHTML = viewContracts();
   else if(currentView==="hierarchy" && canManage()) c.innerHTML = viewHierarchy();
   else if(currentView==="extsales" && !isFinance()) c.innerHTML = viewExtSales();
   else if(currentView==="targets" && isAdmin()) c.innerHTML = viewTargets();
@@ -2440,7 +2490,12 @@ function gsToLead(r){
     lostCat:g("Lost Category"), lostReason:g("Lost Reason"),
     bdReady:g("BD Ready")==="Yes", mergedInto:g("Merged Into"), dupCleared:false, notes:g("Notes"),
     created:g("Created Date")||today(), log:log,
-    stageMeta:{ reservationDate:g("Reservation Date"), eoiDate:g("EOI Date"), contractDate:g("Contract Date") },
+    stageMeta:(function(){
+      const sm = { reservationDate:g("Reservation Date"), eoiDate:g("EOI Date"), contractDate:g("Contract Date") };
+      const raw = g("Contract");
+      if(raw){ try{ sm.contract = JSON.parse(raw); }catch(e){} }
+      return sm;
+    })(),
     deleted:g("Deleted")==="Yes" };
 }
 function gsToExt(r){
@@ -2528,7 +2583,11 @@ function gsLeadRow(l){
     "Won Date": l.wonDate||"", "Cash Status": l.cashStatus||"",
     "Cash Confirmed By": l.cashBy||"", "Cash Confirmed Date": l.cashDate||"",
     "Lost Category": l.lostCat||"", "Lost Reason": l.lostReason||"",
-    "BD Ready": gsYN(l.bdReady), "Duplicate Flag": gsYN(isDupFlagged(l)), "Merged Into": l.mergedInto||"", "Notes": l.notes||"",
+    "BD Ready": gsYN(l.bdReady), "Duplicate Flag": gsYN(isDupFlagged(l)), "Merged Into": l.mergedInto||"",
+    "Contract": (l.stageMeta && l.stageMeta.contract)? JSON.stringify(l.stageMeta.contract) : "",
+    "Contract Status": (l.stageMeta && l.stageMeta.contract)? l.stageMeta.contract.status : "",
+    "Contract Step": (l.stageMeta && l.stageMeta.contract && l.stageMeta.contract.step)? ctLabel(l.stageMeta.contract.step) : "",
+    "Notes": l.notes||"",
     "Last Activity": last? last.t : "", "Last Activity Date": last? (last.d+" "+(last.tm||"")).trim() : "",
     "Activities Count": log.length,
     /* every call, WhatsApp, note, meeting and status change, newest first */
@@ -3138,6 +3197,546 @@ function marketingSection(leads, title){
 }
 
 /* =================== Reports =================== */
+/* =================== Contract management =================== */
+/* Lives inside the lead's existing stage_meta record, so Sales Operations can
+   already write it and no database change is required. */
+const CT_STATUSES = ["Approved","Authority","Processing","Signed","Signed / On Hold"];
+const CT_PROCESSES = ["Revision","Signatures","Completed"];
+/* Finance appears twice and is deliberately two separate steps with their own
+   dates, durations and history. */
+const CT_STEPS = [
+  {k:"development", label:"Development",        process:"Revision",    next:"finance_rev",  action:"Complete & Send to Finance"},
+  {k:"finance_rev", label:"Finance — Revision", process:"Revision",    next:"legal",        action:"Complete & Send to Legal"},
+  {k:"legal",       label:"Legal",              process:"Revision",    next:"finance_sig",  action:"Complete Revision & Start Signatures"},
+  {k:"finance_sig", label:"Finance — Signature",process:"Signatures",  next:"cfo",          action:"Complete Signature & Send to CFO"},
+  {k:"cfo",         label:"CFO",                process:"Signatures",  next:"ceo",          action:"Complete Signature & Send to CEO"},
+  {k:"ceo",         label:"CEO",                process:"Signatures",  next:"",             action:"Complete & Mark Signed"}
+];
+const ctStep = k => CT_STEPS.find(s=>s.k===k);
+const ctLabel = k => (ctStep(k)||{}).label || "—";
+const CT_AGING_TARGET = 7;                       // days at one step before it needs attention
+
+function nowStamp(){ return new Date().toISOString(); }
+function ctDays(fromISO, toISO){
+  if(!fromISO) return 0;
+  const a = new Date(fromISO), b = toISO? new Date(toISO) : new Date();
+  return Math.max(0, (b-a)/864e5);
+}
+function ctDaysTxt(d){
+  if(d===null || d===undefined) return "—";
+  if(d < 1) return Math.max(1,Math.round(d*24))+"h";
+  return Math.round(d)+" day"+(Math.round(d)===1?"":"s");
+}
+function ctStamp(iso){ return iso? new Date(iso).toLocaleString("en-GB",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}) : "—"; }
+function ctShort(iso){ return iso? new Date(iso).toLocaleDateString("en-GB",{day:"numeric",month:"short"}) : "—"; }
+
+function hasContract(l){ return !!(l && l.stageMeta && l.stageMeta.contract); }
+function ctOf(l){ return (l && l.stageMeta && l.stageMeta.contract) || null; }
+/* every won deal is a candidate; the contract record is created on first action */
+function ctEligible(l){ return l && l.status==="Won" && !isMergedAway(l); }
+function ctStart(l, handler){
+  l.stageMeta = l.stageMeta || {};
+  if(l.stageMeta.contract) return l.stageMeta.contract;
+  const t = nowStamp();
+  const c = {
+    status:"Processing", process:"Revision", step:"development",
+    handler: handler || (currentUser? currentUser.id : ""),
+    startedAt: t, receivedAt: t, signedAt:"",
+    idaSent:"", idaApproved:"",
+    steps:{ development:{received:t, completed:"", days:null} },
+    history:[{ step:"development", label:"Development", process:"Revision",
+               handler:(handler||(currentUser?currentUser.id:"")), received:t, completed:"", days:null,
+               status:"Received", comment:"Contract process started", by:(currentUser?currentUser.name:""), at:t }],
+    handlers:[{ id:(handler||(currentUser?currentUser.id:"")), from:t, by:(currentUser?currentUser.name:"") }]
+  };
+  l.stageMeta.contract = c;
+  return c;
+}
+/* one movement does everything: close this step, keep the record, open the next */
+function ctAdvance(l, comment){
+  const c = ctOf(l); if(!c) return null;
+  const cur = ctStep(c.step); if(!cur) return null;
+  const t = nowStamp();
+  const days = ctDays(c.receivedAt, t);
+  /* close the current step — the stored record is never rewritten, only closed */
+  c.steps[c.step] = c.steps[c.step] || {received:c.receivedAt, completed:"", days:null};
+  c.steps[c.step].completed = t;
+  c.steps[c.step].days = days;
+  const open = c.history.slice().reverse().find(h=>h.step===c.step && !h.completed);
+  if(open){ open.completed = t; open.days = days; open.status = "Completed"; open.comment = comment || open.comment; open.by = currentUser? currentUser.name : ""; open.at = t; }
+  if(cur.next){
+    const nx = ctStep(cur.next);
+    c.step = nx.k; c.process = nx.process; c.receivedAt = t; c.status = "Processing";
+    c.steps[nx.k] = {received:t, completed:"", days:null};          // a return visit starts a NEW record
+    c.history.push({ step:nx.k, label:nx.label, process:nx.process, handler:c.handler,
+                     received:t, completed:"", days:null, status:"Received",
+                     comment: comment||"", by:(currentUser?currentUser.name:""), at:t });
+  } else {
+    c.process = "Completed"; c.status = "Signed"; c.signedAt = t; c.step = "";
+    c.history.push({ step:"signed", label:"Signed", process:"Completed", handler:c.handler,
+                     received:t, completed:t, days:0, status:"Signed",
+                     comment: comment||"Contract signed", by:(currentUser?currentUser.name:""), at:t });
+  }
+  return c;
+}
+function ctSendBack(l, toStepKey, comment){
+  const c = ctOf(l); if(!c || !ctStep(toStepKey)) return null;
+  const t = nowStamp(), days = ctDays(c.receivedAt, t);
+  if(c.step){
+    c.steps[c.step] = c.steps[c.step] || {received:c.receivedAt, completed:"", days:null};
+    c.steps[c.step].completed = t; c.steps[c.step].days = days;
+    const open = c.history.slice().reverse().find(h=>h.step===c.step && !h.completed);
+    if(open){ open.completed=t; open.days=days; open.status="Returned"; open.comment=comment||open.comment; open.at=t; }
+  }
+  const nx = ctStep(toStepKey);
+  c.step = nx.k; c.process = nx.process; c.receivedAt = t; c.status="Processing";
+  c.steps[nx.k] = {received:t, completed:"", days:null};            // NEW record, the earlier one is untouched
+  c.history.push({ step:nx.k, label:nx.label+" (returned)", process:nx.process, handler:c.handler,
+                   received:t, completed:"", days:null, status:"Received",
+                   comment: comment||"Returned for revision", by:(currentUser?currentUser.name:""), at:t });
+  return c;
+}
+function ctSetHandler(l, id){
+  const c = ctOf(l); if(!c) return;
+  if(c.handler===id) return;
+  const t = nowStamp();
+  (c.handlers = c.handlers||[]).forEach(h=>{ if(!h.to) h.to = t; });
+  c.handlers.push({id, from:t, by:(currentUser?currentUser.name:"")});
+  c.handler = id;
+  c.history.push({ step:c.step||"—", label:"Handler changed", process:c.process, handler:id,
+                   received:t, completed:t, days:0, status:"Reassigned",
+                   comment:"Now handled by "+(memberName(id)||"unassigned"), by:(currentUser?currentUser.name:""), at:t });
+}
+function ctSetStatus(l, status, comment){
+  const c = ctOf(l); if(!c) return;
+  const t = nowStamp();
+  c.status = status;
+  if(status==="Signed" || status==="Signed / On Hold"){ c.signedAt = c.signedAt || t; if(status==="Signed") c.process="Completed"; }
+  c.history.push({ step:c.step||"—", label:"Status: "+status, process:c.process, handler:c.handler,
+                   received:t, completed:t, days:0, status:status,
+                   comment:comment||"", by:(currentUser?currentUser.name:""), at:t });
+}
+/* aging */
+function ctCurrentAging(c){ return (!c || !c.receivedAt || c.process==="Completed")? null : ctDays(c.receivedAt); }
+function ctTotalAging(c){ return c? ctDays(c.startedAt, c.signedAt || null) : null; }
+function ctIdaAging(c){ if(!c || !c.idaSent) return null; return ctDays(c.idaSent, c.idaApproved || null); }
+function ctNeedsAttention(c){ const a = ctCurrentAging(c); return a!==null && a >= CT_AGING_TARGET; }
+function ctProcessDays(c, process){
+  /* summed from the history so time spent on a repeat visit is still counted */
+  if(!c) return 0;
+  return (c.history||[]).filter(h=>h.process===process && h.completed && h.days!==null && h.days!==undefined)
+                        .reduce((sum,h)=>sum+h.days, 0);
+}
+/* the pool of contracts a person may see, honouring existing lead visibility */
+function ctPool(){ return visibleLeads().filter(ctEligible); }
+function ctActive(){ return ctPool().filter(l=>{ const c=ctOf(l); return c && c.process!=="Completed" && c.status!=="Signed"; }); }
+function canManageContracts(){ return isOps() || isAdmin() || (currentUser && (currentUser.director || currentUser.exec)); }
+function canSeeContracts(){ return canManageContracts() || (currentUser && (currentUser.mgr || currentUser.dmgr || currentUser.fin)); }
+/* ---------- contract detail: timeline + one-click actions ---------- */
+let ctOpenId = "";
+function openContract(id){
+  const l = state.leads.find(x=>x.id===id); if(!l) return;
+  ctOpenId = id;
+  $("ctBody").innerHTML = ctDetailHtml(l);
+  $("ctOverlay").classList.add("open");
+}
+function closeContract(){ $("ctOverlay").classList.remove("open"); ctOpenId=""; }
+function ctRefresh(){ if(ctOpenId){ const l=state.leads.find(x=>x.id===ctOpenId); if(l) $("ctBody").innerHTML = ctDetailHtml(l); } render(); }
+function ctAct(id, kind){
+  const l = state.leads.find(x=>x.id===id); if(!l) return;
+  if(!canManageContracts()){ toast("Only Sales Operations can move contracts"); return; }
+  const comment = ($("ctComment") && $("ctComment").value || "").trim();
+  if(kind==="start") ctStart(l);
+  else if(kind==="advance") ctAdvance(l, comment);
+  else if(kind==="hold") ctSetStatus(l, "Signed / On Hold", comment);
+  else if(kind==="resume") ctSetStatus(l, "Processing", comment);
+  pushLog(l, "Contract: "+(kind==="start"? "process started" : kind==="advance"? ("moved to "+(ctOf(l).step? ctLabel(ctOf(l).step):"Signed")) : "status "+ctOf(l).status)+(comment? " — "+comment:""));
+  if(typeof gsMirrorLead==="function") gsMirrorLead(l);
+  persist(); ctInvalidate(); ctRefresh();
+  toast("Contract updated — "+(ctOf(l).process==="Completed"? "signed" : "now with "+ctLabel(ctOf(l).step)));
+}
+function ctBack(id, stepKey){
+  const l = state.leads.find(x=>x.id===id); if(!l || !canManageContracts()) return;
+  const comment = ($("ctComment") && $("ctComment").value || "").trim();
+  ctSendBack(l, stepKey, comment);
+  pushLog(l, "Contract returned to "+ctLabel(stepKey)+(comment? " — "+comment:""));
+  if(typeof gsMirrorLead==="function") gsMirrorLead(l);
+  persist(); ctInvalidate(); ctRefresh();
+  toast("Sent back to "+ctLabel(stepKey));
+}
+function ctAssign(id, who){
+  const l = state.leads.find(x=>x.id===id); if(!l || !canManageContracts()) return;
+  ctSetHandler(l, who);
+  pushLog(l, "Contract handed to "+(memberName(who)||"unassigned"));
+  persist(); ctInvalidate(); ctRefresh();
+}
+function ctIda(id, field, val){
+  const l = state.leads.find(x=>x.id===id); const c = ctOf(l);
+  if(!l || !c || !canManageContracts()) return;
+  c[field] = val? new Date(val+"T12:00:00").toISOString() : "";
+  c.history.push({step:c.step||"—", label:"IDA "+(field==="idaSent"?"sent":"approved"), process:c.process, handler:c.handler,
+                  received:c[field], completed:c[field], days:0, status:"IDA",
+                  comment:(field==="idaSent"?"IDA sent ":"IDA approved ")+(val||""), by:(currentUser?currentUser.name:""), at:nowStamp()});
+  persist(); ctInvalidate(); ctRefresh();
+}
+function ctDetailHtml(l){
+  const c = ctOf(l);
+  const opsPeople = state.members.filter(m=>!m.pending && (m.ops || m.dmgr && deptOf.call? true : m.ops));
+  const handlers = state.members.filter(m=>!m.pending && (m.ops || m.admin));
+  if(!c){
+    return `<div class="ct-head">
+        <div><div class="eyebrow red">Contract not started</div>
+        <h3 style="margin:4px 0 0">${esc(l.company||l.name)}</h3>
+        <div class="muted" style="font-size:.82rem">${esc(l.name)} · ${esc(l.project||"—")} · won ${esc(fmtDate(l.wonDate||l.created))}</div></div>
+      </div>
+      <p style="font-size:.88rem;line-height:1.6;margin:14px 0">This deal is Won and ready for the contract process. Starting it puts the contract with <b>Development</b> and begins recording every handover date automatically.</p>
+      ${canManageContracts()? `<button class="btn btn-red" onclick="ctAct('${l.id}','start')">▶ Start contract process</button>`
+        : `<p class="muted" style="font-size:.84rem">Sales Operations starts the contract process.</p>`}`;
+  }
+  const cur = c.step? ctStep(c.step) : null;
+  const aging = ctCurrentAging(c), total = ctTotalAging(c), ida = ctIdaAging(c);
+  const stepRow = (s)=>{
+    const st = c.steps[s.k];
+    const done = st && st.completed, here = c.step===s.k;
+    return `<div class="ct-step ${done?"done":here?"here":"todo"}">
+      <div class="ct-dot">${done?"✓":here?"●":"○"}</div>
+      <div style="flex:1">
+        <div class="ct-step-name">${esc(s.label)}${here? ' <span class="ct-now">CURRENT</span>':""}</div>
+        <div class="muted" style="font-size:.76rem">
+          ${st? `Received ${ctShort(st.received)}${done? " · Completed "+ctShort(st.completed)+" · <b>"+ctDaysTxt(st.days)+"</b>" : " · aging <b>"+ctDaysTxt(ctDays(st.received))+"</b>"}` : "Not reached yet"}
+        </div>
+      </div>
+      ${here && canManageContracts()? `<button class="btn btn-red btn-sm" onclick="ctAct('${l.id}','advance')">${esc(s.action)}</button>`:""}
+    </div>`;
+  };
+  const hist = c.history.slice().reverse();
+  return `
+  <div class="ct-head">
+    <div>
+      <div class="eyebrow red">${esc(c.status)}</div>
+      <h3 style="margin:4px 0 0">${esc(l.company||l.name)}</h3>
+      <div class="muted" style="font-size:.82rem">${esc(l.name)} · ${esc(l.project||"—")} · ${esc(memberName(l.owner)||"—")}</div>
+    </div>
+    <div class="ct-badges">
+      <div class="ct-badge"><span>Current location</span><b>${c.step? esc(ctLabel(c.step)) : "Signed"}</b></div>
+      <div class="ct-badge"><span>Handled by</span><b>${esc(memberName(c.handler)||"Unassigned")}</b></div>
+      <div class="ct-badge"><span>Received</span><b>${ctShort(c.receivedAt)}</b></div>
+      <div class="ct-badge ${ctNeedsAttention(c)?"warn":""}"><span>Current aging</span><b>${aging===null? "—" : ctDaysTxt(aging)}</b></div>
+      <div class="ct-badge"><span>Total aging</span><b>${ctDaysTxt(total)}</b></div>
+    </div>
+  </div>
+
+  <div class="rep-grid2" style="margin-top:14px">
+    <div class="card card-pad">
+      <div class="eyebrow red">Contract information</div>
+      <div class="ct-kv"><span>Company</span><b>${esc(l.company||"—")}</b></div>
+      <div class="ct-kv"><span>Client</span><b>${esc(l.name)}</b></div>
+      <div class="ct-kv"><span>Project</span><b>${esc(l.project||"—")}</b></div>
+      <div class="ct-kv"><span>Plot</span><b>${esc(l.plotNo||"—")}</b></div>
+      <div class="ct-kv"><span>Area</span><b>${l.soldArea||l.land? Number(l.soldArea||l.land).toLocaleString()+" sqm":"—"}</b></div>
+      <div class="ct-kv"><span>Land value</span><b>${fmtMoney(Number(l.totalSold||l.value)||0)}</b></div>
+      <div class="ct-kv"><span>Salesperson</span><b>${esc(memberName(l.owner)||"—")}</b></div>
+      <div class="ct-kv"><span>Sector</span><b>${esc(l.industry||"—")}</b></div>
+      <div class="ct-kv"><span>Reservation form</span><b>${esc(l.resDate? fmtDate(l.resDate):"—")}</b></div>
+      <div class="ct-kv"><span>Contract signing</span><b>${esc(l.contractDate? fmtDate(l.contractDate): (c.signedAt? ctShort(c.signedAt):"—"))}</b></div>
+      ${canManageContracts()? `<div style="margin-top:10px">
+        <label class="muted" style="font-size:.74rem;font-weight:700">Handled by</label>
+        <select onchange="ctAssign('${l.id}', this.value)" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;background:#fff;margin-top:3px">
+          <option value="">Unassigned</option>
+          ${handlers.map(m=>`<option value="${m.id}" ${c.handler===m.id?"selected":""}>${esc(m.name)}</option>`).join("")}
+        </select></div>`:""}
+    </div>
+    <div class="card card-pad">
+      <div class="eyebrow red">IDA tracking</div>
+      <div class="ct-kv"><span>IDA sent</span><b>${c.idaSent? ctShort(c.idaSent):"—"}</b></div>
+      <div class="ct-kv"><span>IDA approval</span><b>${c.idaApproved? ctShort(c.idaApproved):'<span style="color:var(--amber)">Pending</span>'}</b></div>
+      <div class="ct-kv"><span>IDA aging</span><b>${ida===null? "—" : ctDaysTxt(ida)}</b></div>
+      ${canManageContracts()? `<div class="grid g2" style="gap:8px;margin-top:10px">
+        <div><label class="muted" style="font-size:.74rem;font-weight:700">Sending date</label>
+          <input type="date" value="${c.idaSent? new Date(c.idaSent).toISOString().slice(0,10):""}" onchange="ctIda('${l.id}','idaSent',this.value)" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:7px;background:#fff"></div>
+        <div><label class="muted" style="font-size:.74rem;font-weight:700">Approval date</label>
+          <input type="date" value="${c.idaApproved? new Date(c.idaApproved).toISOString().slice(0,10):""}" onchange="ctIda('${l.id}','idaApproved',this.value)" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:7px;background:#fff"></div>
+      </div>`:""}
+      <div class="eyebrow red" style="margin-top:16px">Time in each process</div>
+      <div class="ct-kv"><span>Revision total</span><b>${ctDaysTxt(ctProcessDays(c,"Revision"))}</b></div>
+      <div class="ct-kv"><span>Signatures total</span><b>${ctDaysTxt(ctProcessDays(c,"Signatures"))}</b></div>
+    </div>
+  </div>
+
+  <div class="card card-pad" style="margin-bottom:12px">
+    <div class="eyebrow red">Revision</div>
+    ${CT_STEPS.filter(s=>s.process==="Revision").map(stepRow).join("")}
+    <div class="eyebrow red" style="margin-top:14px">Signatures</div>
+    ${CT_STEPS.filter(s=>s.process==="Signatures").map(stepRow).join("")}
+    ${c.process==="Completed"? `<div class="ct-step done"><div class="ct-dot">✓</div><div style="flex:1"><div class="ct-step-name">Signed</div>
+       <div class="muted" style="font-size:.76rem">Completed ${ctShort(c.signedAt)} · total ${ctDaysTxt(total)}</div></div></div>`:""}
+    ${canManageContracts() && c.step? `
+      <div style="margin-top:12px">
+        <label class="muted" style="font-size:.74rem;font-weight:700">Handover comment (optional)</label>
+        <input id="ctComment" placeholder="e.g. Finance requested an updated payment schedule" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:9px;background:#fff;margin-top:3px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:9px">
+          ${c.status==="Signed / On Hold"? `<button class="btn btn-ghost btn-sm" onclick="ctAct('${l.id}','resume')">Resume</button>`
+            : `<button class="btn btn-ghost btn-sm" onclick="ctAct('${l.id}','hold')">Put on hold</button>`}
+          <select onchange="if(this.value) ctBack('${l.id}', this.value)" style="border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:#fff;font-size:.8rem">
+            <option value="">↩ Send back to…</option>
+            ${CT_STEPS.filter(s=>s.k!==c.step).map(s=>`<option value="${s.k}">${esc(s.label)}</option>`).join("")}
+          </select>
+        </div>
+      </div>`:""}
+  </div>
+
+  <div class="card card-pad">
+    <div class="eyebrow red">History — every movement is kept</div>
+    <div class="ct-hist">
+      ${hist.map(h=>`<div class="ct-hrow">
+        <div class="ct-hdot"></div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:.84rem">${esc(h.label)} <span class="muted" style="font-weight:400">· ${esc(h.status)}</span></div>
+          <div class="muted" style="font-size:.75rem">Received ${ctStamp(h.received)}${h.completed? " · Completed "+ctStamp(h.completed)+" · <b>"+ctDaysTxt(h.days)+"</b>":""}</div>
+          ${h.comment? `<div style="font-size:.79rem;margin-top:2px">${esc(h.comment)}</div>`:""}
+          <div class="muted" style="font-size:.72rem;margin-top:2px">Handled by ${esc(memberName(h.handler)||"—")} · recorded by ${esc(h.by||"—")}</div>
+        </div>
+      </div>`).join("")}
+    </div>
+  </div>`;
+}
+/* ---------- contract analytics (cached, single pass) ---------- */
+let ctFilters = { from:"", to:"", owner:"", handler:"", project:"", status:"", process:"", step:"", bucket:"" };
+let _ctCache = null, _ctKey = "";
+function ctInvalidate(){ _ctCache = null; _ctKey = ""; }
+function ctSet(patch){ Object.assign(ctFilters, patch); ctInvalidate(); render(); }
+function ctFiltered(){
+  const F = ctFilters;
+  return ctPool().filter(l=>{
+    const c = ctOf(l);
+    if(F.from && String(l.wonDate||l.created).slice(0,10) < F.from) return false;
+    if(F.to   && String(l.wonDate||l.created).slice(0,10) > F.to) return false;
+    if(F.owner && l.owner!==F.owner) return false;
+    if(F.project && l.project!==F.project) return false;
+    if(F.handler && (!c || c.handler!==F.handler)) return false;
+    if(F.status && (!c || c.status!==F.status)) return false;
+    if(F.process && (!c || c.process!==F.process)) return false;
+    if(F.step && (!c || c.step!==F.step)) return false;
+    return true;
+  });
+}
+function ctStats(){
+  const key = JSON.stringify(ctFilters)+"|"+(currentUser?currentUser.id:"")+"|"+state.leads.length+"|"+dupGen;
+  if(_ctKey===key && _ctCache) return _ctCache;
+  const pool = ctFiltered();
+  const s = { pool, total:pool.length, notStarted:0, revision:0, signatures:0, signed:0, onHold:0, attention:0,
+              byStep:{}, stepStats:{}, aging:{"0–3 days":[], "4–7 days":[], "8–14 days":[], "15–30 days":[], "30+ days":[]},
+              byHandler:{}, durations:[], revDur:[], sigDur:[], idaAges:[] };
+  CT_STEPS.forEach(st=>{ s.byStep[st.k]=[]; s.stepStats[st.k]={count:0, totalDays:0, done:0, current:0, longest:0}; });
+  pool.forEach(l=>{
+    const c = ctOf(l);
+    if(!c){ s.notStarted++; return; }
+    if(c.status==="Signed / On Hold") s.onHold++;
+    else if(c.process==="Completed" || c.status==="Signed"){ s.signed++; }
+    else if(c.process==="Revision") s.revision++;
+    else if(c.process==="Signatures") s.signatures++;
+    if(c.step){
+      s.byStep[c.step] = s.byStep[c.step]||[]; s.byStep[c.step].push(l);
+      const a = ctCurrentAging(c)||0;
+      const st = s.stepStats[c.step]; if(st){ st.current++; st.longest = Math.max(st.longest, a); }
+      if(ctNeedsAttention(c)) s.attention++;
+      const b = a<=3? "0–3 days" : a<=7? "4–7 days" : a<=14? "8–14 days" : a<=30? "15–30 days" : "30+ days";
+      s.aging[b].push(l);
+    }
+    /* Every completed visit counts — including earlier visits to a department a
+       contract was sent back to, which only the history still holds. */
+    (c.history||[]).forEach(h=>{
+      if(!h.completed || h.days===null || h.days===undefined) return;
+      const ss = s.stepStats[h.step];
+      if(ss){ ss.count++; ss.totalDays += h.days; ss.done++; }
+    });
+    const h = c.handler||"";
+    const hh = s.byHandler[h] = s.byHandler[h] || {active:0, signed:0, aging:0, durations:[], total:0};
+    hh.total++;
+    if(c.process==="Completed"||c.status==="Signed"){ hh.signed++; const t=ctTotalAging(c); if(t!==null) hh.durations.push(t); }
+    else { hh.active++; if(ctNeedsAttention(c)) hh.aging++; }
+    if(c.signedAt){ const t = ctTotalAging(c); if(t!==null) s.durations.push(t); }
+    const rd = ctProcessDays(c,"Revision"), sd = ctProcessDays(c,"Signatures");
+    if(rd>0) s.revDur.push(rd);
+    if(sd>0) s.sigDur.push(sd);
+    const ia = ctIdaAging(c); if(ia!==null) s.idaAges.push(ia);
+  });
+  const avg = arr => arr.length? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+  s.avgTotal = avg(s.durations); s.avgRevision = avg(s.revDur); s.avgSignature = avg(s.sigDur); s.avgIda = avg(s.idaAges);
+  CT_STEPS.forEach(st=>{ const x=s.stepStats[st.k]; x.avg = x.done? x.totalDays/x.done : 0; });
+  _ctKey = key;
+  return (_ctCache = s);
+}
+function ctFilterBar(full){
+  const projects = [...new Set(ctPool().map(l=>l.project).filter(Boolean))];
+  const handlers = state.members.filter(m=>!m.pending && (m.ops||m.admin));
+  return `<div class="rep-bar no-print">
+    <input type="date" value="${esc(ctFilters.from)}" onchange="ctSet({from:this.value})" title="Won from">
+    <span class="muted">→</span>
+    <input type="date" value="${esc(ctFilters.to)}" onchange="ctSet({to:this.value})" title="Won to">
+    <select onchange="ctSet({process:this.value})"><option value="">All processes</option>
+      ${CT_PROCESSES.map(p=>`<option ${ctFilters.process===p?"selected":""}>${p}</option>`).join("")}</select>
+    <select onchange="ctSet({step:this.value})"><option value="">All departments</option>
+      ${CT_STEPS.map(s=>`<option value="${s.k}" ${ctFilters.step===s.k?"selected":""}>${esc(s.label)}</option>`).join("")}</select>
+    <select onchange="ctSet({status:this.value})"><option value="">All statuses</option>
+      ${CT_STATUSES.map(s=>`<option ${ctFilters.status===s?"selected":""}>${s}</option>`).join("")}</select>
+    ${full? `<select onchange="ctSet({owner:this.value})"><option value="">All salespeople</option>
+      ${state.members.filter(m=>!m.pending&&canOwnLeads(m)).map(m=>`<option value="${m.id}" ${ctFilters.owner===m.id?"selected":""}>${esc(m.name)}</option>`).join("")}</select>
+    <select onchange="ctSet({handler:this.value})"><option value="">All handlers</option>
+      ${handlers.map(m=>`<option value="${m.id}" ${ctFilters.handler===m.id?"selected":""}>${esc(m.name)}</option>`).join("")}</select>`:""}
+    <select onchange="ctSet({project:this.value})"><option value="">All projects</option>
+      ${projects.map(p=>`<option ${ctFilters.project===p?"selected":""}>${esc(p)}</option>`).join("")}</select>
+    ${Object.values(ctFilters).some(Boolean)? `<button class="rep-pill" onclick="ctSet({from:'',to:'',owner:'',handler:'',project:'',status:'',process:'',step:'',bucket:''})">✕ Clear</button>`:""}
+  </div>`;
+}
+function ctTable(rows, title){
+  if(!rows.length) return `<div class="card card-pad"><p class="muted" style="font-size:.86rem;margin:0">No contracts here.</p></div>`;
+  return `<div class="card" style="overflow:auto">
+    ${title? `<div class="card-pad" style="padding-bottom:0"><div class="eyebrow red">${esc(title)} — ${rows.length}</div></div>`:""}
+    <table class="tbl"><thead><tr>
+      <th>Company / Client</th><th>Project</th><th>Salesperson</th><th>Handled by</th>
+      <th>Status</th><th>Process</th><th>Department</th><th class="num">Received</th>
+      <th class="num">Current aging</th><th class="num">Total aging</th><th class="num">Value</th></tr></thead>
+    <tbody>${rows.map(l=>{ const c=ctOf(l); const a=c?ctCurrentAging(c):null;
+      return `<tr style="cursor:pointer" onclick="openContract('${l.id}')">
+        <td><b>${esc(l.company||l.name)}</b><div class="muted" style="font-size:.74rem">${esc(l.name)}</div></td>
+        <td>${esc(l.project||"—")}</td><td>${esc(memberName(l.owner)||"—")}</td>
+        <td>${c? esc(memberName(c.handler)||"Unassigned") : "—"}</td>
+        <td>${c? `<span class="ct-pill ${c.status==="Signed"?"ok":c.status==="Signed / On Hold"?"hold":""}">${esc(c.status)}</span>` : '<span class="ct-pill new">Not started</span>'}</td>
+        <td>${c? esc(c.process):"—"}</td>
+        <td>${c&&c.step? esc(ctLabel(c.step)):"—"}</td>
+        <td class="num">${c? ctShort(c.receivedAt):"—"}</td>
+        <td class="num"><b style="color:${a!==null&&a>=CT_AGING_TARGET?"var(--red)":"inherit"}">${a===null?"—":ctDaysTxt(a)}</b></td>
+        <td class="num">${c? ctDaysTxt(ctTotalAging(c)):"—"}</td>
+        <td class="num">${fmtMoney(Number(l.totalSold||l.value)||0)}</td>
+      </tr>`; }).join("")}</tbody></table></div>`;
+}
+/* ---------- SALES OPERATIONS: operational and action-focused ---------- */
+function viewContractsOps(){
+  const s = ctStats();
+  const mine = s.pool.filter(l=>{ const c=ctOf(l); return c && c.handler===(currentUser&&currentUser.id) && c.process!=="Completed"; });
+  const notStarted = s.pool.filter(l=>!ctOf(l));
+  const attention = s.pool.filter(l=>{ const c=ctOf(l); return c && ctNeedsAttention(c); });
+  const bucket = ctFilters.bucket;
+  const rowsFor = b => b==="new"? notStarted
+    : b==="mine"? mine
+    : b==="attention"? attention
+    : b==="signed"? s.pool.filter(l=>{const c=ctOf(l); return c && c.status==="Signed";})
+    : b==="hold"? s.pool.filter(l=>{const c=ctOf(l); return c && c.status==="Signed / On Hold";})
+    : (CT_STEPS.some(x=>x.k===b)? (s.byStep[b]||[]) : s.pool.filter(l=>ctOf(l)));
+  const card = (key,label,n,sub,tone)=>`<div class="ct-card ${bucket===key?"on":""} ${tone||""}" onclick="ctSet({bucket:'${key}'})">
+      <div class="ct-c-n">${n}</div><div class="ct-c-l">${esc(label)}</div>${sub?`<div class="ct-c-s">${sub}</div>`:""}</div>`;
+  return `<div class="rep-wrap">
+    <div class="section-head" style="margin-top:0"><h2>Contract management</h2>
+      <span class="muted" style="font-size:.8rem">Every won deal, from revision to signature</span></div>
+    <div class="ct-cards">
+      ${card("new","New — won, not started", notStarted.length, "needs action", notStarted.length?"warn":"")}
+      ${card("mine","My contracts", mine.length, "assigned to me")}
+      ${card("attention","Aging — action required", attention.length, "over "+CT_AGING_TARGET+" days at a step", attention.length?"bad":"")}
+      ${card("signed","Signed", s.signed, "completed", "ok")}
+      ${card("hold","Signed / On Hold", s.onHold, "paused")}
+    </div>
+    <div class="ct-cards">
+      <div class="ct-group"><div class="ct-g-title">In revision — ${s.revision}</div>
+        ${CT_STEPS.filter(x=>x.process==="Revision").map(x=>`<div class="ct-line ${bucket===x.k?"on":""}" onclick="ctSet({bucket:'${x.k}'})">
+          <span>${esc(x.label)}</span><b>${(s.byStep[x.k]||[]).length}</b></div>`).join("")}</div>
+      <div class="ct-group"><div class="ct-g-title">In signatures — ${s.signatures}</div>
+        ${CT_STEPS.filter(x=>x.process==="Signatures").map(x=>`<div class="ct-line ${bucket===x.k?"on":""}" onclick="ctSet({bucket:'${x.k}'})">
+          <span>${esc(x.label)}</span><b>${(s.byStep[x.k]||[]).length}</b></div>`).join("")}</div>
+    </div>
+    ${ctFilterBar(false)}
+    ${ctTable(rowsFor(bucket), bucket? (bucket==="new"?"Waiting to start": bucket==="mine"?"My contracts": bucket==="attention"?"Needs attention": bucket==="signed"?"Signed": bucket==="hold"?"On hold": ctLabel(bucket)) : "All contracts")}
+  </div>`;
+}
+/* ---------- SALES DIRECTOR: analytical ---------- */
+function viewContractsDirector(){
+  const s = ctStats();
+  const kpi = (l,v,sub,click)=>`<div class="rep-kpi"${click?` onclick="${click}" style="cursor:pointer"`:""}>
+    <div class="rk-label">${esc(l)}</div><div class="rk-val">${v}</div><div class="rk-sub">${sub||""}</div></div>`;
+  const bottleneck = CT_STEPS.map(st=>({k:st.label, v:Math.round((s.stepStats[st.k].avg||0)*10)/10}));
+  const worst = bottleneck.slice().sort((a,b)=>b.v-a.v)[0];
+  const loc = CT_STEPS.map(st=>({st, n:(s.byStep[st.k]||[]).length}));
+  const handlers = Object.entries(s.byHandler).filter(([id])=>id).map(([id,h])=>({
+    id, name: memberName(id)||"Unassigned", ...h,
+    avg: h.durations.length? h.durations.reduce((a,b)=>a+b,0)/h.durations.length : 0 }))
+    .sort((a,b)=>b.active-a.active);
+  const bucket = ctFilters.bucket;
+  const bucketRows = bucket? (CT_STEPS.some(x=>x.k===bucket)? (s.byStep[bucket]||[]) : (s.aging[bucket]||[])) : null;
+  return `<div class="rep-wrap">
+    <div class="section-head" style="margin-top:0"><h2>Contract &amp; Sales Operations dashboard</h2><span class="no-print">${pdfButton()}</span></div>
+    ${ctFilterBar(true)}
+    <div class="rep-kpis">
+      ${kpi("Won / confirmed deals", s.total.toLocaleString(), "in this selection")}
+      ${kpi("In revision", s.revision, "Development · Finance · Legal", "ctSet({process:'Revision',bucket:''})")}
+      ${kpi("In signatures", s.signatures, "Finance · CFO · CEO", "ctSet({process:'Signatures',bucket:''})")}
+      ${kpi("Signed", s.signed, "completed contracts", "ctSet({status:'Signed',bucket:''})")}
+      ${kpi("Signed / on hold", s.onHold, "paused", "ctSet({status:'Signed / On Hold',bucket:''})")}
+      ${kpi("Not started", s.notStarted, "won, awaiting Sales Ops", "ctSet({bucket:''})")}
+      ${kpi("Avg contract duration", s.avgTotal? ctDaysTxt(s.avgTotal):"—", "start to signature")}
+      ${kpi("Avg revision", s.avgRevision? ctDaysTxt(s.avgRevision):"—", "Development → Legal")}
+      ${kpi("Avg signatures", s.avgSignature? ctDaysTxt(s.avgSignature):"—", "Finance → CEO")}
+      ${kpi("Avg IDA aging", s.avgIda? ctDaysTxt(s.avgIda):"—", "sent to approval")}
+      ${kpi("Over aging target", s.attention, "more than "+CT_AGING_TARGET+" days at a step", "ctSet({bucket:'15–30 days'})")}
+      ${kpi("Requiring attention", s.attention + s.notStarted, "stalled or not started")}
+    </div>
+    <div class="rep-grid2">
+      <div class="card card-pad">
+        <div class="eyebrow red">Where the time goes — average days per step</div>
+        ${chartColumns(bottleneck, "#E01E25")}
+        ${worst && worst.v>0? `<div class="fn-note"><b>Slowest step:</b> ${esc(worst.k)} at ${worst.v} days on average. That is where contracts are held up.</div>`:""}
+      </div>
+      <div class="card card-pad">
+        <div class="eyebrow red">Where contracts are right now</div>
+        <div style="margin-top:6px">
+          <div class="ct-g-title">Revision</div>
+          ${loc.filter(x=>x.st.process==="Revision").map(x=>`<div class="ct-line ${bucket===x.st.k?"on":""}" onclick="ctSet({bucket:'${x.st.k}'})"><span>${esc(x.st.label)}</span><b>${x.n} contract${x.n===1?"":"s"}</b></div>`).join("")}
+          <div class="ct-g-title" style="margin-top:10px">Signatures</div>
+          ${loc.filter(x=>x.st.process==="Signatures").map(x=>`<div class="ct-line ${bucket===x.st.k?"on":""}" onclick="ctSet({bucket:'${x.st.k}'})"><span>${esc(x.st.label)}</span><b>${x.n} contract${x.n===1?"":"s"}</b></div>`).join("")}
+        </div>
+      </div>
+    </div>
+    <div class="card card-pad">
+      <div class="section-head" style="margin:0 0 8px"><h2 style="font-size:1rem">Department performance</h2></div>
+      <div style="overflow:auto"><table class="tbl">
+        <thead><tr><th>Step</th><th>Process</th><th class="num">Contracts handled</th><th class="num">Average duration</th>
+          <th class="num">Currently there</th><th class="num">Longest current aging</th><th class="num">Total time spent</th></tr></thead>
+        <tbody>${CT_STEPS.map(st=>{ const x=s.stepStats[st.k];
+          return `<tr style="cursor:pointer" onclick="ctSet({bucket:'${st.k}'})">
+            <td><b>${esc(st.label)}</b></td><td>${st.process}</td>
+            <td class="num">${x.done}</td><td class="num"><b>${x.avg? ctDaysTxt(x.avg):"—"}</b></td>
+            <td class="num">${x.current}</td>
+            <td class="num"><b style="color:${x.longest>=CT_AGING_TARGET?"var(--red)":"inherit"}">${x.longest? ctDaysTxt(x.longest):"—"}</b></td>
+            <td class="num">${x.totalDays? ctDaysTxt(x.totalDays):"—"}</td></tr>`; }).join("")}</tbody></table></div>
+    </div>
+    <div class="rep-grid2">
+      <div class="card card-pad">
+        <div class="eyebrow red">Contract aging</div>
+        ${Object.entries(s.aging).map(([k,arr])=>`<div class="ct-line ${bucket===k?"on":""}" onclick="ctSet({bucket:'${k}'})">
+          <span>${k}</span><b style="color:${k==="30+ days"&&arr.length?"var(--red)":"inherit"}">${arr.length}</b></div>`).join("")}
+        <p class="muted" style="font-size:.76rem;margin-top:8px">Click a band to list those contracts, oldest first.</p>
+      </div>
+      <div class="card card-pad">
+        <div class="eyebrow red">Sales Operations workload</div>
+        <div style="overflow:auto"><table class="tbl">
+          <thead><tr><th>Handler</th><th class="num">Active</th><th class="num">Aging</th><th class="num">Signed</th><th class="num">Avg duration</th></tr></thead>
+          <tbody>${handlers.length? handlers.map(h=>`<tr style="cursor:pointer" onclick="ctSet({handler:'${h.id}',bucket:''})">
+            <td><b>${esc(h.name)}</b></td><td class="num">${h.active}</td>
+            <td class="num"><b style="color:${h.aging?"var(--red)":"inherit"}">${h.aging}</b></td>
+            <td class="num">${h.signed}</td><td class="num">${h.avg? ctDaysTxt(h.avg):"—"}</td></tr>`).join("")
+            : '<tr><td colspan="5" class="muted">No contracts assigned yet.</td></tr>'}</tbody></table></div>
+      </div>
+    </div>
+    ${bucketRows? `<div class="rep-drill">Showing <b>${esc(CT_STEPS.some(x=>x.k===bucket)? ctLabel(bucket) : bucket)}</b> · ${bucketRows.length} contract(s)
+      <button class="rep-pill" onclick="ctSet({bucket:''})">← all contracts</button></div>
+      ${ctTable(bucketRows.slice().sort((a,b)=>{const ca=ctOf(a),cb=ctOf(b); return (ctCurrentAging(cb)||0)-(ctCurrentAging(ca)||0);}), "")}`
+      : ctTable(s.pool.slice().sort((a,b)=>{const ca=ctOf(a),cb=ctOf(b); return (ctCurrentAging(cb)||0)-(ctCurrentAging(ca)||0);}), "All contracts")}
+  </div>`;
+}
+function viewContracts(){
+  if(!canSeeContracts()) return `<div class="card card-pad"><p class="muted">Contract management is available to Sales Operations and management.</p></div>`;
+  return (currentUser && (currentUser.director||currentUser.exec||currentUser.admin) && !isOps())? viewContractsDirector()
+       : (isOps()? viewContractsOps() : viewContractsDirector());
+}
 /* =================== Analytics engine =================== */
 /* One pass over the leads produces every figure on the dashboard, so the page
    stays fast on a large book. Results are cached per filter combination. */
