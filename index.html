@@ -578,6 +578,12 @@ function logoTryNext(img){
 </div>
 
 <!-- ============ LEAD MODAL ============ -->
+<div class="overlay" id="offerOverlay" style="z-index:160">
+  <div class="modal" style="width:min(900px,100%)">
+    <div class="modal-head"><h3>Generate an offer</h3><button class="x-btn" onclick="closeOffer()">×</button></div>
+    <div style="padding:18px 22px 22px;max-height:82vh;overflow:auto" id="offerBody"></div>
+  </div>
+</div>
 <div class="overlay" id="ctOverlay" style="z-index:150">
   <div class="modal" style="width:min(940px,100%)">
     <div class="modal-head"><h3>Contract</h3><button class="x-btn" onclick="closeContract()">×</button></div>
@@ -664,6 +670,7 @@ function logoTryNext(img){
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
           <select id="waTemplate" onchange="applyTemplate()" style="border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:#fff"></select>
           <button class="btn btn-ghost btn-sm" onclick="openWhatsApp()" type="button">🟢 WhatsApp</button>
+          <button class="btn btn-red btn-sm" onclick="openOffer(editingLeadId)" type="button" id="offerBtn">📄 Generate offer</button>
           <button class="btn btn-ghost btn-sm" onclick="emailClient()" type="button">✉ Email client</button>
         </div>
         <textarea id="waMessage" rows="3" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:10px;font-family:inherit;font-size:.86rem" placeholder="Message — edit before sending…"></textarea>
@@ -866,7 +873,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "18 Aug 2026 · rev AY";
+const APP_BUILD = "18 Aug 2026 · rev AZ";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -2328,6 +2335,7 @@ function openLeadModal(id){
   $("f_owner").disabled = !canDistributeLead(l);
   ["f_status","f_next","f_nextTime","f_meetingDate","f_meetingTime","f_offer","f_offerDate","f_industry","f_qual","f_temp","f_qualNotes","f_lostCat","f_lostReason"].forEach(f=>$(f).disabled = !canFollow);
   ["f_value","f_totalSold","f_soldArea","f_plotNo"].forEach(f=>$(f).disabled = !canValue);
+  { const ob=$("offerBtn"); if(ob) ob.style.display = (l && bestPhone(l))? "" : "none"; }
   ["f_eoiApp","f_eoiDate","f_resDate","f_contractDate"].forEach(f=>$(f).disabled = !(canStages && (isOwnerUser||isOps()||isAdmin()||isManager()||isDirector())));
   $("stagesBlock").style.display = canStages? "block":"none";
   ["valueField","totalSoldField","soldAreaField","plotField"].forEach(f=>{ if(currentUser.mkt) $(f).style.display="none"; });
@@ -3254,6 +3262,214 @@ function marketingSection(leads, title){
 }
 
 /* =================== Reports =================== */
+/* =================== Sales offers =================== */
+/* The three parks with their official economics, exactly as used in the
+   Strategic Industrial Locations offer tool. */
+const OFFER_PARKS = {
+  sokhna:{ key:"sokhna", project:"INDUSTRIA 1 SOKHNA", sector:"Engineering / Chemical",
+    price:6579, advancePct:0.30, maxYears:3, defaultPlan:"3", defaultFreq:"Quarterly",
+    maintenancePerSqm:10, infraInsurancePct:0.01, contractFeesPct:0.001, handoverFees:20000, elecHandover:30000 },
+  october:{ key:"october", project:"Industria October", sector:"Food",
+    price:4850, advancePct:0.30, maxYears:4, defaultPlan:"1", defaultFreq:"Quarterly",
+    maintenancePerSqm:24, infraInsurancePct:0.01, contractFeesPct:0.002, handoverFees:20000, elecHandover:0 },
+  sokhna360:{ key:"sokhna360", project:"Sokhna 360", sector:"Industrial",
+    price:3300, advancePct:0.30, maxYears:0, defaultPlan:"cash", defaultFreq:"Quarterly",
+    maintenancePerSqm:0, infraInsurancePct:0.05, contractFeesPct:0.001, handoverFees:10000, elecHandover:0 }
+};
+const OFFER_FREQS = {"Monthly":12, "Quarterly":4, "Semi Annually":2, "Annually":1};
+let offerState = { leadId:"", park:"october", area:5000, price:0, plan:"", freq:"", electricity:false, date:"" };
+
+function offerCalc(s){
+  const t = OFFER_PARKS[s.park]; if(!t) return null;
+  const area = Math.max(0, Number(s.area)||0), price = Math.max(0, Number(s.price)||t.price);
+  const total = area*price;
+  const cash = s.plan==="cash";
+  const down = cash? total : t.advancePct*total;
+  const remaining = total - down;
+  const fpy = OFFER_FREQS[s.freq] || 4;
+  const years = cash? 0 : Number(s.plan)||0;
+  const N = cash? 0 : years*fpy;
+  const inst = N? remaining/N : 0;
+  const infra = (t.infraInsurancePct||0)*total;
+  const maint = (t.maintenancePerSqm||0)*area;
+  const contract = (t.contractFeesPct||0)*total;
+  const handover = t.handoverFees||0;
+  const elec = (s.electricity && t.elecHandover)? t.elecHandover : 0;
+  const extras = infra + maint + contract + handover + elec;
+  const dueAtContract = down + extras;
+  const sched = [];
+  if(!cash && N){
+    const base = new Date((s.date||today())+"T00:00:00"), step = 12/fpy;
+    for(let i=1;i<=N;i++){ const d=new Date(base); d.setMonth(d.getMonth()+Math.round(step*i)); sched.push({n:i, date:isoLocal(d), amt:inst}); }
+  }
+  return {t, area, price, total, cash, down, remaining, years, fpy, N, inst, freq:s.freq,
+          infra, maint, contract, handover, elec, extras, dueAtContract, sched};
+}
+const oMoney = n => Math.round(Number(n)||0).toLocaleString("en-US");
+function offerPlans(t){
+  const out = [{v:"cash", t:"Cash"}];
+  for(let y=1; y<=(t.maxYears||0); y++) out.push({v:String(y), t:y+" year"+(y>1?"s":"")});
+  return out;
+}
+function openOffer(leadId){
+  const l = state.leads.find(x=>x.id===leadId); if(!l) return;
+  const park = (function(){
+    const p = String(l.project||"").toLowerCase();
+    if(/october/.test(p)) return "october";
+    if(/360/.test(p)) return "sokhna360";
+    if(/sokhna|industria 1/.test(p)) return "sokhna";
+    return "october";
+  })();
+  const t = OFFER_PARKS[park];
+  offerState = { leadId, park, area: Number(l.soldArea||l.land)||5000, price: t.price,
+                 plan: t.defaultPlan, freq: t.defaultFreq, electricity:false, date: today() };
+  $("offerBody").innerHTML = offerFormHtml();
+  $("offerOverlay").classList.add("open");
+}
+function closeOffer(){ $("offerOverlay").classList.remove("open"); }
+function offerUpd(field, val){
+  if(field==="park"){
+    offerState.park = val;
+    const t = OFFER_PARKS[val];
+    offerState.price = t.price; offerState.plan = t.defaultPlan; offerState.freq = t.defaultFreq;
+  }
+  else if(field==="electricity") offerState.electricity = !!val;
+  else offerState[field] = val;
+  $("offerBody").innerHTML = offerFormHtml();
+}
+function offerFormHtml(){
+  const s = offerState, l = state.leads.find(x=>x.id===s.leadId);
+  const t = OFFER_PARKS[s.park], c = offerCalc(s);
+  if(!l || !c) return "";
+  return `
+  <div class="of-grid">
+    <div>
+      <div class="eyebrow red">Offer details</div>
+      <div class="of-f"><label>Industrial park</label>
+        <select onchange="offerUpd('park', this.value)">
+          ${Object.values(OFFER_PARKS).map(p=>`<option value="${p.key}" ${s.park===p.key?"selected":""}>${esc(p.project)}</option>`).join("")}
+        </select></div>
+      <div class="grid g2" style="gap:8px">
+        <div class="of-f"><label>Plot area (m²)</label>
+          <input type="number" min="1" step="100" value="${s.area}" onchange="offerUpd('area', this.value)"></div>
+        <div class="of-f"><label>Price per m² (EGP)</label>
+          <input type="number" min="0" step="10" value="${s.price}" onchange="offerUpd('price', this.value)"></div>
+      </div>
+      <div class="grid g2" style="gap:8px">
+        <div class="of-f"><label>Payment plan</label>
+          <select onchange="offerUpd('plan', this.value)">
+            ${offerPlans(t).map(p=>`<option value="${p.v}" ${s.plan===p.v?"selected":""}>${p.t}</option>`).join("")}
+          </select></div>
+        <div class="of-f"><label>Installment frequency</label>
+          <select onchange="offerUpd('freq', this.value)" ${s.plan==="cash"?"disabled":""}>
+            ${Object.keys(OFFER_FREQS).map(f=>`<option ${s.freq===f?"selected":""}>${f}</option>`).join("")}
+          </select></div>
+      </div>
+      <div class="of-f"><label>First installment from</label>
+        <input type="date" value="${esc(s.date)}" onchange="offerUpd('date', this.value)" ${s.plan==="cash"?"disabled":""}></div>
+      ${t.elecHandover? `<label class="of-chk"><input type="checkbox" ${s.electricity?"checked":""} onchange="offerUpd('electricity', this.checked)"> Include electricity connection (${oMoney(t.elecHandover)} EGP)</label>`:""}
+      <p class="muted" style="font-size:.74rem;margin-top:8px">Official price for ${esc(t.project)} is ${oMoney(t.price)} EGP/m². Change it only with approval.</p>
+    </div>
+    <div>
+      <div class="eyebrow red">The offer</div>
+      <div class="of-sum">
+        <div class="of-row"><span>Plot area</span><b>${oMoney(c.area)} m²</b></div>
+        <div class="of-row"><span>Price per m²</span><b>${oMoney(c.price)} EGP</b></div>
+        <div class="of-row big"><span>Total land value</span><b>${oMoney(c.total)} EGP</b></div>
+        <div class="of-row"><span>${c.cash? "Cash payment":"Down payment ("+Math.round(t.advancePct*100)+"%)"}</span><b>${oMoney(c.down)} EGP</b></div>
+        ${c.cash? "" : `<div class="of-row"><span>Remaining over ${c.years} year${c.years>1?"s":""}</span><b>${oMoney(c.remaining)} EGP</b></div>
+        <div class="of-row"><span>${esc(c.freq)} installment × ${c.N}</span><b>${oMoney(c.inst)} EGP</b></div>`}
+      </div>
+      <div class="eyebrow red" style="margin-top:12px">Additional fees</div>
+      <div class="of-sum">
+        ${c.infra? `<div class="of-row"><span>Infrastructure insurance (${Math.round(t.infraInsurancePct*100)}%)</span><b>${oMoney(c.infra)}</b></div>`:""}
+        ${c.maint? `<div class="of-row"><span>Maintenance deposit (${t.maintenancePerSqm}/m²)</span><b>${oMoney(c.maint)}</b></div>`:""}
+        ${c.contract? `<div class="of-row"><span>Contract fees (${(t.contractFeesPct*100).toFixed(1)}%)</span><b>${oMoney(c.contract)}</b></div>`:""}
+        ${c.handover? `<div class="of-row"><span>Handover fees</span><b>${oMoney(c.handover)}</b></div>`:""}
+        ${c.elec? `<div class="of-row"><span>Electricity connection</span><b>${oMoney(c.elec)}</b></div>`:""}
+        <div class="of-row big"><span>Due at contract</span><b>${oMoney(c.dueAtContract)} EGP</b></div>
+      </div>
+      <p class="muted" style="font-size:.72rem;margin-top:6px">Fees exclude VAT. Offer valid for 2 days.</p>
+    </div>
+  </div>
+  <div class="of-actions">
+    <button class="btn btn-red" onclick="offerSend()">📱 Send on WhatsApp</button>
+    <button class="btn btn-ghost" onclick="offerCopy()">Copy text</button>
+    <button class="btn btn-ghost" onclick="offerSaveToLead()">Save to the lead</button>
+    <button class="btn btn-ghost" onclick="closeOffer()">Close</button>
+  </div>`;
+}
+/* the message itself — the same wording and order as the printed offer */
+function offerText(){
+  const s = offerState, l = state.leads.find(x=>x.id===s.leadId), c = offerCalc(s);
+  if(!l || !c) return "";
+  const t = c.t;
+  const L = [];
+  L.push("*ELSEWEDY INDUSTRIAL DEVELOPMENT*");
+  L.push("*"+t.project.toUpperCase()+"*");
+  L.push("");
+  L.push("Dear "+(l.name||"Sir/Madam")+",");
+  L.push("Thank you for your interest. Please find our offer below.");
+  L.push("");
+  L.push("*LAND*");
+  L.push("Plot area: "+oMoney(c.area)+" m²");
+  L.push("Price per m²: "+oMoney(c.price)+" EGP");
+  L.push("Total land value: *"+oMoney(c.total)+" EGP*");
+  L.push("");
+  L.push("*PAYMENT PLAN*");
+  if(c.cash){ L.push("Cash payment: "+oMoney(c.total)+" EGP"); }
+  else{
+    L.push("Down payment ("+Math.round(t.advancePct*100)+"%): "+oMoney(c.down)+" EGP");
+    L.push("Remaining: "+oMoney(c.remaining)+" EGP over "+c.years+" year"+(c.years>1?"s":""));
+    L.push(c.freq+" installment: "+oMoney(c.inst)+" EGP × "+c.N);
+  }
+  L.push("");
+  L.push("*ADDITIONAL FEES*");
+  if(c.infra) L.push("Infrastructure insurance ("+Math.round(t.infraInsurancePct*100)+"%): "+oMoney(c.infra)+" EGP — refundable after construction");
+  if(c.maint) L.push("Maintenance deposit ("+t.maintenancePerSqm+"/m²): "+oMoney(c.maint)+" EGP");
+  if(c.contract) L.push("Contract fees ("+(t.contractFeesPct*100).toFixed(1)+"%): "+oMoney(c.contract)+" EGP");
+  if(c.handover) L.push("Handover fees: "+oMoney(c.handover)+" EGP");
+  if(c.elec) L.push("Electricity connection: "+oMoney(c.elec)+" EGP");
+  L.push("*Due at contract: "+oMoney(c.dueAtContract)+" EGP*");
+  L.push("");
+  L.push("*INCLUDED*");
+  L.push("• Water, roads, sewage and street lighting to the plot boundary");
+  L.push("• Electricity connection of 12 KVA per 1,000 m² to the land boundary");
+  L.push("");
+  L.push("The contract is signed within 3 months of the reservation form.");
+  L.push("All fees exclude VAT. This offer is valid for 2 days.");
+  L.push("");
+  L.push(currentUser.name);
+  L.push("Elsewedy Industrial Development");
+  return L.join("\n");
+}
+function offerSend(){
+  const l = state.leads.find(x=>x.id===offerState.leadId); if(!l) return;
+  const num = (bestPhone(l)||"").replace(/[^0-9]/g,"");
+  if(!num){ toast("This lead has no phone number"); return; }
+  offerSaveToLead(true);
+  openMailto("https://wa.me/"+num+"?text="+encodeURIComponent(offerText()));
+}
+function offerCopy(){
+  const txt = offerText();
+  try{ navigator.clipboard.writeText(txt); toast("Offer copied — paste it anywhere"); }
+  catch(e){ toast("Copy not available on this device — use Send on WhatsApp"); }
+}
+function offerSaveToLead(quiet){
+  const l = state.leads.find(x=>x.id===offerState.leadId), c = offerCalc(offerState);
+  if(!l || !c) return;
+  l.offerSent = true;
+  l.offerDate = l.offerDate || today();
+  if(!l.value) l.value = Math.round(c.total);
+  l.stageMeta = l.stageMeta || {};
+  l.stageMeta.lastOffer = { at:nowStamp(), park:c.t.key, project:c.t.project, area:c.area, price:c.price,
+                            total:c.total, plan:offerState.plan, freq:c.freq, due:c.dueAtContract, by:currentUser.name };
+  pushLog(l, "Offer sent — "+c.t.project+" · "+oMoney(c.area)+" m² · "+oMoney(c.total)+" EGP"
+    +(c.cash? " · cash" : " · "+c.years+"yr "+c.freq.toLowerCase()));
+  if(typeof gsMirrorLead==="function") gsMirrorLead(l);
+  persist();
+  if(!quiet){ toast("Offer saved on the lead"); closeOffer(); render(); }
+}
 /* =================== Contract management =================== */
 /* Lives inside the lead's existing stage_meta record, so Sales Operations can
    already write it and no database change is required. */
