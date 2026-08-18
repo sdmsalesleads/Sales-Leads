@@ -1027,7 +1027,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "18 Aug 2026 · rev BG";
+const APP_BUILD = "18 Aug 2026 · rev BH";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -2496,9 +2496,15 @@ function openLeadModal(id){
     const row = $("docsRow"), ob = $("offerBtn"), note = $("docNote");
     if(row) row.style.display = l? "" : "none";
     if(ob) ob.disabled = !(l && bestPhone(l));
-    if(note) note.textContent = (l && l.offerSent && l.offerDate)
-      ? ("Offer sent "+fmtDate(l.offerDate)+(l.stageMeta&&l.stageMeta.offerChannel? " on "+l.stageMeta.offerChannel:""))
-      : (l && !bestPhone(l)? "Add a customer number to send an offer" : "");
+    if(note){
+      if(l && l.offerSent){
+        note.innerHTML = "✓ Offer sent"+(l.offerDate? " "+esc(fmtDate(l.offerDate)):"")
+          +(l.stageMeta&&l.stageMeta.offerChannel? " on "+esc(l.stageMeta.offerChannel):"")
+          +` · <a href="#" onclick="event.preventDefault();offerUnsend('${l.id}')" style="color:var(--red);font-weight:700">not sent</a>`;
+      } else {
+        note.textContent = (l && !bestPhone(l))? "Add a customer number to send an offer" : "";
+      }
+    }
   }
   ["f_eoiApp","f_eoiDate","f_resDate","f_contractDate"].forEach(f=>$(f).disabled = !(canStages && (isOwnerUser||isOps()||isAdmin()||isManager()||isDirector())));
   $("stagesBlock").style.display = canStages? "block":"none";
@@ -3634,6 +3640,8 @@ function offerSaveToLead(quiet, channel){
     const st = "Offer Sent – Following Up";
     if(l.status!=="Won" && l.status!=="Lost" && l.status!==st){
       const was = l.status;
+      l.stageMeta = l.stageMeta || {};
+      l.stageMeta.offerPrevStatus = was;          // so it can be undone cleanly
       l.status = st;
       pushLog(l, "Status changed to “"+st+"” — offer sent on "+channel+(was? " (was “"+was+"”)":""));
     }
@@ -3659,6 +3667,25 @@ function offerSaveToLead(quiet, channel){
   if(!quiet){ toast("Offer saved on the lead"); closeOffer(); render(); }
 }
 /* offers awaiting an answer, and the ones that have run out of time */
+/* Take the offer back off a lead — for a mistake, or an offer that was never
+   actually sent. The status returns to what it was and the chase disappears. */
+function offerUnsend(id){
+  const l = state.leads.find(x=>x.id===id); if(!l) return;
+  if(!confirm("Mark this lead as NOT having an offer sent?\n\nThe offer date and the two-day follow-up are cleared. The document itself is untouched and can be sent again at any time.")) return;
+  const sm = l.stageMeta || {};
+  const was = sm.offerPrevStatus || "";
+  l.offerSent = false;
+  l.offerDate = "";
+  if(l.status==="Offer Sent – Following Up") l.status = was || "Call Back";
+  delete sm.offerSentAt; delete sm.offerChannel; delete sm.offerDue; delete sm.offerPrevStatus;
+  l.stageMeta = sm;
+  pushLog(l, "Offer marked as not sent by "+currentUser.name+(was? " — status back to “"+was+"”":""));
+  if(typeof gsMirrorLead==="function") gsMirrorLead(l);
+  persist(); render();
+  if(typeof ctRefresh==="function" && false) ctRefresh();
+  toast("Offer removed — this lead is no longer waiting on one");
+  if($("leadOverlay") && $("leadOverlay").classList.contains("open")) openLeadModal(id);
+}
 function offerAwaiting(l){
   return !!(l && l.offerSent && l.status!=="Won" && l.status!=="Lost" && l.stageMeta && l.stageMeta.offerSentAt);
 }
@@ -4116,7 +4143,7 @@ function offerPrint(){
     + offerPackHtml() + "</body></html>");
   w.document.close();
   setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} }, 500);
-  offerSaveToLead(true, "printed offer"); render();
+  /* printing is not sending — the salesperson may just be reviewing a draft */
 }
 /* ---------- the printed offer document, in the company's own format ---------- */
 function offerDateStr(d){
