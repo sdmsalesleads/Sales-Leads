@@ -328,6 +328,40 @@ th.num{text-align:right}
   .fn-bar{height:32px}
   .fn-big{font-size:1.5rem}
 }
+/* ---- reporting dashboard ---- */
+.rep-wrap{max-width:1280px}
+.rep-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px;padding:10px 12px;
+  background:var(--soft);border:1px solid var(--line);border-radius:11px}
+.rep-bar select,.rep-bar input[type=date]{border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:#fff;font:inherit;font-size:.84rem}
+.rep-periods{display:flex;gap:5px;flex-wrap:wrap}
+.rep-pill{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 13px;font-size:.8rem;
+  font-weight:700;color:var(--steel);cursor:pointer;font-family:inherit}
+.rep-pill:hover{background:#fff;border-color:var(--red);color:var(--red)}
+.rep-pill.on{background:var(--red);border-color:var(--red);color:#fff}
+.rep-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:11px;margin-bottom:16px}
+.rep-kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 15px;transition:box-shadow .15s,transform .15s}
+.rep-kpi:hover{box-shadow:0 8px 22px rgba(0,0,0,.07)}
+.rk-label{font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--steel)}
+.rk-val{font-family:'Archivo Expanded','Archivo',sans-serif;font-weight:800;font-size:1.5rem;line-height:1.1;margin:5px 0 3px}
+.rk-sub{font-size:.74rem;color:var(--steel);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.kd{font-weight:800;font-size:.72rem}
+.kd.up{color:var(--green)} .kd.down{color:var(--red)} .kd.flat{color:var(--steel)}
+.rep-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px;margin-bottom:14px}
+.rep-legend{display:flex;align-items:center;gap:8px;font-size:.82rem;padding:4px 0;cursor:pointer}
+.rep-legend:hover{color:var(--red)}
+.rep-legend .dot{width:10px;height:10px;border-radius:3px;flex:0 0 auto}
+.rep-stack{display:flex;height:9px;border-radius:5px;overflow:hidden;background:var(--line);margin-top:3px}
+.rep-stack span{display:block;height:100%}
+.rep-flags{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.rep-flag{font-size:.78rem;font-weight:600;background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:5px 11px}
+.rep-flag.good{background:#F1FAF5;border-color:#CBE7DA;color:#14663F}
+.rep-flag.warn{background:#FFFDF5;border-color:#EFE4C8;color:#8A6A00}
+.rep-tot{display:flex;justify-content:space-between;font-size:.84rem;padding:6px 0;border-top:1px solid var(--line);margin-top:6px}
+.rep-drill{background:#FFF8F8;border:1px solid #F0D2D3;border-radius:9px;padding:9px 12px;margin-bottom:12px;font-size:.85rem}
+@media (max-width:720px){
+  .rep-kpis{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+  .rk-val{font-size:1.25rem}
+}
 @media print{
   @page{margin:14mm 12mm 16mm}
   .sidebar,.topbar,.filters,.no-print,.game-ribbon,#streakBar,.btn,.spotlight{display:none !important}
@@ -784,7 +818,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "07 Aug 2026 · rev AU";
+const APP_BUILD = "10 Aug 2026 · rev AV";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -3104,7 +3138,445 @@ function marketingSection(leads, title){
 }
 
 /* =================== Reports =================== */
+/* =================== Analytics engine =================== */
+/* One pass over the leads produces every figure on the dashboard, so the page
+   stays fast on a large book. Results are cached per filter combination. */
+let repFilters = { period:"month", from:"", to:"", owner:"", source:"", status:"", lost:"", drill:"" };
+let _repCache = null, _repKey = "";
+
+function repRange(){
+  const t = new Date(today()+"T00:00:00");
+  const iso = d => isoLocal(d);
+  const p = repFilters.period;
+  let from, to = new Date(t), label = "";
+  if(p==="today"){ from = new Date(t); label = "Today"; }
+  else if(p==="week"){ from = new Date(weekStart()); label = "This week"; }
+  else if(p==="month"){ from = new Date(t.getFullYear(), t.getMonth(), 1); label = t.toLocaleDateString("en-GB",{month:"long",year:"numeric"}); }
+  else if(p==="quarter"){ const q = Math.floor(t.getMonth()/3); from = new Date(t.getFullYear(), q*3, 1); label = "Q"+(q+1)+" "+t.getFullYear(); }
+  else if(p==="year"){ from = new Date(t.getFullYear(),0,1); label = String(t.getFullYear()); }
+  else if(p==="all"){ from = new Date(2000,0,1); label = "All time"; }
+  else { from = new Date((repFilters.from||today())+"T00:00:00"); to = new Date((repFilters.to||today())+"T00:00:00"); label = fmtDate(iso(from))+" → "+fmtDate(iso(to)); }
+  return { from: iso(from), to: iso(to), label };
+}
+function repPrevRange(){
+  const r = repRange();
+  if(repFilters.period==="all") return null;
+  const a = new Date(r.from+"T00:00:00"), b = new Date(r.to+"T00:00:00");
+  const days = Math.max(1, Math.round((b-a)/864e5)+1);
+  const pb = new Date(a); pb.setDate(pb.getDate()-1);
+  const pa = new Date(pb); pa.setDate(pa.getDate()-days+1);
+  return { from: isoLocal(pa), to: isoLocal(pb) };
+}
+const repIn = (d, r) => { const x = String(d||"").slice(0,10); return !!x && x>=r.from && x<=r.to; };
+
+/* the stage a lead reached — cumulative, so a won deal counts as contacted too */
+function repStage(l){
+  const won = l.status==="Won";
+  const lost = l.status==="Lost" || ["Not Interested","Low Budget"].includes(l.status);
+  const negotiation = won || l.status==="Negotiation" || !!(l.stageMeta&&l.stageMeta.contractDate);
+  const opportunity = negotiation || l.offerSent || ["Offer Sent – Following Up","Scheduled Meeting","Site Visit Scheduled"].includes(l.status) || !!l.meetingDate;
+  const qualified = opportunity || l.qualStatus==="Qualified";
+  const contacted = qualified || !!l.firstContactAt || (l.status && l.status!=="New");
+  return {contacted, qualified, opportunity, negotiation, won, lost};
+}
+function repCycleDays(l){
+  if(l.status!=="Won" || !l.wonDate || !l.created) return null;
+  const d = (new Date(String(l.wonDate).slice(0,10)+"T00:00:00") - new Date(String(l.created).slice(0,10)+"T00:00:00"))/864e5;
+  return d>=0 && d<3650? d : null;
+}
+function repPool(){
+  const F = repFilters, r = repRange();
+  let pool = visibleLeads().filter(l=>!isMergedAway(l));
+  if(F.owner)  pool = pool.filter(l=>l.owner===F.owner);
+  if(F.source) pool = pool.filter(l=>normSource(l.source)===F.source);
+  if(F.status) pool = pool.filter(l=>l.status===F.status);
+  if(F.lost)   pool = pool.filter(l=>(l.lostCat||"—")===F.lost);
+  /* a lead belongs to the period if it arrived in it, or closed in it */
+  return pool.filter(l=> repIn(l.created,r) || (l.status==="Won" && repIn(l.wonDate,r)) );
+}
+function repAgg(pool){
+  const a = { total:0, contacted:0, qualified:0, opportunity:0, negotiation:0, won:0, lost:0,
+              wonValue:0, pipelineValue:0, weighted:0, cycles:[], byOwner:{}, bySource:{}, byLost:{},
+              lostValue:{}, lostByOwner:{}, lostBySource:{}, open:0 };
+  const W = {contacted:.05, qualified:.15, opportunity:.35, negotiation:.6};
+  pool.forEach(l=>{
+    const s = repStage(l), v = Number(l.value)||0;
+    const own = l.owner||"", src = normSource(l.source)||"—";
+    a.total++;
+    if(s.contacted) a.contacted++;
+    if(s.qualified) a.qualified++;
+    if(s.opportunity) a.opportunity++;
+    if(s.negotiation) a.negotiation++;
+    if(s.won){ a.won++; a.wonValue += v; const c = repCycleDays(l); if(c!==null) a.cycles.push(c); }
+    if(s.lost) a.lost++;
+    if(!s.won && !s.lost){
+      a.open++;
+      a.pipelineValue += v;
+      const w = s.negotiation? W.negotiation : s.opportunity? W.opportunity : s.qualified? W.qualified : W.contacted;
+      a.weighted += v*w;
+    }
+    const o = a.byOwner[own] = a.byOwner[own] || {leads:0,contacted:0,qualified:0,opportunity:0,won:0,lost:0,wonValue:0,pipeline:0,cycles:[],lost:0,lostReasons:{}};
+    o.leads++; if(s.contacted) o.contacted++; if(s.qualified) o.qualified++; if(s.opportunity) o.opportunity++;
+    if(s.won){ o.won++; o.wonValue += v; const c=repCycleDays(l); if(c!==null) o.cycles.push(c); }
+    if(s.lost){ o.lost++; o.lostReasons[l.lostCat||"—"] = (o.lostReasons[l.lostCat||"—"]||0)+1; }
+    if(!s.won && !s.lost) o.pipeline += v;
+    const sc = a.bySource[src] = a.bySource[src] || {leads:0,qualified:0,opportunity:0,won:0,lost:0,wonValue:0,pipeline:0};
+    sc.leads++; if(s.qualified) sc.qualified++; if(s.opportunity) sc.opportunity++;
+    if(s.won){ sc.won++; sc.wonValue += v; }
+    if(s.lost) sc.lost++;
+    if(!s.won && !s.lost) sc.pipeline += v;
+    if(s.lost){
+      const k = l.lostCat || "Not recorded";
+      a.byLost[k] = (a.byLost[k]||0)+1;
+      a.lostValue[k] = (a.lostValue[k]||0) + v;
+      (a.lostByOwner[own] = a.lostByOwner[own]||{})[k] = ((a.lostByOwner[own]||{})[k]||0)+1;
+      (a.lostBySource[src] = a.lostBySource[src]||{})[k] = ((a.lostBySource[src]||{})[k]||0)+1;
+    }
+  });
+  a.convRate = a.total? a.won/a.total*100 : 0;
+  a.contactRate = a.total? a.contacted/a.total*100 : 0;
+  a.avgDeal = a.won? a.wonValue/a.won : 0;
+  a.avgCycle = a.cycles.length? a.cycles.reduce((s,x)=>s+x,0)/a.cycles.length : 0;
+  return a;
+}
+function repData(){
+  const key = JSON.stringify(repFilters)+"|"+(currentUser?currentUser.id:"")+"|"+state.leads.length+"|"+dupGen;
+  if(_repKey===key && _repCache) return _repCache;
+  const pool = repPool();
+  const now = repAgg(pool);
+  let prev = null;
+  const pr = repPrevRange();
+  if(pr){
+    const F = repFilters;
+    let p = visibleLeads().filter(l=>!isMergedAway(l));
+    if(F.owner)  p = p.filter(l=>l.owner===F.owner);
+    if(F.source) p = p.filter(l=>normSource(l.source)===F.source);
+    if(F.status) p = p.filter(l=>l.status===F.status);
+    if(F.lost)   p = p.filter(l=>(l.lostCat||"—")===F.lost);
+    prev = repAgg(p.filter(l=> repIn(l.created,pr) || (l.status==="Won" && repIn(l.wonDate,pr)) ));
+  }
+  _repKey = key;
+  return (_repCache = {pool, now, prev, range: repRange()});
+}
+function repInvalidate(){ _repCache = null; _repKey = ""; }
+function repSet(patch){ Object.assign(repFilters, patch); repInvalidate(); render(); }
+/* =================== Dashboard UI =================== */
+function repDelta(now, prev, opts){
+  if(prev===null || prev===undefined) return "";
+  const inv = opts && opts.lowerIsBetter;
+  if(!prev && !now) return "";
+  const pct = prev? Math.round((now-prev)/Math.abs(prev)*100) : (now? 100 : 0);
+  if(pct===0) return `<span class="kd flat">— level vs previous</span>`;
+  const up = pct>0, good = inv? !up : up;
+  return `<span class="kd ${good?"up":"down"}">${up?"▲":"▼"} ${Math.abs(pct)}% vs previous</span>`;
+}
+function repKpi(label, value, sub, delta, onclick){
+  return `<div class="rep-kpi"${onclick? ` onclick="${onclick}" style="cursor:pointer"`:""}>
+    <div class="rk-label">${esc(label)}</div>
+    <div class="rk-val">${value}</div>
+    <div class="rk-sub">${sub||""} ${delta||""}</div>
+  </div>`;
+}
+function repFilterBar(full){
+  const r = repRange();
+  const per = [["today","Today"],["week","Week"],["month","Month"],["quarter","Quarter"],["year","Year"],["all","All time"]];
+  return `<div class="rep-bar no-print">
+    <div class="rep-periods">
+      ${per.map(([k,lb])=>`<button class="rep-pill ${repFilters.period===k?"on":""}" onclick="repSet({period:'${k}'})">${lb}</button>`).join("")}
+      <button class="rep-pill ${repFilters.period==='custom'?"on":""}" onclick="repSet({period:'custom'})">Custom</button>
+    </div>
+    ${repFilters.period==="custom"? `<div style="display:flex;gap:6px;align-items:center">
+      <input type="date" value="${esc(repFilters.from||today())}" onchange="repSet({from:this.value})">
+      <span class="muted">→</span>
+      <input type="date" value="${esc(repFilters.to||today())}" onchange="repSet({to:this.value})">
+    </div>`:""}
+    ${full? `
+      <select onchange="repSet({owner:this.value})">
+        <option value="">All salespeople</option>
+        ${state.members.filter(m=>!m.pending && canOwnLeads(m)).map(m=>`<option value="${m.id}" ${repFilters.owner===m.id?"selected":""}>${esc(m.name)}</option>`).join("")}
+      </select>`:""}
+    <select onchange="repSet({source:this.value})">
+      <option value="">All sources</option>
+      ${SOURCES.map(s=>`<option ${repFilters.source===s?"selected":""}>${s}</option>`).join("")}
+    </select>
+    ${full? `<select onchange="repSet({lost:this.value})">
+      <option value="">All lost reasons</option>
+      ${LOST_CATS.map(s=>`<option ${repFilters.lost===s?"selected":""}>${s}</option>`).join("")}
+    </select>`:""}
+    ${(repFilters.owner||repFilters.source||repFilters.lost||repFilters.status)? `<button class="rep-pill" onclick="repSet({owner:'',source:'',lost:'',status:''})">✕ Clear filters</button>`:""}
+    <span class="muted" style="margin-left:auto;font-size:.8rem">${esc(r.label)}</span>
+  </div>`;
+}
+/* ---- the funnel, from the real stages ---- */
+function repFunnel(a){
+  const steps = [
+    {k:"Total leads", n:a.total}, {k:"Contacted", n:a.contacted}, {k:"Qualified", n:a.qualified},
+    {k:"Opportunity", n:a.opportunity}, {k:"Negotiation", n:a.negotiation}, {k:"Won", n:a.won}
+  ];
+  if(!steps[0].n) return `<div class="muted" style="padding:14px">No leads in this period.</div>`;
+  const shades = ["#E01E25","#E7434A","#ED6870","#F08A90","#4FA88A","#1E8A5A"];
+  let worst = null;
+  for(let i=1;i<steps.length;i++){ const lost = steps[i-1].n-steps[i].n; if(lost>0 && (!worst||lost>worst.lost)) worst={lost, from:steps[i-1].k, to:steps[i].k}; }
+  return `<div class="fn-body">${steps.map((s,i)=>{
+    const pct = a.total? s.n/a.total*100 : 0;
+    const step = i===0? null : (steps[i-1].n? Math.round(s.n/steps[i-1].n*100) : 0);
+    const drop = i===0? 0 : steps[i-1].n-s.n;
+    return `<div class="fn-row">
+      <div class="fn-label"><span class="fn-name">${s.k}</span><span class="fn-hint">${Math.round(pct*10)/10}% of all leads</span></div>
+      <div class="fn-barwrap">
+        <div class="fn-bar" style="width:${Math.max(pct,2)}%;background:${shades[i]}"><span class="fn-n">${s.n.toLocaleString()}</span></div>
+      </div>
+      ${step===null?"":`<div class="fn-step ${step>=70?"good":step>=35?"mid":"low"}"><span>${step}% carried on</span>${drop>0?`<span class="fn-lost">−${drop.toLocaleString()} dropped</span>`:""}</div>`}
+    </div>`;
+  }).join("")}</div>
+  ${worst? `<div class="fn-note"><b>Biggest drop-off:</b> ${worst.from} → ${worst.to}, losing ${worst.lost.toLocaleString()} leads. That step is where the pipeline leaks.</div>`:""}`;
+}
+/* ---- lost analysis ---- */
+function repLost(a){
+  const byReason = Object.entries(a.byLost).sort((x,y)=>y[1]-x[1]);
+  if(!byReason.length) return `<div class="card card-pad"><div class="eyebrow red">Lost analysis</div><p class="muted" style="font-size:.85rem;margin:8px 0 0">No lost leads in this period.</p></div>`;
+  const cols = ["#E01E25","#E7434A","#ED6870","#F08A90","#F5ACB1","#C9CDD2"];
+  const donut = chartDonut(byReason.map(([k,v],i)=>({k, v, color:cols[i%cols.length]})));
+  const valBars = chartColumns(Object.entries(a.lostValue).filter(([,v])=>v>0).sort((x,y)=>y[1]-x[1]).map(([k,v])=>({k, v})), "#B0161C");
+  const owners = Object.entries(a.lostByOwner).map(([id,m])=>({name: memberName(id)||"Unassigned", total:Object.values(m).reduce((s,x)=>s+x,0), m}))
+                  .filter(x=>x.total).sort((x,y)=>y.total-x.total).slice(0,8);
+  const srcs = Object.entries(a.lostBySource).map(([k,m])=>({k, v:Object.values(m).reduce((s,x)=>s+x,0)})).filter(x=>x.v).sort((x,y)=>y.v-x.v);
+  return `<div class="rep-grid2">
+    <div class="card card-pad">
+      <div class="eyebrow red">Why we lose — by reason</div>
+      ${donut}
+      <div style="margin-top:10px">${byReason.map(([k,v],i)=>`<div class="rep-legend" onclick="repSet({lost:'${String(k).replace(/'/g,"\\'")}'})">
+        <span class="dot" style="background:${cols[i%cols.length]}"></span><span style="flex:1">${esc(k)}</span><b>${v}</b>
+        <span class="muted" style="margin-left:8px">${Math.round(v/a.lost*100)}%</span></div>`).join("")}</div>
+    </div>
+    <div class="card card-pad">
+      <div class="eyebrow red">Value lost by reason</div>
+      ${valBars}
+      <p class="muted" style="font-size:.76rem;margin-top:6px">The money attached to the deals we did not win — a small count with a large value still matters most.</p>
+    </div>
+    <div class="card card-pad">
+      <div class="eyebrow red">Lost by salesperson</div>
+      ${owners.length? owners.map(o=>{
+        const parts = Object.entries(o.m).sort((x,y)=>y[1]-x[1]);
+        return `<div style="margin-bottom:9px">
+          <div style="display:flex;justify-content:space-between;font-size:.82rem;font-weight:700"><span>${esc(o.name)}</span><span>${o.total}</span></div>
+          <div class="rep-stack">${parts.map(([k,v],i)=>`<span style="width:${v/o.total*100}%;background:${cols[i%cols.length]}" title="${esc(k)}: ${v}"></span>`).join("")}</div>
+        </div>`; }).join("") : '<p class="muted" style="font-size:.85rem">Nothing lost in this period.</p>'}
+    </div>
+    <div class="card card-pad">
+      <div class="eyebrow red">Lost by source</div>
+      ${chartColumns(srcs, "#8A9099")}
+    </div>
+  </div>`;
+}
+/* ---- per-salesperson performance ---- */
+function repPeople(a){
+  const rows = Object.entries(a.byOwner).filter(([id])=>id).map(([id,o])=>({
+    id, name: memberName(id)||"Unassigned",
+    leads:o.leads, contacted:o.contacted, qualified:o.qualified, opp:o.opportunity, won:o.won, lost:o.lost,
+    wonValue:o.wonValue, pipeline:o.pipeline,
+    conv: o.leads? o.won/o.leads*100 : 0,
+    contactRate: o.leads? o.contacted/o.leads*100 : 0,
+    avgDeal: o.won? o.wonValue/o.won : 0,
+    cycle: o.cycles.length? o.cycles.reduce((s,x)=>s+x,0)/o.cycles.length : 0,
+    lostTop: Object.entries(o.lostReasons).sort((x,y)=>y[1]-x[1])[0]
+  })).sort((x,y)=>y.wonValue-x.wonValue || y.won-x.won);
+  if(!rows.length) return "";
+  const maxRev = Math.max(1, ...rows.map(r=>r.wonValue));
+  const best = rows[0], worstConv = rows.slice().sort((x,y)=>x.conv-y.conv)[0];
+  const mostLost = rows.slice().sort((x,y)=>y.lost-x.lost)[0];
+  return `<div class="card card-pad">
+    <div class="section-head" style="margin:0 0 6px"><h2 style="font-size:1rem">Salesperson performance</h2>
+      <span class="muted" style="font-size:.78rem">Click a name for that person's dashboard</span></div>
+    <div class="rep-flags">
+      ${best.wonValue? `<span class="rep-flag good">🏆 Top revenue: <b>${esc(best.name)}</b> — ${fmtMoney(best.wonValue)}</span>`:""}
+      ${worstConv && rows.length>1? `<span class="rep-flag warn">⚠ Lowest conversion: <b>${esc(worstConv.name)}</b> — ${worstConv.conv.toFixed(1)}%</span>`:""}
+      ${mostLost && mostLost.lost? `<span class="rep-flag warn">✗ Most lost: <b>${esc(mostLost.name)}</b> — ${mostLost.lost}${mostLost.lostTop? " (mostly "+esc(mostLost.lostTop[0])+")":""}</span>`:""}
+    </div>
+    <div style="overflow:auto;margin-top:10px">
+    <table class="tbl">
+      <thead><tr><th>Salesperson</th><th class="num">Leads</th><th class="num">Contacted</th><th class="num">Qualified</th>
+        <th class="num">Opportunities</th><th class="num">Won</th><th class="num">Lost</th><th class="num">Conversion</th>
+        <th class="num">Won revenue</th><th class="num">Pipeline</th><th class="num">Avg deal</th><th class="num">Avg cycle</th><th>Revenue share</th></tr></thead>
+      <tbody>${rows.map(r=>`<tr style="cursor:pointer" onclick="repSet({owner:'${r.id}'})">
+        <td><b>${esc(r.name)}</b>${r.lostTop? `<div class="muted" style="font-size:.72rem">loses mostly to ${esc(r.lostTop[0])}</div>`:""}</td>
+        <td class="num">${r.leads}</td><td class="num">${r.contacted} <span class="muted">(${r.contactRate.toFixed(0)}%)</span></td>
+        <td class="num">${r.qualified}</td><td class="num">${r.opp}</td>
+        <td class="num"><b>${r.won}</b></td><td class="num">${r.lost}</td>
+        <td class="num"><b style="color:${r.conv>=5?"var(--green)":r.conv>0?"var(--amber)":"var(--steel)"}">${r.conv.toFixed(1)}%</b></td>
+        <td class="num"><b>${fmtMoney(r.wonValue)}</b></td><td class="num">${fmtMoney(r.pipeline)}</td>
+        <td class="num">${r.avgDeal? fmtMoney(r.avgDeal):"—"}</td><td class="num">${r.cycle? Math.round(r.cycle)+"d":"—"}</td>
+        <td style="min-width:120px"><div class="meter"><div class="meter-fill" style="width:${r.wonValue/maxRev*100}%"></div></div></td>
+      </tr>`).join("")}</tbody>
+    </table></div>
+  </div>`;
+}
+/* ---- pipeline ---- */
+function repPipeline(a, pool){
+  const byStage = [["Contacted",0],["Qualified",0],["Opportunity",0],["Negotiation",0]];
+  const m = {Contacted:0,Qualified:0,Opportunity:0,Negotiation:0};
+  pool.forEach(l=>{ const s=repStage(l); if(s.won||s.lost) return; const v=Number(l.value)||0;
+    if(s.negotiation) m.Negotiation+=v; else if(s.opportunity) m.Opportunity+=v; else if(s.qualified) m.Qualified+=v; else m.Contacted+=v; });
+  const owners = Object.entries(a.byOwner).filter(([id,o])=>id&&o.pipeline>0).map(([id,o])=>({k:memberName(id)||"?", v:o.pipeline})).sort((x,y)=>y.v-x.v);
+  const srcs = Object.entries(a.bySource).filter(([,s])=>s.pipeline>0).map(([k,s])=>({k, v:s.pipeline})).sort((x,y)=>y.v-x.v);
+  return `<div class="rep-grid2">
+    <div class="card card-pad"><div class="eyebrow red">Open pipeline by stage</div>
+      ${chartColumns(Object.entries(m).map(([k,v])=>({k,v})), "#E01E25")}
+      <div class="rep-tot"><span>Total open</span><b>${fmtMoney(a.pipelineValue)}</b></div>
+      <div class="rep-tot"><span>Weighted by stage</span><b>${fmtMoney(a.weighted)}</b></div>
+    </div>
+    <div class="card card-pad"><div class="eyebrow red">Pipeline by salesperson</div>${chartColumns(owners.slice(0,10), "#1A1D21")}</div>
+    <div class="card card-pad"><div class="eyebrow red">Pipeline by source</div>${chartColumns(srcs.slice(0,10), "#8A6A00")}</div>
+    <div class="card card-pad"><div class="eyebrow red">Won vs still open</div>
+      ${chartDonut([{k:"Won", v:a.wonValue, color:"#1E8A5A"},{k:"Open pipeline", v:a.pipelineValue, color:"#E01E25"}])}
+    </div>
+  </div>`;
+}
+/* ---- source quality ---- */
+function repSources(a){
+  const rows = Object.entries(a.bySource).map(([k,s])=>({k, ...s, conv: s.leads? s.won/s.leads*100:0, lostRate: s.leads? s.lost/s.leads*100:0}))
+    .sort((x,y)=>y.wonValue-x.wonValue || y.leads-x.leads);
+  if(!rows.length) return "";
+  const bestQual = rows.slice().filter(r=>r.leads>=3).sort((x,y)=>y.conv-x.conv)[0];
+  const mostVol = rows.slice().sort((x,y)=>y.leads-x.leads)[0];
+  return `<div class="card card-pad">
+    <div class="section-head" style="margin:0 0 6px"><h2 style="font-size:1rem">Source performance — volume vs quality</h2></div>
+    ${bestQual&&mostVol? `<div class="rep-flags">
+      <span class="rep-flag">📈 Most leads: <b>${esc(mostVol.k)}</b> (${mostVol.leads})</span>
+      <span class="rep-flag good">🎯 Best quality: <b>${esc(bestQual.k)}</b> — ${bestQual.conv.toFixed(1)}% convert</span>
+    </div>`:""}
+    <div style="overflow:auto;margin-top:10px"><table class="tbl">
+      <thead><tr><th>Source</th><th class="num">Leads</th><th class="num">Qualified</th><th class="num">Opportunities</th>
+        <th class="num">Won</th><th class="num">Conversion</th><th class="num">Revenue</th><th class="num">Pipeline</th><th class="num">Lost rate</th></tr></thead>
+      <tbody>${rows.map(r=>`<tr style="cursor:pointer" onclick="repSet({source:'${String(r.k).replace(/'/g,"\\'")}'})">
+        <td><b>${esc(r.k)}</b>${!isMktSource(r.k)? ' <span class="muted" style="font-size:.72rem">(self-generated)</span>':""}</td>
+        <td class="num">${r.leads}</td><td class="num">${r.qualified}</td><td class="num">${r.opportunity}</td>
+        <td class="num"><b>${r.won}</b></td>
+        <td class="num"><b style="color:${r.conv>=5?"var(--green)":r.conv>0?"var(--amber)":"var(--steel)"}">${r.conv.toFixed(1)}%</b></td>
+        <td class="num"><b>${fmtMoney(r.wonValue)}</b></td><td class="num">${fmtMoney(r.pipeline)}</td>
+        <td class="num">${r.lostRate.toFixed(0)}%</td>
+      </tr>`).join("")}</tbody></table></div>
+    <p class="muted" style="font-size:.76rem;margin-top:8px">A source that brings many leads is not the same as one that brings business — compare the Leads column against Conversion and Revenue.</p>
+  </div>`;
+}
+/* ---- trend over the period ---- */
+function repTrend(pool){
+  const r = repRange();
+  const from = new Date(r.from+"T00:00:00"), to = new Date(r.to+"T00:00:00");
+  const days = Math.round((to-from)/864e5)+1;
+  const byMonth = days>92;
+  const buckets = new Map();
+  const key = d => byMonth? String(d).slice(0,7) : String(d).slice(0,10);
+  const labels = [];
+  if(byMonth){ const c=new Date(from); while(c<=to){ const k=isoLocal(c).slice(0,7); if(!buckets.has(k)){buckets.set(k,{in:0,won:0,lost:0,rev:0}); labels.push(k);} c.setMonth(c.getMonth()+1); } }
+  else { const c=new Date(from); while(c<=to){ const k=isoLocal(c); buckets.set(k,{in:0,won:0,lost:0,rev:0}); labels.push(k); c.setDate(c.getDate()+1); } }
+  pool.forEach(l=>{
+    const kIn = key(l.created); if(buckets.has(kIn)) buckets.get(kIn).in++;
+    if(l.status==="Won" && l.wonDate){ const k=key(l.wonDate); if(buckets.has(k)){ buckets.get(k).won++; buckets.get(k).rev += Number(l.value)||0; } }
+    if(repStage(l).lost){ const k=key(l.wonDate||l.created); if(buckets.has(k)) buckets.get(k).lost++; }
+  });
+  const shortLab = k => byMonth? new Date(k+"-01T00:00:00").toLocaleDateString("en-GB",{month:"short"}) : new Date(k+"T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"});
+  const pts = f => labels.map(k=>({x:shortLab(k), y:buckets.get(k)[f]}));
+  return `<div class="card card-pad"><div class="eyebrow red">Trend across the period</div>
+    ${chartLine([{name:"Leads in", color:"#8A9099", points:pts("in")},
+                 {name:"Won", color:"#1E8A5A", points:pts("won")},
+                 {name:"Lost", color:"#E01E25", points:pts("lost")}])}
+  </div>`;
+}
+function repIsDirector(){ return currentUser && (currentUser.director || currentUser.admin || currentUser.exec || isOps() || currentUser.mgr || currentUser.dmgr); }
+/* ---------- SALES DIRECTOR: the full picture ---------- */
+function viewDirectorReports(){
+  const d = repData(), a = d.now, p = d.prev;
+  const who = repFilters.owner? memberName(repFilters.owner) : "";
+  return `<div class="rep-wrap">
+    <div class="section-head" style="margin-top:0">
+      <h2>Sales intelligence${who? " — "+esc(who):""}</h2>
+      <span class="no-print">${pdfButton()}</span>
+    </div>
+    ${repFilterBar(true)}
+    ${who? `<div class="rep-drill">Showing <b>${esc(who)}</b> only · <button class="rep-pill" onclick="repSet({owner:''})">← back to the whole team</button></div>`:""}
+    <div class="rep-kpis">
+      ${repKpi("Total leads", a.total.toLocaleString(), "in this period", repDelta(a.total, p&&p.total), "kpiGo({},'leads')")}
+      ${repKpi("Contacted", a.contacted.toLocaleString(), a.contactRate.toFixed(0)+"% of leads", repDelta(a.contacted, p&&p.contacted))}
+      ${repKpi("Qualified", a.qualified.toLocaleString(), "real opportunities", repDelta(a.qualified, p&&p.qualified))}
+      ${repKpi("Opportunities", a.opportunity.toLocaleString(), "offer or meeting stage", repDelta(a.opportunity, p&&p.opportunity))}
+      ${repKpi("Won deals", a.won.toLocaleString(), "closed in this period", repDelta(a.won, p&&p.won), "kpiGo({status:'Won'},'leads')")}
+      ${repKpi("Lost leads", a.lost.toLocaleString(), "closed without a deal", repDelta(a.lost, p&&p.lost, {lowerIsBetter:true}), "kpiGo({status:'Lost'},'leads')")}
+      ${repKpi("Conversion", a.convRate.toFixed(1)+"%", "leads that became deals", repDelta(a.convRate, p&&p.convRate))}
+      ${repKpi("Won revenue", fmtMoney(a.wonValue), a.won+" deal"+(a.won===1?"":"s"), repDelta(a.wonValue, p&&p.wonValue))}
+      ${repKpi("Open pipeline", fmtMoney(a.pipelineValue), a.open+" live leads", repDelta(a.pipelineValue, p&&p.pipelineValue))}
+      ${repKpi("Weighted pipeline", fmtMoney(a.weighted), "by stage probability", "")}
+      ${repKpi("Average deal", a.avgDeal? fmtMoney(a.avgDeal):"—", "per won deal", repDelta(a.avgDeal, p&&p.avgDeal))}
+      ${repKpi("Average cycle", a.avgCycle? Math.round(a.avgCycle)+" days":"—", "lead to signature", repDelta(a.avgCycle, p&&p.avgCycle, {lowerIsBetter:true}))}
+    </div>
+    <div class="rep-grid2">
+      <div class="card card-pad"><div class="eyebrow red">Sales funnel</div>${repFunnel(a)}</div>
+      ${repTrend(d.pool)}
+    </div>
+    ${repPeople(a)}
+    <div class="section-head"><h2 style="font-size:1rem">Pipeline</h2></div>
+    ${repPipeline(a, d.pool)}
+    <div class="section-head"><h2 style="font-size:1rem">Why we lose</h2></div>
+    ${repLost(a)}
+    ${repSources(a)}
+    <p class="muted no-print" style="font-size:.76rem;margin-top:10px">Everything above follows the filters at the top. Click any salesperson, source or lost reason to narrow the whole dashboard to it.</p>
+  </div>`;
+}
+/* ---------- MARKETING: outcomes only ---------- */
+function viewMarketingReports(){
+  const d = repData(), a = d.now, p = d.prev;
+  const mkt = d.pool.filter(l=>isMktSource(l.source));
+  const m = repAgg(mkt);
+  const bySrc = Object.entries(m.bySource).filter(([k])=>isMktSource(k))
+    .map(([k,s])=>({k, ...s, conv: s.leads? s.won/s.leads*100:0})).sort((x,y)=>y.leads-x.leads);
+  const lost = Object.entries(m.byLost).sort((x,y)=>y[1]-x[1]);
+  const cols = ["#E01E25","#E7434A","#ED6870","#F08A90","#F5ACB1","#C9CDD2"];
+  return `<div class="rep-wrap">
+    <div class="section-head" style="margin-top:0"><h2>Marketing performance</h2><span class="no-print">${pdfButton()}</span></div>
+    <p class="muted" style="font-size:.84rem;margin:-4px 0 12px">How effective are our marketing leads at generating actual business?</p>
+    ${repFilterBar(false)}
+    <div class="rep-kpis">
+      ${repKpi("Leads generated", m.total.toLocaleString(), "from marketing channels", repDelta(m.total, p&&p.total))}
+      ${repKpi("Finalised deals", m.won.toLocaleString(), "won from our leads", repDelta(m.won, p&&p.won))}
+      ${repKpi("Conversion", m.convRate.toFixed(1)+"%", "leads that became deals", repDelta(m.convRate, p&&p.convRate))}
+      ${repKpi("Revenue generated", fmtMoney(m.wonValue), "value of those deals", repDelta(m.wonValue, p&&p.wonValue))}
+      ${repKpi("Average deal", m.avgDeal? fmtMoney(m.avgDeal):"—", "per won deal", "")}
+      ${repKpi("Lost leads", m.lost.toLocaleString(), "closed without a deal", repDelta(m.lost, p&&p.lost, {lowerIsBetter:true}))}
+    </div>
+    <div class="rep-grid2">
+      <div class="card card-pad">
+        <div class="eyebrow red">Outcome of our leads</div>
+        ${chartDonut([{k:"Won", v:m.won, color:"#1E8A5A"},{k:"Lost", v:m.lost, color:"#E01E25"},{k:"Still open", v:Math.max(0,m.total-m.won-m.lost), color:"#C9CDD2"}])}
+        <p class="muted" style="font-size:.78rem;margin-top:8px">Open leads are still being worked by the sales team.</p>
+      </div>
+      <div class="card card-pad">
+        <div class="eyebrow red">Why our leads were lost</div>
+        ${lost.length? chartDonut(lost.map(([k,v],i)=>({k,v,color:cols[i%cols.length]}))) : '<p class="muted" style="font-size:.85rem">No lost leads in this period.</p>'}
+        ${lost.length? `<div style="margin-top:10px">${lost.map(([k,v],i)=>`<div class="rep-legend"><span class="dot" style="background:${cols[i%cols.length]}"></span><span style="flex:1">${esc(k)}</span><b>${v}</b></div>`).join("")}</div>
+          <p class="muted" style="font-size:.78rem;margin-top:8px">Useful feedback for lead quality and targeting.</p>`:""}
+      </div>
+    </div>
+    <div class="card card-pad">
+      <div class="section-head" style="margin:0 0 6px"><h2 style="font-size:1rem">Performance by channel</h2></div>
+      ${chartColumns(bySrc.map(s=>({k:s.k, v:s.leads})), "#E01E25")}
+      <div style="overflow:auto;margin-top:10px"><table class="tbl">
+        <thead><tr><th>Channel</th><th class="num">Leads</th><th class="num">Won</th><th class="num">Conversion</th><th class="num">Revenue</th><th class="num">Lost</th></tr></thead>
+        <tbody>${bySrc.map(s=>`<tr><td><b>${esc(s.k)}</b></td><td class="num">${s.leads}</td><td class="num"><b>${s.won}</b></td>
+          <td class="num"><b style="color:${s.conv>=5?"var(--green)":s.conv>0?"var(--amber)":"var(--steel)"}">${s.conv.toFixed(1)}%</b></td>
+          <td class="num"><b>${fmtMoney(s.wonValue)}</b></td><td class="num">${s.lost}</td></tr>`).join("")}</tbody></table></div>
+      <p class="muted" style="font-size:.76rem;margin-top:8px">Volume is not quality — a channel with fewer leads but a higher conversion rate is often worth more.</p>
+    </div>
+    ${repTrend(mkt)}
+  </div>`;
+}
 function viewReports(){
+  /* Marketing sees outcomes only; management sees the full picture; a
+     salesperson keeps their own personal report. */
+  if(isMarketing()) return viewMarketingReports();
+  if(repIsDirector()) return viewDirectorReports();
+  return viewLegacyReports();
+}
+function viewLegacyReports(){
   const yr = String(new Date().getFullYear());
   const leads = visibleLeads();
   const membersScope = teamMembers();
