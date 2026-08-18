@@ -405,13 +405,21 @@ th.num{text-align:right}
 .ct-hrow{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
 .ct-hdot{width:9px;height:9px;border-radius:50%;background:var(--red);margin-top:6px;flex:0 0 auto}
 /* ---- offer generator ---- */
-.of-split{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:18px;align-items:start}
+.of-split{display:grid;grid-template-columns:340px minmax(0,1fr);gap:20px;align-items:start}
 .of-left{min-width:0}
 .of-right{min-width:0;position:sticky;top:0}
 .of-doc-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
 .of-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:18px}
+.of-two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lead-docs{border-top:1px solid var(--line);padding-top:12px;margin-top:4px}
+.doc-btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.doc-btns .btn{padding:10px 16px;font-size:.86rem}
+.doc-btns .btn:disabled{opacity:.45;cursor:not-allowed}
+.doc-note{font-size:.76rem}
+.of-left{min-width:0}
+.of-right{min-width:0}
 .of-grid.one{grid-template-columns:1fr}
-@media (max-width:980px){ .of-split{grid-template-columns:1fr} .of-right{position:static} }
+@media (max-width:980px){ .of-split{grid-template-columns:1fr} .of-doc-wrap{height:min(60vh,620px)} }
 .of-f{margin-bottom:9px}
 .of-f label{display:block;font-size:.7rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--steel);margin-bottom:3px}
 .of-f input,.of-f select{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:#fff;font:inherit;font-size:.88rem}
@@ -424,8 +432,8 @@ th.num{text-align:right}
 .of-row.big{background:var(--soft);font-size:.95rem}
 .of-row.big b{color:var(--red)}
 .of-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
-.of-doc-wrap{background:#6b6b6b;border:1px solid var(--line);border-radius:10px;padding:14px;
-  max-height:min(74vh,900px);overflow:auto}
+.of-doc-wrap{background:#6f6f6f;border:1px solid var(--line);border-radius:10px;padding:10px;
+  height:min(72vh,860px);overflow:auto}
 .of-doc-wrap .offer-doc{transform-origin:top left}
 @media print{
   @page{margin:14mm 12mm 16mm}
@@ -692,6 +700,14 @@ function logoTryNext(img){
         <div class="field"><label>Next follow-up <span id="f_nextReq" style="color:var(--red);display:none">*</span></label>
           <div style="display:flex;gap:8px"><input id="f_next" type="date" style="flex:1.4"><input id="f_nextTime" type="time" style="flex:1"></div>
         </div>
+        <div class="field lead-docs" id="docsRow" style="grid-column:1/-1;display:none">
+          <label>Documents</label>
+          <div class="doc-btns">
+            <button class="btn btn-red" onclick="openOffer(editingLeadId)" type="button" id="offerBtn">📄 Generate offer</button>
+            <button class="btn btn-red" onclick="toast('Reservation forms are coming next — the button is ready for them.')" type="button" id="resBtn" disabled title="Coming soon">📝 Reservation form</button>
+            <span class="muted doc-note" id="docNote"></span>
+          </div>
+        </div>
         <div class="field" id="meetingBlock" style="display:none"><label id="meetingLabel" style="color:var(--red)">Meeting date &amp; time *</label>
           <div style="display:flex;gap:8px"><input id="f_meetingDate" type="date" style="flex:1.4"><input id="f_meetingTime" type="time" style="flex:1"></div>
         </div>
@@ -734,7 +750,6 @@ function logoTryNext(img){
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
           <select id="waTemplate" onchange="applyTemplate()" style="border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:#fff"></select>
           <button class="btn btn-ghost btn-sm" onclick="openWhatsApp()" type="button">🟢 WhatsApp</button>
-          <button class="btn btn-red btn-sm" onclick="openOffer(editingLeadId)" type="button" id="offerBtn">📄 Generate offer</button>
           <button class="btn btn-ghost btn-sm" onclick="emailClient()" type="button">✉ Email client</button>
         </div>
         <textarea id="waMessage" rows="3" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:10px;font-family:inherit;font-size:.86rem" placeholder="Message — edit before sending…"></textarea>
@@ -937,7 +952,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "18 Aug 2026 · rev BB";
+const APP_BUILD = "18 Aug 2026 · rev BD";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -2402,7 +2417,14 @@ function openLeadModal(id){
   $("f_owner").disabled = !canDistributeLead(l);
   ["f_status","f_next","f_nextTime","f_meetingDate","f_meetingTime","f_offer","f_offerDate","f_industry","f_qual","f_temp","f_qualNotes","f_lostCat","f_lostReason"].forEach(f=>$(f).disabled = !canFollow);
   ["f_value","f_totalSold","f_soldArea","f_plotNo"].forEach(f=>$(f).disabled = !canValue);
-  { const ob=$("offerBtn"); if(ob) ob.style.display = (l && bestPhone(l))? "" : "none"; }
+  { /* documents row: only meaningful once the lead exists */
+    const row = $("docsRow"), ob = $("offerBtn"), note = $("docNote");
+    if(row) row.style.display = l? "" : "none";
+    if(ob) ob.disabled = !(l && bestPhone(l));
+    if(note) note.textContent = (l && l.offerSent && l.offerDate)
+      ? ("Offer sent "+fmtDate(l.offerDate)+(l.stageMeta&&l.stageMeta.offerChannel? " on "+l.stageMeta.offerChannel:""))
+      : (l && !bestPhone(l)? "Add a customer number to send an offer" : "");
+  }
   ["f_eoiApp","f_eoiDate","f_resDate","f_contractDate"].forEach(f=>$(f).disabled = !(canStages && (isOwnerUser||isOps()||isAdmin()||isManager()||isDirector())));
   $("stagesBlock").style.display = canStages? "block":"none";
   ["valueField","totalSoldField","soldAreaField","plotField"].forEach(f=>{ if(currentUser.mkt) $(f).style.display="none"; });
@@ -3345,16 +3367,24 @@ function offerPlans(t){
 function openOffer(leadId){
   const l = state.leads.find(x=>x.id===leadId); if(!l) return;
   const park = (function(){
+    /* match the lead's project to a park by its distinctive word — "Industria"
+       is shared by most of them, so it must never decide the match */
     const p = String(l.project||"").toLowerCase();
-    const hit = Object.values(OFFER_TEMPLATES).find(x=>p && String(x.project).toLowerCase().indexOf(p.slice(0,9))>=0);
-    if(hit) return hit.key;
+    if(!p) return "october";
+    const GENERIC = ["industria","industrial","park","plot","the","new"];
+    const words = p.split(/[^a-z0-9]+/).filter(x=>x && GENERIC.indexOf(x)<0);
+    let best = "", bestScore = 0;
+    Object.values(OFFER_TEMPLATES).forEach(t=>{
+      const tp = String(t.project||"").toLowerCase();
+      let score = 0;
+      words.forEach(w=>{ if(w.length>2 && tp.indexOf(w)>=0) score += w.length; });
+      if(score > bestScore){ bestScore = score; best = t.key; }
+    });
+    if(best) return best;
     if(/october/.test(p)) return "october";
     if(/360/.test(p)) return "sokhna360";
-    if(/sokhna|industria 1/.test(p)) return "sokhna";
-    if(/asher|10th|ramadan/.test(p)) return "asher";
-    if(/sadat/.test(p)) return "newsadat";
-    if(/east|port ?said/.test(p)) return "east";
-    return "october";
+    if(/sokhna/.test(p)) return "sokhna";
+    return Object.keys(OFFER_TEMPLATES)[0];
   })();
   const t = OFFER_PARKS[park];
   offerState = { leadId, park, area: Number(l.soldArea||l.land)||5000, price: t.pricePerSqm,
@@ -3377,77 +3407,77 @@ function offerFormHtml(){
   const s = offerState, l = state.leads.find(x=>x.id===s.leadId);
   const t = OFFER_PARKS[s.park]; offerSyncOstate(); const c = offerCalc();
   if(!l || !c) return "";
+  setTimeout(offerFitDoc, 30);
   return `
   <div class="of-split">
-   <div class="of-left">
-    <div class="of-grid one">
-    <div>
+    <div class="of-left">
       <div class="eyebrow red">Offer details</div>
       <div class="of-f"><label>Industrial park</label>
         <select onchange="offerUpd('park', this.value)">
           ${Object.values(OFFER_PARKS).map(p=>`<option value="${p.key}" ${s.park===p.key?"selected":""}>${esc(p.project)}</option>`).join("")}
         </select></div>
-      <div class="grid g2" style="gap:8px">
+      <div class="of-two">
         <div class="of-f"><label>Plot area (m²)</label>
           <input type="number" min="1" step="100" value="${s.area}" onchange="offerUpd('area', this.value)"></div>
         <div class="of-f"><label>Price per m² (EGP)</label>
           <input type="number" min="0" step="10" value="${s.price}" onchange="offerUpd('price', this.value)"></div>
       </div>
-      <div class="grid g2" style="gap:8px">
+      <div class="of-two">
         <div class="of-f"><label>Payment plan</label>
           <select onchange="offerUpd('plan', this.value)">
-            ${offerPlans(t).map(p=>`<option value="${p.v}" ${s.plan===p.v?"selected":""}>${p.t}</option>`).join("")}
+            ${offerPlans(t).map(p=>`<option value="${p.v}" ${String(s.plan)===p.v?"selected":""}>${p.t}</option>`).join("")}
           </select></div>
-        <div class="of-f"><label>Installment frequency</label>
+        <div class="of-f"><label>Frequency</label>
           <select onchange="offerUpd('freq', this.value)" ${s.plan==="cash"?"disabled":""}>
-            ${Object.keys(OFFER_FREQS).map(f=>`<option ${s.freq===f?"selected":""}>${f}</option>`).join("")}
+            ${Object.keys(t.freqs||{"Quarterly":4,"Semi Annually":2,"Annually":1,"Monthly":12}).map(f=>`<option ${s.freq===f?"selected":""}>${f}</option>`).join("")}
           </select></div>
       </div>
       <div class="of-f"><label>First installment from</label>
         <input type="date" value="${esc(s.date)}" onchange="offerUpd('date', this.value)" ${s.plan==="cash"?"disabled":""}></div>
-      ${t.elecHandover? `<label class="of-chk"><input type="checkbox" ${s.electricity?"checked":""} onchange="offerUpd('electricity', this.checked)"> Include electricity connection (${oMoney(t.elecHandover)} EGP)</label>`:""}
-      <p class="muted" style="font-size:.74rem;margin-top:8px">Official price for ${esc(t.project)} is ${oMoney(t.price)} EGP/m². Change it only with approval.</p>
-    </div>
-    <div>
-      <div class="eyebrow red">The offer</div>
-      <div class="of-sum">
-        <div class="of-row"><span>Plot area</span><b>${oMoney(c.area)} m²</b></div>
-        <div class="of-row"><span>Price per m²</span><b>${oMoney(c.price)} EGP</b></div>
-        <div class="of-row big"><span>Total land value</span><b>${oMoney(c.total)} EGP</b></div>
-        <div class="of-row"><span>${c.cash? "Cash payment":"Down payment ("+Math.round(t.advancePct*100)+"%)"}</span><b>${oMoney(c.down)} EGP</b></div>
-        ${c.cash? "" : `<div class="of-row"><span>Remaining over ${c.years} year${c.years>1?"s":""}</span><b>${oMoney(c.remaining)} EGP</b></div>
-        <div class="of-row"><span>${esc(c.freq)} installment × ${c.N}</span><b>${oMoney(c.inst)} EGP</b></div>`}
-      </div>
-      <div class="eyebrow red" style="margin-top:12px">Additional fees</div>
-      <div class="of-sum">
-        ${c.infra? `<div class="of-row"><span>Infrastructure insurance (${Math.round(t.infraInsurancePct*100)}%)</span><b>${oMoney(c.infra)}</b></div>`:""}
-        ${c.maint? `<div class="of-row"><span>Maintenance deposit (${t.maintenancePerSqm}/m²)</span><b>${oMoney(c.maint)}</b></div>`:""}
-        ${c.contract? `<div class="of-row"><span>Contract fees (${(t.contractFeesPct*100).toFixed(1)}%)</span><b>${oMoney(c.contract)}</b></div>`:""}
-        ${c.handover? `<div class="of-row"><span>Handover fees</span><b>${oMoney(c.handover)}</b></div>`:""}
-        ${c.elec? `<div class="of-row"><span>Electricity connection</span><b>${oMoney(c.elec)}</b></div>`:""}
-        <div class="of-row big"><span>Due at contract</span><b>${oMoney(c.dueAtContract)} EGP</b></div>
-      </div>
-      <p class="muted" style="font-size:.72rem;margin-top:6px">Fees exclude VAT. Offer valid for 2 days.</p>
-    </div>
-  </div>
+      ${t.elecHandover? `<label class="of-chk"><input type="checkbox" ${s.electricity?"checked":""} onchange="offerUpd('electricity', this.checked)"> Include electricity connection (${ofmt(t.elecHandover)} EGP)</label>`:""}
 
+      <div class="eyebrow red" style="margin-top:14px">Summary</div>
+      <div class="of-sum">
+        <div class="of-row big"><span>Total land value</span><b>${ofmt(c.total)} EGP</b></div>
+        <div class="of-row"><span>${c.cash? "Cash":"Down payment ("+Math.round(t.advancePct*100)+"%)"}</span><b>${ofmt(c.down)}</b></div>
+        ${c.cash? "" : `<div class="of-row"><span>${esc(c.freq)} × ${c.N}</span><b>${ofmt(c.inst,0)}</b></div>`}
+        <div class="of-row big"><span>Due at contract</span><b>${ofmt(c.dueAtContract)} EGP</b></div>
+      </div>
+      <p class="muted" style="font-size:.72rem;margin-top:7px">Official price for ${esc(t.project)} is ${ofmt(t.pricePerSqm)} EGP/m². Fees exclude VAT.</p>
+
+      <div class="of-actions">
+        <button class="btn btn-red" onclick="offerPrint()">🖨 Print / PDF</button>
+        <button class="btn btn-red" onclick="offerSend()">📱 WhatsApp</button>
+        <button class="btn btn-ghost btn-sm" onclick="offerEmail()">✉ Email</button>
+        <button class="btn btn-ghost btn-sm" onclick="offerCopy()">Copy</button>
+        <button class="btn btn-ghost btn-sm" onclick="closeOffer()">Close</button>
+      </div>
     </div>
-   </div>
-   <div class="of-right">
-     <div class="of-doc-head"><span class="eyebrow red" style="margin:0">Live offer — ${esc(t.project)}</span>
-       <span class="muted" style="font-size:.72rem">updates as you type</span></div>
-     <div class="of-doc-wrap" id="offerDocWrap">${offerDocHtml()}</div>
-   </div>
-  </div>
-  <div class="of-actions">
-    <button class="btn btn-red" onclick="offerPrint()">🖨 Print / save as PDF</button>
-    <button class="btn btn-red" onclick="offerSend()">📱 Send on WhatsApp</button>
-    <button class="btn btn-ghost" onclick="offerEmail()">✉ Send by email</button>
-    <button class="btn btn-ghost" onclick="offerCopy()">Copy text</button>
-    <button class="btn btn-ghost" onclick="offerSaveToLead()">Save to the lead</button>
-    <button class="btn btn-ghost" onclick="closeOffer()">Close</button>
+
+    <div class="of-right">
+      <div class="of-doc-head">
+        <span class="eyebrow red" style="margin:0">${esc(t.project)}</span>
+        <span class="muted" style="font-size:.72rem">updates as you type</span>
+      </div>
+      <div class="of-doc-wrap" id="offerDocWrap"><div id="offerDocInner">${offerDocHtml()}</div></div>
+    </div>
   </div>`;
 }
+/* the offer sheet is a fixed 820px page — scale it to fit the panel */
+function offerFitDoc(){
+  const wrap = document.getElementById("offerDocWrap");
+  const inner = document.getElementById("offerDocInner");
+  if(!wrap || !inner) return;
+  const doc = inner.querySelector(".offer-doc");
+  if(!doc) return;
+  const avail = wrap.clientWidth - 20;
+  const scale = Math.max(0.35, Math.min(1, avail/820));
+  doc.style.width = "820px";
+  doc.style.transformOrigin = "top left";
+  doc.style.transform = "scale("+scale+")";
+  inner.style.height = (doc.offsetHeight*scale) + "px";
+}
+window.addEventListener("resize", ()=>{ if(document.getElementById("offerDocWrap")) offerFitDoc(); });
 /* the message itself — the same wording and order as the printed offer */
 function offerText(){
   const s = offerState, l = state.leads.find(x=>x.id===s.leadId), c = (offerSyncOstate(), offerCalc());
