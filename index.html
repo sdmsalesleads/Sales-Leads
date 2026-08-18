@@ -404,6 +404,21 @@ th.num{text-align:right}
 .ct-hist{display:flex;flex-direction:column;gap:2px;max-height:340px;overflow:auto}
 .ct-hrow{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
 .ct-hdot{width:9px;height:9px;border-radius:50%;background:var(--red);margin-top:6px;flex:0 0 auto}
+/* ---- offer generator ---- */
+.of-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:18px}
+.of-f{margin-bottom:9px}
+.of-f label{display:block;font-size:.7rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--steel);margin-bottom:3px}
+.of-f input,.of-f select{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:#fff;font:inherit;font-size:.88rem}
+.of-f input:disabled,.of-f select:disabled{background:var(--soft);color:var(--steel)}
+.of-chk{display:flex;align-items:center;gap:8px;font-size:.82rem;margin-top:6px;cursor:pointer}
+.of-sum{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.of-row{display:flex;justify-content:space-between;gap:10px;padding:8px 11px;font-size:.85rem;border-bottom:1px solid var(--line)}
+.of-row:last-child{border-bottom:0}
+.of-row span{color:var(--steel)}
+.of-row.big{background:var(--soft);font-size:.95rem}
+.of-row.big b{color:var(--red)}
+.of-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.of-doc-wrap{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:14px;max-height:520px;overflow:auto}
 @media print{
   @page{margin:14mm 12mm 16mm}
   .sidebar,.topbar,.filters,.no-print,.game-ribbon,#streakBar,.btn,.spotlight{display:none !important}
@@ -499,6 +514,38 @@ function logoTryNext(img){
   else { img.style.display = "none"; const fb = img.nextElementSibling; if(fb) fb.style.display = "block"; }
 }
 </script>
+<style id="offerDocCss">
+.od-page{background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:11.5px;line-height:1.35;
+  padding:18px 20px;border:1px solid #ddd;max-width:820px;margin:0 auto}
+.od-head{border-bottom:3px solid #C00000;padding-bottom:8px;margin-bottom:12px}
+.od-brand{background:#C00000;color:#fff;font-weight:800;font-size:14px;letter-spacing:.06em;padding:7px 10px}
+.od-sub{font-weight:800;font-size:13px;margin-top:6px;letter-spacing:.04em}
+.od-sec{background:#C00000;color:#fff;font-weight:700;font-size:11.5px;padding:3px 8px;margin:14px 0 6px}
+.od-info{width:100%;border-collapse:collapse;margin-bottom:4px}
+.od-info td{border:1px solid #999;padding:3px 6px;font-size:11px}
+.od-info .lbl{width:150px;font-weight:700;background:#F2F2F2}
+.od-info .hl{background:#FDE9E9;font-weight:700}
+.od-info .bx{text-align:right;font-weight:800}
+.od-info .unit{width:44px;text-align:center;background:#F2F2F2;font-size:10px}
+.od-info .datek{width:60px;font-weight:700;background:#F2F2F2}
+.od-t{width:100%;border-collapse:collapse;margin:4px 0 6px}
+.od-t th{background:#C00000;color:#fff;border:1px solid #999;padding:4px 6px;font-size:10.5px;font-weight:700}
+.od-t td{border:1px solid #999;padding:4px 6px;text-align:center;font-size:11px}
+.od-t td.l{text-align:left}
+.od-t tr.tot td{background:#FDE9E9;font-weight:800}
+.od-page .nl{margin:4px 0 10px 16px;padding:0;font-size:10.5px}
+.od-page .nl li{margin-bottom:2px}
+.od-page .nl li.b{font-weight:700}
+.od-page .red{color:#C00000}
+.od-valid{font-weight:700;text-decoration:underline}
+.od-sign{width:100%;border-collapse:collapse;margin:16px 0 8px}
+.od-sign td{border:1px solid #999;padding:6px;text-align:center;font-size:10.5px;font-weight:700;background:#F2F2F2}
+.od-sign td.nm{background:#fff;font-weight:400;height:34px}
+.od-appr{display:inline-block;font-size:10.5px;font-weight:700;margin:6px 0}
+.od-fin{display:flex;gap:18px;flex-wrap:wrap;font-size:10.5px;margin-top:10px}
+.od-fin div{flex:1;min-width:150px}
+@media (max-width:700px){ .od-page{font-size:10.5px;padding:12px} }
+</style>
 </head>
 <body>
 
@@ -873,7 +920,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "18 Aug 2026 · rev AZ";
+const APP_BUILD = "18 Aug 2026 · rev BA";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1578,6 +1625,8 @@ const NAV_ITEMS = [
   {v:"calendar", ic:"▦", label:()=>"Calendar", show:()=>canSeeCalendar()},
   {v:"achievements", ic:"🏅", label:()=>"Achievements", show:()=>gamEligible()},
   {v:"guide", ic:"🎓", label:()=>"How to use", show:()=>!!currentUser},
+  {v:"offers", ic:"📄", label:()=>{ const n = visibleLeads().filter(offerOverdue).length; return "Offers"+(n? " ("+n+")":""); },
+   show:()=>!!currentUser && !currentUser.mkt && !currentUser.fin},
   {v:"contracts", ic:"📜", label:()=>isOps()? "Contracts":"Contracts & Ops", show:()=>canSeeContracts()},
   {v:"ctreports", ic:"📈", label:()=>"Contract Reports", show:()=>canSeeContracts()},
   {v:"bdtrack", ic:"📋", label:()=>"BD Tracker", show:()=>(currentUser&&currentUser.bd)||isOps()||isAdmin()||(currentUser&&currentUser.director)||(currentUser&&currentUser.exec)},
@@ -1620,6 +1669,7 @@ function render(){
   else if(currentView==="achievements" && gamEligible()) c.innerHTML = viewAchievements();
   else if(currentView==="bdtrack") c.innerHTML = viewBdTrack();
   else if(currentView==="guide") c.innerHTML = viewGuide();
+  else if(currentView==="offers") c.innerHTML = viewOffers();
   else if(currentView==="contracts") c.innerHTML = viewContracts();
   else if(currentView==="ctreports") c.innerHTML = viewContractReports();
   else if(currentView==="hierarchy" && canManage()) c.innerHTML = viewHierarchy();
@@ -3392,8 +3442,13 @@ function offerFormHtml(){
       <p class="muted" style="font-size:.72rem;margin-top:6px">Fees exclude VAT. Offer valid for 2 days.</p>
     </div>
   </div>
+  <div class="eyebrow red" style="margin-top:18px">Offer document — ${esc(t.project)}</div>
+  <p class="muted" style="font-size:.76rem;margin:0 0 8px">This is the document the client receives. Change anything above and it updates instantly.</p>
+  <div class="of-doc-wrap">${offerDocHtml()}</div>
   <div class="of-actions">
+    <button class="btn btn-red" onclick="offerPrint()">🖨 Print / save as PDF</button>
     <button class="btn btn-red" onclick="offerSend()">📱 Send on WhatsApp</button>
+    <button class="btn btn-ghost" onclick="offerEmail()">✉ Send by email</button>
     <button class="btn btn-ghost" onclick="offerCopy()">Copy text</button>
     <button class="btn btn-ghost" onclick="offerSaveToLead()">Save to the lead</button>
     <button class="btn btn-ghost" onclick="closeOffer()">Close</button>
@@ -3447,20 +3502,54 @@ function offerSend(){
   const l = state.leads.find(x=>x.id===offerState.leadId); if(!l) return;
   const num = (bestPhone(l)||"").replace(/[^0-9]/g,"");
   if(!num){ toast("This lead has no phone number"); return; }
-  offerSaveToLead(true);
+  offerSaveToLead(true, "WhatsApp");
   openMailto("https://wa.me/"+num+"?text="+encodeURIComponent(offerText()));
+  closeOffer(); render();
+  toast("Offer sent · status set to Offer Sent · follow up by "+fmtDate(addDays(today(), OFFER_FOLLOWUP_DAYS)));
+}
+function offerEmail(){
+  const l = state.leads.find(x=>x.id===offerState.leadId); if(!l) return;
+  const c = offerCalc(offerState);
+  offerSaveToLead(true, "email");
+  openMailto("mailto:"+encodeURIComponent(l.email||"")
+    +"?subject="+encodeURIComponent("Offer — "+c.t.project+" · "+oMoney(c.area)+" m²")
+    +"&body="+encodeURIComponent(offerText().replace(/\*/g,"")));
+  closeOffer(); render();
+  toast("Offer emailed · status set to Offer Sent · follow up by "+fmtDate(addDays(today(), OFFER_FOLLOWUP_DAYS)));
 }
 function offerCopy(){
   const txt = offerText();
   try{ navigator.clipboard.writeText(txt); toast("Offer copied — paste it anywhere"); }
   catch(e){ toast("Copy not available on this device — use Send on WhatsApp"); }
 }
-function offerSaveToLead(quiet){
+const OFFER_FOLLOWUP_DAYS = 2;                 // an offer must be chased within two days
+function offerSaveToLead(quiet, channel){
   const l = state.leads.find(x=>x.id===offerState.leadId), c = offerCalc(offerState);
   if(!l || !c) return;
+  const first = !l.offerSent;
   l.offerSent = true;
-  l.offerDate = l.offerDate || today();
+  l.offerDate = today();
   if(!l.value) l.value = Math.round(c.total);
+  /* the deal has moved on: it is now an offer awaiting an answer */
+  if(channel){
+    const st = "Offer Sent – Following Up";
+    if(l.status!=="Won" && l.status!=="Lost" && l.status!==st){
+      const was = l.status;
+      l.status = st;
+      pushLog(l, "Status changed to “"+st+"” — offer sent on "+channel+(was? " (was “"+was+"”)":""));
+    }
+    /* and it must be chased within two days */
+    const due = addDays(today(), OFFER_FOLLOWUP_DAYS);
+    if(!l.next || l.next > due){
+      l.next = due; l.nextTime = l.nextTime || "10:00";
+      pushLog(l, "Follow-up set for "+fmtDate(due)+" — offers are chased within "+OFFER_FOLLOWUP_DAYS+" working days");
+    }
+    l.stageMeta = l.stageMeta || {};
+    l.stageMeta.offerSentAt = nowStamp();
+    l.stageMeta.offerChannel = channel;
+    l.stageMeta.offerDue = due;
+    l.stageMeta.offerCount = (Number(l.stageMeta.offerCount)||0) + 1;
+  }
   l.stageMeta = l.stageMeta || {};
   l.stageMeta.lastOffer = { at:nowStamp(), park:c.t.key, project:c.t.project, area:c.area, price:c.price,
                             total:c.total, plan:offerState.plan, freq:c.freq, due:c.dueAtContract, by:currentUser.name };
@@ -3469,6 +3558,119 @@ function offerSaveToLead(quiet){
   if(typeof gsMirrorLead==="function") gsMirrorLead(l);
   persist();
   if(!quiet){ toast("Offer saved on the lead"); closeOffer(); render(); }
+}
+/* offers awaiting an answer, and the ones that have run out of time */
+function offerAwaiting(l){
+  return !!(l && l.offerSent && l.status!=="Won" && l.status!=="Lost" && l.stageMeta && l.stageMeta.offerSentAt);
+}
+function offerOverdue(l){
+  if(!offerAwaiting(l)) return false;
+  const due = (l.stageMeta && l.stageMeta.offerDue) || l.next;
+  return !!due && due < today();
+}
+function offerDaysWaiting(l){
+  const at = l && l.stageMeta && l.stageMeta.offerSentAt;
+  return at? Math.floor((Date.now()-new Date(at))/864e5) : null;
+}
+/* ---------- the printed offer document, in the company's own format ---------- */
+function offerDateStr(d){
+  const dt = new Date((d||today())+"T00:00:00");
+  return dt.toLocaleDateString("en-GB",{day:"2-digit",month:"2-digit",year:"numeric"});
+}
+const oNum = (n, dp) => Number(n||0).toLocaleString("en-US",{minimumFractionDigits:dp||0, maximumFractionDigits:dp||0});
+function offerDocHtml(){
+  const s = offerState, l = state.leads.find(x=>x.id===s.leadId), c = offerCalc(s);
+  if(!l || !c) return "";
+  const t = c.t, dt = offerDateStr(s.date);
+  const dir = state.members.find(m=>m.director) || {};
+  const info = `<table class="od-info">
+    <tr><td class="lbl hl">Client's name :</td><td class="val hl" colspan="2">${esc(l.name||"")}</td><td class="datek"></td><td class="val"></td></tr>
+    <tr><td class="lbl">Company name :</td><td class="val" colspan="2">${esc(l.company||"")}</td><td></td><td></td></tr>
+    <tr><td class="lbl">Project name :</td><td class="val" colspan="2">${esc(t.project)}</td><td></td><td></td></tr>
+    <tr><td class="lbl">Sector :</td><td class="val" colspan="2">${esc(l.industry||t.sector)}</td><td class="datek">Date :</td><td class="val">${dt}</td></tr>
+    <tr><td class="lbl">Plots no.</td><td class="val" colspan="2">${esc(l.plotNo||"")}</td><td></td><td></td></tr>
+    <tr><td class="lbl">Land type:</td><td class="val" colspan="2">Industrial</td><td></td><td></td></tr>
+    <tr><td class="lbl hl">Area :</td><td class="val hl bx">${oNum(c.area,2)}</td><td class="unit">M2</td><td></td><td></td></tr>
+    <tr><td class="lbl hl">price / SQM</td><td class="val hl bx">${oNum(c.price)}</td><td class="unit">EGP</td><td></td><td></td></tr>
+    <tr><td class="lbl hl">Total value</td><td class="val hl bx">${oNum(c.total)}</td><td class="unit">EGP</td><td></td><td></td></tr>
+  </table>`;
+  const pay = c.cash
+    ? `<table class="od-t"><tr><th>Payment Method</th><th>Amount</th><th colspan="2">Duration</th></tr>
+       <tr><td class="l">Full Payment (Cash)</td><td>${oNum(c.total)}</td><td colspan="2">Immediately</td></tr>
+       <tr class="tot"><td class="l">Total Amount Due</td><td>${oNum(c.total)}</td><td colspan="2"></td></tr></table>
+       <ul class="nl"><li>The contract shall be signed within 3 months from signing the reservation form.</li>
+       <li class="b">The price includes public utilities : Water, Roads, Street lighting up to the boundaries of the land</li>
+       <li class="red">The price doesn't include any approval fees from SCZone if needed</li>
+       <li class="red">The price doesn't include the electricity connections network from the external source to the selected plot.</li>
+       <li class="red">The price doesn't include any works inside the client's plot boundary.</li></ul>`
+    : `<table class="od-t"><tr><th>Payment Method</th><th>Installments</th><th>Amount</th><th colspan="2">Duration</th></tr>
+       <tr><td class="l">Down Payment</td><td>1</td><td>${oNum(c.down)}</td><td colspan="2">Immediately</td></tr>
+       <tr><td class="l">Total Installments</td><td>${c.N}</td><td>${oNum(c.remaining)}</td><td>${esc(c.freq)}</td><td>${c.years} Years</td></tr>
+       <tr class="tot"><td class="l" colspan="2">Total Amount Due</td><td>${oNum(c.total)}</td><td colspan="2"></td></tr></table>
+       <ul class="nl">
+       <li>The Amount of installment ${esc(c.freq)} &nbsp;&nbsp;&nbsp; ${oNum(c.inst,2)} &nbsp; EGP</li>
+       <li>The contract shall be signed within 3 months from signing the reservation form.</li>
+       <li class="b">The client shall hand over all cheques <span class="red">upon signing contract</span></li>
+       <li>The maximum installment period is ${t.maxYears||3} years with interest</li>
+       <li class="b">The price includes public utilities : Water, Roads, Street lighting up to the boundaries of the land</li>
+       <li class="red">The price doesn't include any approval fees from SCZone if needed</li>
+       <li class="red">The price doesn't include the electricity connections network from the external source to the selected plot.</li>
+       <li class="red">The price doesn't include any works inside the client's plot boundary.</li></ul>`;
+  const feeTables = [];
+  feeTables.push(`<table class="od-t"><tr><th>Item</th><th>Percentage</th><th>Amount</th><th>Notes</th></tr>
+    <tr><td class="l">Infrastructure insurance</td><td>${Math.round((t.infraInsurancePct||0)*100)}%</td><td>${oNum(c.infra,2)}</td><td>Upon contract</td></tr>
+    ${c.maint? `<tr><td class="l">Maintenance fees (Annually)</td><td>EGP ${t.maintenancePerSqm} / SQM</td><td>${oNum(c.maint,2)}</td><td>Upon contract</td></tr>`:""}</table>
+    <ul class="nl">
+    <li>The infrastructure insurance amount is to be paid upon signing the contract as a guarantee for our facilities and infrastructure during the period of construction of the client</li>
+    <li>After the client completes all construction without any damages to our infrastructure, we shall refund the amount of the insurance due or the amount remaining.</li>
+    ${c.maint? `<li>Maintenance fees will be EGP ${t.maintenancePerSqm} per SQM and shall be paid annually. <span class="red">(excluding VAT)</span></li>
+    <li class="b">Maintenance fees include (general guard works for the area, external cleaning, maintenance of common public facilities, parks, public lighting … etc)</li>`:""}</ul>`);
+  feeTables.push(`<table class="od-t"><tr><th>Item</th><th>Percentage</th><th>Amount</th><th>Notes</th></tr>
+    <tr><td class="l">Contract Fees</td><td>${((t.contractFeesPct||0)*100).toFixed(1)}%</td><td>${oNum(c.contract,2)}</td><td>Upon contract</td></tr></table>
+    <ul class="nl"><li>Will be paid upon signing the contract and it's equivalent to ${((t.contractFeesPct||0)*1000).toFixed(0)}/1000 of the land value. <span class="red">(excluding VAT)</span></li></ul>`);
+  if(c.elec) feeTables.push(`<table class="od-t"><tr><th>Item</th><th>Amount</th><th>Notes</th></tr>
+    <tr><td class="l">Electricity handover report</td><td>${oNum(c.elec)}</td><td>Upon contract</td></tr></table>
+    <ul class="nl"><li>Will be paid upon signing the contract. <span class="red">(excluding VAT)</span></li></ul>`);
+  feeTables.push(`<table class="od-t"><tr><th>Item</th><th>Amount</th><th>Notes</th></tr>
+    <tr><td class="l">Handover fees</td><td>${oNum(c.handover)}</td><td>Upon contract</td></tr></table>
+    <div style="font-size:10.5px;padding-left:2px">Will be paid upon signing the contract. <span class="red">(excluding VAT)</span></div>`);
+  const sched = c.sched.length? `<div class="od-sec">Installment schedule :</div>
+    <table class="od-t"><tr><th>#</th><th>Due date</th><th>Amount (EGP)</th></tr>
+    ${c.sched.map(x=>`<tr><td>${x.n}</td><td>${offerDateStr(x.date)}</td><td>${oNum(x.amt,2)}</td></tr>`).join("")}</table>`:"";
+  return `<div class="od-page" id="offerDoc">
+    <div class="od-head">
+      <div class="od-brand">ELSEWEDY INDUSTRIAL DEVELOPMENT</div>
+      <div class="od-sub">${esc(t.project)}</div>
+    </div>
+    <div class="od-sec">Client &amp; land :</div>
+    ${info}
+    <div class="od-sec">Payment terms :</div>
+    ${pay}
+    <div class="od-sec">Additional fees :</div>
+    ${feeTables.join("")}
+    ${sched}
+    <div class="od-sec">Validity :</div>
+    <div style="margin:6px 0 14px"><span class="b">* </span><span class="od-valid">This offer is valid for one week</span></div>
+    <table class="od-sign">
+      <tr><td>Sales representative</td><td>Sales &amp; Business Development Director</td><td>Chairman and Managing Director</td></tr>
+      <tr><td class="nm">${esc(currentUser.name||"")}</td><td class="nm">${esc(dir.name||"Yara Adel")}</td><td class="nm">Eng. Mohamed Al Kammah</td></tr>
+    </table>
+    <div><span class="od-appr">Approved on payment terms and conditions</span></div>
+    <div class="od-fin"><div>Authorized signature for : ______________________</div><div>Name:</div><div>Signature:</div></div>
+  </div>`;
+}
+function offerPrint(){
+  const w = window.open("", "_blank");
+  if(!w){ toast("Allow pop-ups to print the offer"); return; }
+  const css = (document.getElementById("offerDocCss")||{}).innerHTML || "";
+  w.document.write("<!doctype html><html><head><meta charset='utf-8'><title>Offer — "
+    + (offerCalc(offerState)||{t:{project:""}}).t.project + "</title><style>"+css+
+    "body{margin:0;background:#fff;font-family:Arial,Helvetica,sans-serif}@page{size:A4;margin:12mm}</style></head><body>"
+    + offerDocHtml() + "</body></html>");
+  w.document.close();
+  setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} }, 400);
+  offerSaveToLead(true, "printed offer");
+  render();
 }
 /* =================== Contract management =================== */
 /* Lives inside the lead's existing stage_meta record, so Sales Operations can
@@ -4080,6 +4282,55 @@ function viewContractsDirector(){
 function viewContractReports(){
   if(!canSeeContracts()) return `<div class="card card-pad"><p class="muted">Contract reporting is available to Sales Operations and management.</p></div>`;
   return viewContractsDirector();
+}
+/* Every offer waiting for an answer — the salesperson's own, or the whole team
+   for management. Overdue means the two days are up. */
+function viewOffers(){
+  const scope = visibleLeads().filter(l=>!isMergedAway(l) && offerAwaiting(l));
+  const overdue = scope.filter(offerOverdue);
+  const dueToday = scope.filter(l=>{ const d=(l.stageMeta&&l.stageMeta.offerDue)||l.next; return d===today(); });
+  const waiting = scope.filter(l=>!offerOverdue(l) && !dueToday.includes(l));
+  const won = visibleLeads().filter(l=>!isMergedAway(l) && l.offerSent && l.status==="Won");
+  const mgr = canManage();
+  const value = rows => rows.reduce((s,l)=>s+(Number(l.value)||0),0);
+  const rowFor = l => {
+    const d = (l.stageMeta&&l.stageMeta.offerDue)||l.next;
+    const late = offerOverdue(l), days = offerDaysWaiting(l);
+    const off = (l.stageMeta&&l.stageMeta.lastOffer)||null;
+    return `<tr style="cursor:pointer" onclick="openLeadModal('${l.id}')">
+      <td><b>${esc(l.name)}</b><div class="muted" style="font-size:.74rem">${esc(l.company||"—")}</div></td>
+      ${mgr? `<td>${esc(memberName(l.owner)||"—")}</td>`:""}
+      <td>${esc(off? off.project : (l.project||"—"))}</td>
+      <td class="num">${off? oMoney(off.area)+" m²" : (l.land? Number(l.land).toLocaleString()+" m²":"—")}</td>
+      <td class="num"><b>${fmtMoney(Number(l.value)||0)}</b></td>
+      <td>${esc((l.stageMeta&&l.stageMeta.offerChannel)||"—")}</td>
+      <td class="num">${esc(fmtDate(l.offerDate||""))}</td>
+      <td class="num">${days===null? "—" : days+" day"+(days===1?"":"s")}</td>
+      <td class="num"><b style="color:${late?"var(--red)":"inherit"}">${d? fmtDate(d):"—"}</b></td>
+      <td>${late? '<span class="pill" style="color:var(--red-dark);background:#FFF1F1">Overdue</span>'
+            : '<span class="pill" style="color:#14663F;background:#F1FAF5">Waiting</span>'}</td>
+    </tr>`;
+  };
+  const table = (rows, title) => rows.length? `<div class="card" style="overflow:auto;margin-bottom:12px">
+      <div class="card-pad" style="padding-bottom:0"><div class="eyebrow red">${esc(title)} — ${rows.length} · ${fmtMoney(value(rows))}</div></div>
+      <table class="tbl"><thead><tr><th>Client</th>${mgr?"<th>Salesperson</th>":""}<th>Project</th><th class="num">Area</th>
+        <th class="num">Offer value</th><th>Sent by</th><th class="num">Sent</th><th class="num">Waiting</th><th class="num">Chase by</th><th>Status</th></tr></thead>
+      <tbody>${rows.map(rowFor).join("")}</tbody></table></div>` : "";
+  return `<div class="rep-wrap">
+    <div class="section-head" style="margin-top:0"><h2>${mgr? "Offers — the whole team":"My offers"}</h2>
+      <span class="muted" style="font-size:.8rem">Every offer is chased within ${OFFER_FOLLOWUP_DAYS} days</span></div>
+    <div class="rep-kpis">
+      ${repKpi("Awaiting an answer", scope.length, fmtMoney(value(scope))+" on the table")}
+      ${repKpi("Overdue to chase", overdue.length, "past the "+OFFER_FOLLOWUP_DAYS+"-day mark")}
+      ${repKpi("To chase today", dueToday.length, "due now")}
+      ${repKpi("Offers that became deals", won.length, fmtMoney(value(won)))}
+    </div>
+    ${overdue.length? `<div class="rep-drill"><b>${overdue.length} offer${overdue.length===1?"":"s"}</b> ${overdue.length===1?"has":"have"} been waiting more than ${OFFER_FOLLOWUP_DAYS} days without a follow-up. These are the warmest leads in the book — call them first.</div>`:""}
+    ${table(overdue, "⚠ Overdue — chase now")}
+    ${table(dueToday, "Due today")}
+    ${table(waiting, "Waiting")}
+    ${!scope.length? `<div class="card card-pad"><p class="muted" style="margin:0">No offers are waiting for an answer. Send one from any lead with the <b>📄 Generate offer</b> button.</p></div>`:""}
+  </div>`;
 }
 function viewContracts(){
   if(!canSeeContracts()) return `<div class="card card-pad"><p class="muted">Contract management is available to Sales Operations and management.</p></div>`;
