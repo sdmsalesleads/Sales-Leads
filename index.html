@@ -1027,7 +1027,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "18 Aug 2026 · rev BH";
+const APP_BUILD = "18 Aug 2026 · rev BJ";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1514,7 +1514,7 @@ function selfSources(){ return SOURCES.slice(); }
 function defaultSelfSource(){ return currentUser && currentUser.bd? "BD Research" : "Personal"; }
 /* who may own a lead: the sales team and business development — nobody else */
 function canOwnLeads(m){ return ["sales","manager","bizdev","bdmgr"].includes(m.roleKey); }
-function canAddLead(){ return isMarketing() || (currentUser && ["sales","manager","salesops","bizdev"].includes(currentUser.roleKey)); }
+function canAddLead(){ return isMarketing() || (currentUser && ["sales","manager","salesops","bizdev","bdmgr","opsmgr"].includes(currentUser.roleKey)); }
 function isSelfAdder(){ return canAddLead() && !isMarketing(); }
 function canConfirmExt(){ return currentUser && (currentUser.admin || currentUser.director || currentUser.exec || currentUser.mgr); }
 function teamMembers(){
@@ -2468,8 +2468,9 @@ function bindLeadFilters(){
 function openLeadModal(id){
   if(!id && !canAddLead()){ toast("You don't have permission to add leads"); return; }
   editingLeadId = id||null;
-  fillSelect($("f_source"), (!id && isSelfAdder())? selfSources() : SOURCES);
-  if(!id && isSelfAdder()) $("f_source").value = defaultSelfSource();
+  /* Sales bring in marketing leads as often as their own, so nothing is
+     preselected — the rep records where the client actually came from. */
+  fillSelect($("f_source"), SOURCES, "\u2014 Where did this lead come from? \u2014");
 
   fillSelect($("f_project"), PROJECTS, "— Select project —");
   fillSelect($("f_industry"), INDUSTRIES, "— Select industry —");
@@ -2517,8 +2518,7 @@ function openLeadModal(id){
   $("f_phone").value = l?(fmtPhone(l.phone)||bestPhone(l)||l.phone||""):"";
   $("f_phone2").value = l?fmtPhone(l.phone2)||l.phone2||"":"";
   $("f_email").value = l?l.email||"":"";
-  $("f_source").value = l? (normSource(l.source)||SOURCES[0])
-                         : ((!id && isSelfAdder())? defaultSelfSource() : SOURCES[0]);
+  $("f_source").value = l? (normSource(l.source)||"") : "";
   $("f_project").value = l?l.project||"":"";
   $("f_land").value = l?l.land||"":"";
   $("f_industry").value = l?l.industry||"":"";
@@ -3034,9 +3034,11 @@ function saveLead(){
     adoptCustnoPhone(l);
     if(isNewLead && isMarketing()) pushLog(l, "Lead added");
     if(isNewLead && isSelfAdder()){
-      if(!selfSources().includes(l.source)) l.source = currentUser.bd? "BD Research" : "Personal";
-      if(["sales","manager","bizdev"].includes(currentUser.roleKey)) l.owner = currentUser.id;  // they follow it up
-      pushLog(l, "Self-generated lead ("+l.source+") added by "+currentUser.name);
+      /* whoever brings the lead in works it — Sales Operations and management
+         still distribute, so only the people who carry leads take ownership */
+      if(canOwnLeads(currentUser) && !l.owner) l.owner = currentUser.id;
+      pushLog(l, "Lead added by "+currentUser.name+" — source: "+(l.source||"not recorded")
+        + (l.owner===currentUser.id? ", assigned to themselves":""));
     }
     const dn = flagDupes(l);
     if(dn){
@@ -3089,6 +3091,12 @@ function saveLead(){
     if(REQ_FOLLOWUP.includes(s) && !$("f_next").value){ toast("This status requires a follow-up date"); return; }
     if(s==="Lost" && (!$("f_lostCat").value || !$("f_lostReason").value)){ toast("Select the lost reason category and detailed reason"); return; }
     if($("f_qual").value && !$("f_qualNotes").value.trim()){ toast("Qualification notes are required — explain why"); return; }
+    if(!$("f_source").disabled && !$("f_source").value){
+      toast("Choose where this lead came from — the source drives every marketing report");
+      try{ $("f_source").focus(); }catch(e){}
+      if(isNewLead) state.leads.pop();
+      return;
+    }
     if($("f_qual").value==="Qualified" && !$("f_temp").value){ toast("Choose the lead temperature (Hot / Warm / Cold)"); return; }
     if(s==="Won"){
       /* A won deal without its value leaves a hole in every report and in
@@ -8760,7 +8768,7 @@ function importExcel(file){
         phone2: col("customer number 2")>=0? col("customer number 2") : col("phone 2"), meetingDate: col("meeting date"), meetingTime: col("meeting time"), eoiApp: col("eoi applicable"), eoiDate: col("eoi date"), resDate: col("reservation date"), contractDate: col("contract date"), totalSold: col("total sold value")
       };
       if(ci.name<0){ $("importResult").innerHTML="<b style='color:var(--red)'>Import failed:</b> couldn't find a \"Lead Name\" column. Use the downloaded template format."; return; }
-      let added=0, updated=0, skipped=0, unassigned=0, keptOwner=0, rangedAreas=0;
+      let added=0, updated=0, skipped=0, unassigned=0, keptOwner=0, rangedAreas=0, selfAssigned=0;
       const newLeads=[]; const badPhones=[]; const fixedPhones=[]; const gsTouched=[];
       gsSuppress = true;                    // imported leads mirror as Lead rows, not as hundreds of activity rows
       const nameCache = {}, badNames = {}, goodNames = {};   // written name → member id / match report
@@ -8798,7 +8806,12 @@ function importExcel(file){
         const prevStatus = l.status;
         const landRaw = g(ci.land), landInfo = parseAreaInfo(landRaw);
         const ownerRaw = String(g(ci.owner)==null? "":g(ci.owner)).trim();
-        const ownerHit = ownerRaw? findMember(ownerRaw) : "";
+        /* A salesperson uploading a sheet is uploading their own leads, so they
+           own them unless the sheet names someone else. Sales Operations,
+           marketing and management import for the whole team, so their uploads
+           are still left for distribution. */
+        const ownerHit = ownerRaw? findMember(ownerRaw)
+                       : (canOwnLeads(currentUser)? currentUser.id : "");
         const hadOwner = !!l.owner;
         Object.assign(l, {
           name,
@@ -8846,7 +8859,10 @@ function importExcel(file){
           rangedAreas++;
           pushLog(l, 'Requested area "'+String(landRaw).trim()+'" imported as the mid-point of the range: '+Number(landInfo.value).toLocaleString()+' m\u00B2');
         }
-        if(ownerHit && !hadOwner) keptOwner++;
+        if(ownerHit && !hadOwner){
+          keptOwner++;
+          if(!ownerRaw && ownerHit===currentUser.id) selfAssigned++;
+        }
         if(!STATUSES.includes(l.status)) l.status="New";
         if(l.status==="Won" && prevStatus!=="Won" && !l.wonDate) l.wonDate = today();
         if(!l.owner && l.status!=="Won" && l.status!=="Lost") unassigned++;
@@ -8873,7 +8889,8 @@ function importExcel(file){
       else { const unNew = newLeads.filter(l=>!l.owner); if(unNew.length) notifyOps(unNew); }
       const badList = Object.keys(badNames);
       $("importResult").innerHTML = `<b style="color:var(--green)">Import complete:</b> ${added} added, ${updated} updated${skipped?`, ${skipped} skipped (no name)`:""}.${dupN?` <b style="color:var(--amber)">${dupN} possible duplicate(s) flagged.</b>`:""}${assignedN?` ${assignedN} auto-assigned via rotation.`:(unassigned?` <b style="color:var(--amber)">${unassigned} lead(s) are unassigned.</b>`:"")}
-        ${keptOwner?`<div style="margin-top:8px;color:var(--green);font-size:.82rem">\u2713 <b>${keptOwner} lead(s)</b> went straight to the salesperson named in the sheet \u2014 no re-assignment needed.</div>`:""}
+        ${(keptOwner-selfAssigned)>0?`<div style="margin-top:8px;color:var(--green);font-size:.82rem">\u2713 <b>${keptOwner-selfAssigned} lead(s)</b> went straight to the salesperson named in the sheet \u2014 no re-assignment needed.</div>`:""}
+        ${selfAssigned?`<div style="margin-top:8px;color:var(--green);font-size:.82rem">\u2713 <b>${selfAssigned} lead(s)</b> had no salesperson in the sheet, so they are assigned to you \u2014 they are yours to follow up.</div>`:""}
         ${(function(){
           const keys = Object.keys(goodNames).filter(k=>normPersonName(k)!==normPersonName(memberName(goodNames[k].id)));
           if(!keys.length) return "";
