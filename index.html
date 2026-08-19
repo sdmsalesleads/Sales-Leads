@@ -411,6 +411,13 @@ th.num{text-align:right}
 .of-doc-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
 .of-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:18px}
 .of-two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.of-lang{display:flex;gap:6px;margin-bottom:7px}
+.of-lang-b{border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 14px;font-size:.78rem;
+  font-weight:700;color:var(--steel);cursor:pointer;font-family:inherit}
+.of-lang-b.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.of-note{width:100%;border:1px solid var(--line);border-radius:9px;padding:10px 11px;background:#fff;
+  font:inherit;font-size:.84rem;line-height:1.55;resize:vertical}
+.of-note[dir=rtl]{text-align:right}
 .lead-docs{border-top:1px solid var(--line);padding-top:12px;margin-top:4px}
 .doc-btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .doc-btns .btn{padding:10px 16px;font-size:.86rem}
@@ -456,6 +463,8 @@ th.num{text-align:right}
 .ch-bar-k{font-size:.8rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ch-bar-track{background:var(--soft);border-radius:7px;height:16px;overflow:hidden}
 .ch-bar-fill{display:block;height:100%;border-radius:7px;transition:width .5s cubic-bezier(.2,.8,.3,1)}
+.ch-bar-track.split{display:flex}
+.ch-bar-track.split span{display:block;height:100%;transition:width .5s cubic-bezier(.2,.8,.3,1)}
 .ch-bar-v{font-size:.8rem;font-variant-numeric:tabular-nums;white-space:nowrap}
 .ch-area svg{width:100%;height:150px;display:block}
 .ch-x{font-size:9px;fill:var(--steel)}
@@ -1136,11 +1145,15 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "18 Aug 2026 · rev BN";
+const APP_BUILD = "18 Aug 2026 · rev BQ";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
-const DEFAULT_SETTINGS = {autoAssign:false, autoReassign:false, vipHours:4, neglectHours:48, notifyDirector:true, siteMgrEmail:"", adminCal:false, workloadCap:140, gsUrl:"", gsToken:"", gsOn:false, gsDb:false};
+const DEFAULT_SETTINGS = {autoAssign:false, autoReassign:false, vipHours:4, neglectHours:48, notifyDirector:true, siteMgrEmail:"", adminCal:false, workloadCap:140, gsUrl:"", gsToken:"", gsOn:false, gsDb:false,
+  /* the short note that travels with an offer — the document itself is attached
+     or printed, so the message stays a covering line, not the whole offer */
+  offerNoteEn: "{greeting} Eng. {name}\n\nAs per our conversation, please find the offer for the land in {project}.\n\nKind regards,\n{rep}\nElsewedy Industrial Development",
+  offerNoteAr: "السلام عليكم ورحمة الله وبركاته\n\nم. {name} تحية طيبة وبعد،\n\nبناءً على حديثنا، حضرتك تلاقي مرفق عرض الأرض في {project}.\n\nوتحت أمر حضرتك لأي استفسار.\n\nتحياتي،\n{rep}\nالسويدي للتنمية الصناعية"};
 let state = { members:[], leads:[], teamTarget:0, extSales:[], importLog:[], bdWeekly:[], notifShown:"", settings:Object.assign({},DEFAULT_SETTINGS) };
 
 /* ---- role string <-> flag mapping ---- */
@@ -1879,8 +1892,8 @@ function render(){
   if(currentView==="dashboard" && !isFinance()) c.innerHTML = isMarketing()? viewMarketingDay() : (canManage()? viewAdminDashboard() : viewDashboard());
   else if(currentView==="leads" && !isFinance()){ c.innerHTML = viewLeads(); bindLeadFilters(); }
   else if(currentView==="finance" && (isFinance()||fullView()) && !currentUser.mkt) c.innerHTML = viewFinance();
-  else if(currentView==="reports") c.innerHTML = isFinance()? viewFinReports() : canManage()? viewReports() : viewMyReport();
-  else if(currentView==="myreport") c.innerHTML = viewMyReport();
+  else if(currentView==="reports") c.innerHTML = isFinance()? viewFinReports() : viewReports();
+  else if(currentView==="myreport") c.innerHTML = viewReports();
   else if(currentView==="calendar" && canSeeCalendar()) c.innerHTML = viewCalendar();
   else if(currentView==="achievements" && gamEligible()) c.innerHTML = viewAchievements();
   else if(currentView==="bdtrack") c.innerHTML = viewBdTrack();
@@ -3564,6 +3577,15 @@ function marketingSection(leads, title){
    Strategic Industrial Locations offer tool. */
 const OFFER_FREQS = {"Monthly":12, "Quarterly":4, "Semi Annually":2, "Annually":1};
 let offerState = { leadId:"", park:"october", area:5000, price:0, plan:"", freq:"", electricity:false, date:"" };
+let offerNoteAr = false;                       // which language the covering note is written in
+function offerSetLang(ar){
+  offerNoteAr = !!ar;
+  const box = $("offerNoteBox");
+  if(box){ box.value = offerNoteText(offerNoteAr); box.setAttribute("dir", ar? "rtl":"ltr"); }
+  const btns = document.querySelectorAll(".of-lang-b");
+  if(btns[0]) btns[0].classList.toggle("on", !ar);
+  if(btns[1]) btns[1].classList.toggle("on", ar);
+}
 
 const oMoney = n => Math.round(Number(n)||0).toLocaleString("en-US");
 function offerPlans(t){
@@ -3653,6 +3675,14 @@ function offerFormHtml(){
       </div>
       <p class="muted" style="font-size:.72rem;margin-top:7px">Official price for ${esc(t.project)} is ${ofmt(t.pricePerSqm)} EGP/m². Fees exclude VAT.</p>
 
+      <div class="eyebrow red" style="margin-top:16px">Message to the client</div>
+      <div class="of-lang">
+        <button class="of-lang-b ${offerNoteAr?"":"on"}" onclick="offerSetLang(false)">English</button>
+        <button class="of-lang-b ${offerNoteAr?"on":""}" onclick="offerSetLang(true)">العربية</button>
+      </div>
+      <textarea id="offerNoteBox" class="of-note" rows="6" dir="${offerNoteAr?"rtl":"ltr"}">${esc(offerNoteText(offerNoteAr))}</textarea>
+      <p class="muted" style="font-size:.72rem;margin:5px 0 0">This is what the client receives on WhatsApp — edit it freely before sending. The offer document is printed or attached separately.</p>
+
       <div class="of-actions">
         <button class="btn btn-red" onclick="offerPrint()">🖨 Print / PDF</button>
         <button class="btn btn-red" onclick="offerSend()">📱 WhatsApp</button>
@@ -3686,7 +3716,77 @@ function offerFitDoc(){
   inner.style.height = (pack.offsetHeight*scale) + "px";
 }
 window.addEventListener("resize", ()=>{ if(document.getElementById("offerDocWrap")) offerFitDoc(); });
-/* the message itself — the same wording and order as the printed offer */
+/* ---------- the client's name in Arabic ----------
+   First choice: the original Arabic kept in the notes when the lead was imported.
+   Otherwise the English is written back into Arabic letters, name by name, using
+   the spellings Egyptians actually use. */
+/* the system already carries an Arabic→English name map; reverse it so a name
+   translated on import can be written back in Arabic exactly as it came */
+let _arRev = null;
+function arRevMap(){
+  if(_arRev) return _arRev;
+  _arRev = {};
+  try{ Object.keys(AR_NAMES).forEach(k=>{ const en = String(AR_NAMES[k]).toLowerCase(); if(!_arRev[en]) _arRev[en] = k; }); }catch(e){}
+  /* proper spellings win over the reversed map, which loses hamzas and alifs */
+  Object.assign(_arRev, {
+    ahmed:"أحمد", ahmad:"أحمد", mostafa:"مصطفى", mustafa:"مصطفى", mohammed:"محمد", muhammad:"محمد",
+    ibrahim:"إبراهيم", islam:"إسلام", eslam:"إسلام", ayman:"أيمن", ashraf:"أشرف", amir:"أمير",
+    anas:"أنس", osama:"أسامة", asmaa:"أسماء", amira:"أميرة", eman:"إيمان", ehab:"إيهاب",
+    kareem:"كريم", tariq:"طارق", yousef:"يوسف", youssef:"يوسف", sami:"سامي", said:"سعيد",
+    sarah:"سارة", sara:"سارة", basma:"بسمة", nourhan:"نورهان", nesrin:"نسرين", nesreen:"نسرين",
+    yara:"يارا", salma:"سلمى", marwa:"مروة", shaimaa:"شيماء", laila:"ليلى", layla:"ليلى",
+    mona:"منى", noha:"نهى", radwa:"رضوى", doaa:"دعاء", walaa:"ولاء", fatma:"فاطمة",
+    abdelrahman:"عبد الرحمن", abdallah:"عبد الله", hossam:"حسام", magdy:"مجدي", medhat:"مدحت",
+    lotfy:"لطفي", sobhy:"صبحي", shokry:"شكري", helmy:"حلمي", fathy:"فتحي", zaki:"زكي", taha:"طه"
+  });
+  return _arRev;
+}
+function hasArabicText(s){ return /[\u0600-\u06FF]/.test(String(s||"")); }
+function arLetters(word){
+  /* a light fallback for names not in the list — enough to read naturally */
+  const map = [["kh","خ"],["gh","غ"],["sh","ش"],["ch","ش"],["th","ث"],["ph","ف"],["ou","و"],["oo","و"],["ee","ي"],["aa","ا"],
+    ["a","ا"],["b","ب"],["c","ك"],["d","د"],["e",""],["f","ف"],["g","ج"],["h","ه"],["i","ي"],["j","ج"],["k","ك"],["l","ل"],
+    ["m","م"],["n","ن"],["o","و"],["p","ب"],["q","ق"],["r","ر"],["s","س"],["t","ت"],["u","و"],["v","ف"],["w","و"],["x","كس"],
+    ["y","ي"],["z","ز"]];
+  let s = String(word||"").toLowerCase(), out = "";
+  while(s.length){
+    const hit = map.find(([en])=>s.startsWith(en));
+    if(hit){ out += hit[1]; s = s.slice(hit[0].length); }
+    else s = s.slice(1);
+  }
+  return out;
+}
+function nameInArabic(l){
+  if(!l) return "";
+  if(hasArabicText(l.name)) return l.name;                       // already Arabic
+  /* the importer keeps the original as "Original name: …" in the notes */
+  const m = String(l.notes||"").match(/Original name:\s*([^\n\r]+)/);
+  if(m && hasArabicText(m[1])) return m[1].trim();
+  return String(l.name||"").split(/\s+/).filter(Boolean)
+    .map(w=>{ const k = w.toLowerCase().replace(/[^a-z]/g,""); return arRevMap()[k] || arLetters(w); })
+    .join(" ").trim() || l.name || "";
+}
+/* Greetings by time of day, in both languages */
+function offerGreeting(ar){
+  const h = new Date().getHours();
+  if(ar) return "السلام عليكم ورحمة الله وبركاته";
+  return h<12? "Good morning" : h<17? "Good afternoon" : "Good evening";
+}
+function offerNoteText(ar){
+  const s = offerState, l = state.leads.find(x=>x.id===s.leadId)||{};
+  const t = OFFER_TEMPLATES[s.park]||{};
+  const tpl = (ar? (state.settings.offerNoteAr || DEFAULT_SETTINGS.offerNoteAr)
+                 : (state.settings.offerNoteEn || DEFAULT_SETTINGS.offerNoteEn));
+  const c = (offerSyncOstate(), offerCalc());
+  return String(tpl)
+    .replace(/\{greeting\}/g, offerGreeting(ar))
+    .replace(/\{name\}/g, ar? nameInArabic(l) : (l.name||""))
+    .replace(/\{company\}/g, l.company||"")
+    .replace(/\{project\}/g, t.project||"")
+    .replace(/\{area\}/g, c? ofmt(c.area,0):"")
+    .replace(/\{rep\}/g, (currentUser? (ar? nameInArabic({name:currentUser.name, notes:""}) : currentUser.name) : ""));
+}
+/* the full offer as text — kept for the copy button */
 function offerText(){
   const s = offerState, l = state.leads.find(x=>x.id===s.leadId), c = (offerSyncOstate(), offerCalc());
   if(!l || !c) return "";
@@ -3734,8 +3834,10 @@ function offerSend(){
   const l = state.leads.find(x=>x.id===offerState.leadId); if(!l) return;
   const num = (bestPhone(l)||"").replace(/[^0-9]/g,"");
   if(!num){ toast("This lead has no phone number"); return; }
+  const box = $("offerNoteBox");
+  const msg = (box && box.value.trim()) || offerNoteText(offerNoteAr);
   offerSaveToLead(true, "WhatsApp");
-  openMailto("https://wa.me/"+num+"?text="+encodeURIComponent(offerText()));
+  openMailto("https://wa.me/"+num+"?text="+encodeURIComponent(msg));
   closeOffer(); render();
   toast("Offer sent · status set to Offer Sent · follow up by "+fmtDate(addDays(today(), OFFER_FOLLOWUP_DAYS)));
 }
@@ -3744,8 +3846,9 @@ function offerEmail(){
   const c = (offerSyncOstate(), offerCalc());
   offerSaveToLead(true, "email");
   openMailto("mailto:"+encodeURIComponent(l.email||"")
-    +"?subject="+encodeURIComponent("Offer — "+c.t.project+" · "+oMoney(c.area)+" m²")
-    +"&body="+encodeURIComponent(offerText().replace(/\*/g,"")));
+    +"?subject="+encodeURIComponent("Offer — "+c.t.project+" · "+ofmt(c.area,0)+" m²")
+    +"&body="+encodeURIComponent(((($("offerNoteBox")||{}).value||"").trim() || offerNoteText(offerNoteAr))
+        + "\n\n" + offerText().replace(/\*/g,"")));
   closeOffer(); render();
   toast("Offer emailed · status set to Offer Sent · follow up by "+fmtDate(addDays(today(), OFFER_FOLLOWUP_DAYS)));
 }
@@ -5513,6 +5616,7 @@ function viewDirectorReports(){
     ${repLost(a)}
     ${repSources(a)}
     ${repChannels(a)}
+    ${(isDirector()||isOps()||isAdmin())? offerNoteSettings() : ""}
     <p class="muted no-print" style="font-size:.76rem;margin-top:10px">Everything above follows the filters at the top. Click any salesperson, source or lost reason to narrow the whole dashboard to it.</p>
   </div>`;
 }
@@ -5690,6 +5794,43 @@ function viewMyReports(){
       <div class="mr-card">
         <div class="mr-h">Why I lose</div>
         ${lost.length? chartRing(lost, a.lost, "lost") : '<div class="ch-empty">No lost leads in this period</div>'}
+      </div>
+    </div>
+
+    <div class="mr-grid">
+      <div class="mr-card">
+        <div class="mr-h">How my leads are ageing</div>
+        ${(function(){
+          const bands = {"0–7 days":0, "8–30 days":0, "1–3 months":0, "3+ months":0};
+          const t = new Date(today()+"T00:00:00");
+          openLeads.forEach(l=>{
+            const d = (t - new Date(String(l.created||today())+"T00:00:00"))/864e5;
+            if(d<=7) bands["0–7 days"]++; else if(d<=30) bands["8–30 days"]++;
+            else if(d<=90) bands["1–3 months"]++; else bands["3+ months"]++;
+          });
+          const cols = ["#1E8A5A","#4A79C9","#F2A93B","#E01E25"];
+          return chartBars(Object.entries(bands).map(([k,v],i)=>({k, v, color:cols[i]})), {keepZero:true});
+        })()}
+        <p class="mr-note">Old open leads rarely close — the oldest are the ones to call or let go.</p>
+      </div>
+      <div class="mr-card">
+        <div class="mr-h">Won vs lost by source</div>
+        ${(function(){
+          const rows = Object.entries(a.bySource).filter(([,s])=>s.won||s.lost)
+            .map(([k,s])=>({k, won:s.won, lost:s.lost, tot:s.won+s.lost}))
+            .sort((x,y)=>y.tot-x.tot).slice(0,7);
+          if(!rows.length) return '<div class="ch-empty">No closed leads yet</div>';
+          return `<div class="ch-bars">${rows.map(r=>`
+            <div class="ch-bar-row">
+              <span class="ch-bar-k">${esc(r.k)}</span>
+              <span class="ch-bar-track split">
+                <span style="width:${r.won/r.tot*100}%;background:#1E8A5A"></span>
+                <span style="width:${r.lost/r.tot*100}%;background:#E01E25"></span>
+              </span>
+              <b class="ch-bar-v">${r.won}/${r.tot}</b>
+            </div>`).join("")}</div>
+            <div class="mr-legend" style="margin-top:9px"><span><i style="background:#1E8A5A"></i>Won</span><span><i style="background:#E01E25"></i>Lost</span></div>`;
+        })()}
       </div>
     </div>
 
@@ -7939,6 +8080,39 @@ function reopenExt(id){
 }
 
 /* =================== Targets =================== */
+function offerNoteSettings(){
+  const s = state.settings;
+  return `<div class="card card-pad" style="margin-top:12px">
+    <div class="eyebrow red">Offer message templates</div>
+    <p class="muted" style="font-size:.8rem;margin:6px 0 12px">The covering note that goes with every offer. Use
+      <b>{greeting}</b> (Good morning / مساء الخير by the hour), <b>{name}</b>, <b>{company}</b>,
+      <b>{project}</b>, <b>{area}</b> and <b>{rep}</b> — they are filled in automatically.</p>
+    <div class="grid g2" style="gap:12px">
+      <div>
+        <label class="muted" style="font-size:.74rem;font-weight:700">English</label>
+        <textarea id="set_noteEn" rows="7" class="of-note">${esc(s.offerNoteEn||DEFAULT_SETTINGS.offerNoteEn)}</textarea>
+      </div>
+      <div>
+        <label class="muted" style="font-size:.74rem;font-weight:700">العربية</label>
+        <textarea id="set_noteAr" rows="7" class="of-note" dir="rtl">${esc(s.offerNoteAr||DEFAULT_SETTINGS.offerNoteAr)}</textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <button class="btn btn-red btn-sm" onclick="saveOfferNotes()">Save the templates</button>
+      <button class="btn btn-ghost btn-sm" onclick="resetOfferNotes()">Restore the defaults</button>
+    </div>
+  </div>`;
+}
+function saveOfferNotes(){
+  state.settings.offerNoteEn = $("set_noteEn").value;
+  state.settings.offerNoteAr = $("set_noteAr").value;
+  persist(); toast("Offer message templates saved for the whole team");
+}
+function resetOfferNotes(){
+  state.settings.offerNoteEn = DEFAULT_SETTINGS.offerNoteEn;
+  state.settings.offerNoteAr = DEFAULT_SETTINGS.offerNoteAr;
+  persist(); render(); toast("Templates restored");
+}
 function settingsCard(){
   const s = state.settings;
   const canEdit = isAdmin() || isDirector() || isOps() || isMarketing();
