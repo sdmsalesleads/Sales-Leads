@@ -496,6 +496,54 @@ th.num{text-align:right}
   .mr-kpis{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
   .mr-k-val{font-size:1.25rem}
 }
+/* ---- conversion funnel (SVG) ---- */
+.fnl-svg{width:100%;height:auto;display:block}
+.fnl-seg path{transition:opacity .18s, transform .18s}
+.fnl:hover .fnl-seg path{opacity:.5}
+.fnl-seg:hover path{opacity:1}
+.fnl-n{font-family:'Archivo Expanded','Archivo',sans-serif;font-weight:800;font-size:19px;fill:#fff}
+.fnl-k{font-size:11px;fill:#fff;font-weight:600;letter-spacing:.09em;text-transform:uppercase;opacity:.92}
+.fnl-pct{font-size:12px;font-weight:800;fill:var(--steel)}
+.fnl-flow{font-size:12px;font-weight:800}
+.fnl-flow.good{fill:var(--green)} .fnl-flow.mid{fill:#B8860B} .fnl-flow.low{fill:var(--red)}
+.fnl-lost{font-size:11px;font-weight:700;fill:var(--steel)}
+.fnl-foot{display:flex;gap:14px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);margin-top:12px;padding-top:12px}
+.fnl-rate{display:flex;align-items:baseline;gap:8px}
+.fnl-rate b{font-family:'Archivo Expanded','Archivo',sans-serif;font-size:1.5rem;color:var(--green)}
+.fnl-rate span{font-size:.76rem;color:var(--steel)}
+.fnl-worst{margin-left:auto;font-size:.78rem;color:var(--ink-2);background:#FFFDF5;border:1px solid #EFE4C8;border-radius:8px;padding:6px 11px}
+.fnl-worst b{color:var(--red)}
+@media (max-width:560px){ .fnl-n{font-size:16px} .fnl-k{font-size:9.5px} .fnl-worst{margin-left:0} }
+/* ---- offers report ---- */
+.of-rep-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.of-rep-kicker{font-size:.66rem;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:var(--red)}
+.of-rep-title{font-family:'Archivo Expanded','Archivo',sans-serif;font-size:1.45rem;font-weight:800;margin:5px 0 2px}
+.of-rep-sub{font-size:.8rem;color:var(--steel)}
+.of-rep-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:10px;margin-bottom:14px}
+.of-rk{background:#fff;border:1px solid var(--line);border-radius:11px;padding:12px 14px}
+.of-rk span{display:block;font-size:.64rem;font-weight:800;letter-spacing:.11em;text-transform:uppercase;color:var(--steel)}
+.of-rk b{display:block;font-family:'Archivo Expanded','Archivo',sans-serif;font-size:1.5rem;line-height:1.1;margin:4px 0 2px}
+.of-rk i{font-style:normal;font-size:.72rem;color:var(--steel)}
+.of-rk.ok b{color:var(--green)}
+.of-rk.bad{background:#FFF6F6;border-color:#F0D2D3}
+.of-rk.bad b{color:var(--red)}
+.of-rep-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:15px 17px;margin-bottom:12px}
+.of-rep-h{font-size:.68rem;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--red);margin-bottom:12px}
+.of-rep-two{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin-bottom:12px}
+.of-rep-t{width:100%;border-collapse:collapse;font-size:.8rem}
+.of-rep-t th{text-align:left;font-size:.66rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--steel);
+  border-bottom:2px solid var(--line);padding:7px 8px;white-space:nowrap}
+.of-rep-t td{border-bottom:1px solid var(--line);padding:7px 8px}
+.of-rep-t td.num,.of-rep-t th.num{text-align:right;font-variant-numeric:tabular-nums}
+.of-rep-t tr.tot td{border-top:2px solid var(--ink);font-weight:800;background:var(--soft)}
+.ofb{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.7rem;font-weight:700;background:var(--soft);border:1px solid var(--line)}
+.ofb.ok{background:#F1FAF5;border-color:#CBE7DA;color:#14663F}
+.ofb.bad{background:#FFF1F1;border-color:#F0D2D3;color:var(--red-dark)}
+.ofb.warn{background:#FFFDF5;border-color:#EFE4C8;color:#8A6A00}
+@media print{
+  .of-rep-card,.of-rk{break-inside:avoid;page-break-inside:avoid}
+  .of-rep-t{font-size:8.5pt}
+}
 @media print{
   @page{margin:14mm 12mm 16mm}
   .sidebar,.topbar,.filters,.no-print,.game-ribbon,#streakBar,.btn,.spotlight{display:none !important}
@@ -1088,7 +1136,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "18 Aug 2026 · rev BL";
+const APP_BUILD = "18 Aug 2026 · rev BN";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -4845,7 +4893,169 @@ function viewContractReports(){
 }
 /* Every offer waiting for an answer — the salesperson's own, or the whole team
    for management. Overdue means the two days are up. */
+/* ---------- Offers report, printable as a PDF ---------- */
+function offerReportData(){
+  const pool = visibleLeads().filter(l=>!isMergedAway(l) && l.offerSent);
+  const r = repRange();
+  const inRange = l => repFilters.period==="all" || (l.offerDate && l.offerDate>=r.from && l.offerDate<=r.to);
+  const rows = pool.filter(inRange).sort((a,b)=>String(b.offerDate||"").localeCompare(String(a.offerDate||"")));
+  const won  = rows.filter(l=>l.status==="Won");
+  const lost = rows.filter(l=>l.status==="Lost");
+  const open = rows.filter(l=>l.status!=="Won" && l.status!=="Lost");
+  const overdue = open.filter(offerOverdue);
+  const val = a => a.reduce((s,l)=>s+(Number(l.value)||0),0);
+  /* by salesperson */
+  const byRep = {};
+  rows.forEach(l=>{ const k=l.owner||"";
+    const x = byRep[k] = byRep[k] || {sent:0, won:0, lost:0, open:0, value:0, wonValue:0, days:[]};
+    x.sent++; x.value += Number(l.value)||0;
+    if(l.status==="Won"){ x.won++; x.wonValue += Number(l.value)||0;
+      if(l.offerDate && l.wonDate){ const d=(new Date(l.wonDate)-new Date(l.offerDate))/864e5; if(d>=0&&d<400) x.days.push(d); } }
+    else if(l.status==="Lost") x.lost++; else x.open++;
+  });
+  /* by project and by month */
+  const byProject = {}, byMonth = {}, byChannel = {};
+  rows.forEach(l=>{
+    const off = (l.stageMeta&&l.stageMeta.lastOffer)||null;
+    const pj = (off && off.project) || l.project || "—";
+    byProject[pj] = byProject[pj] || {sent:0, won:0, value:0};
+    byProject[pj].sent++; if(l.status==="Won"){ byProject[pj].won++; byProject[pj].value += Number(l.value)||0; }
+    const m = String(l.offerDate||"").slice(0,7) || "—";
+    byMonth[m] = byMonth[m] || {sent:0, won:0};
+    byMonth[m].sent++; if(l.status==="Won") byMonth[m].won++;
+    const ch = (l.stageMeta&&l.stageMeta.offerChannel) || "—";
+    byChannel[ch] = (byChannel[ch]||0)+1;
+  });
+  const allDays = [];
+  won.forEach(l=>{ if(l.offerDate&&l.wonDate){ const d=(new Date(l.wonDate)-new Date(l.offerDate))/864e5; if(d>=0&&d<400) allDays.push(d); } });
+  return { rows, won, lost, open, overdue, byRep, byProject, byMonth, byChannel, range:r,
+           value:val(rows), wonValue:val(won), openValue:val(open),
+           winRate: rows.length? won.length/rows.length*100 : 0,
+           avgDays: allDays.length? allDays.reduce((a,b)=>a+b,0)/allDays.length : 0 };
+}
+function offerReportHtml(forPrint){
+  const d = offerReportData();
+  const mgr = canManage();
+  const me = currentUser? currentUser.name : "";
+  const money = n => fmtMoney(n||0);
+  const repRows = Object.entries(d.byRep).filter(([id])=>id).map(([id,x])=>({
+    id, name: memberName(id)||"Unassigned", ...x,
+    rate: x.sent? x.won/x.sent*100 : 0,
+    avg: x.days.length? x.days.reduce((a,b)=>a+b,0)/x.days.length : 0
+  })).sort((a,b)=>b.sent-a.sent);
+  const months = Object.entries(d.byMonth).filter(([m])=>m!=="—").sort();
+  const mLabel = m => new Date(m+"-01T00:00:00").toLocaleDateString("en-GB",{month:"short",year:"2-digit"});
+  return `
+  <div class="of-rep">
+    <div class="of-rep-head">
+      <div>
+        <div class="of-rep-kicker">Offers report</div>
+        <h2 class="of-rep-title">${mgr? "Sales team" : esc(me)}</h2>
+        <div class="of-rep-sub">${esc(d.range.label)} · prepared ${esc(fmtDate(today()))}${mgr? "" : " · "+esc(me)}</div>
+      </div>
+      ${forPrint? "" : `<button class="btn btn-red btn-sm no-print" onclick="offerReportPrint()">⬇ Download PDF</button>`}
+    </div>
+
+    <div class="of-rep-kpis">
+      <div class="of-rk"><span>Offers sent</span><b>${d.rows.length}</b><i>${money(d.value)} offered</i></div>
+      <div class="of-rk ok"><span>Won</span><b>${d.won.length}</b><i>${money(d.wonValue)}</i></div>
+      <div class="of-rk"><span>Win rate</span><b>${d.winRate.toFixed(1)}%</b><i>of offers sent</i></div>
+      <div class="of-rk"><span>Still open</span><b>${d.open.length}</b><i>${money(d.openValue)} on the table</i></div>
+      <div class="of-rk ${d.overdue.length?"bad":""}"><span>Overdue to chase</span><b>${d.overdue.length}</b><i>past ${OFFER_FOLLOWUP_DAYS} days</i></div>
+      <div class="of-rk"><span>Offer to signature</span><b>${d.avgDays? Math.round(d.avgDays)+"d" : "—"}</b><i>average when won</i></div>
+    </div>
+
+    ${months.length>1? `<div class="of-rep-card">
+      <div class="of-rep-h">Offers sent by month</div>
+      ${chartBars(months.map(([m,x])=>({k:mLabel(m), v:x.sent})), {color:"#E01E25"})}
+    </div>`:""}
+
+    <div class="of-rep-two">
+      <div class="of-rep-card">
+        <div class="of-rep-h">What happened to them</div>
+        ${chartRing([{k:"Won", v:d.won.length, color:"#1E8A5A"},
+                     {k:"Still open", v:d.open.length, color:"#4A79C9"},
+                     {k:"Lost", v:d.lost.length, color:"#E01E25"}], d.rows.length, "offers")}
+      </div>
+      <div class="of-rep-card">
+        <div class="of-rep-h">By project</div>
+        ${chartBars(Object.entries(d.byProject).map(([k,x])=>({k, v:x.sent})).sort((a,b)=>b.v-a.v), {color:"#4A79C9", limit:8})}
+      </div>
+    </div>
+
+    ${mgr && repRows.length? `<div class="of-rep-card">
+      <div class="of-rep-h">By salesperson</div>
+      <table class="of-rep-t">
+        <thead><tr><th>Salesperson</th><th class="num">Offers sent</th><th class="num">Won</th><th class="num">Lost</th>
+          <th class="num">Open</th><th class="num">Win rate</th><th class="num">Value offered</th><th class="num">Value won</th><th class="num">Avg days to close</th></tr></thead>
+        <tbody>${repRows.map(r=>`<tr>
+          <td><b>${esc(r.name)}</b></td><td class="num">${r.sent}</td><td class="num"><b>${r.won}</b></td>
+          <td class="num">${r.lost}</td><td class="num">${r.open}</td>
+          <td class="num"><b style="color:${r.rate>=20?"#1E8A5A":r.rate>0?"#B8860B":"#8A9099"}">${r.rate.toFixed(0)}%</b></td>
+          <td class="num">${money(r.value)}</td><td class="num"><b>${money(r.wonValue)}</b></td>
+          <td class="num">${r.avg? Math.round(r.avg)+"d":"—"}</td></tr>`).join("")}
+        <tr class="tot"><td>Total</td><td class="num">${d.rows.length}</td><td class="num">${d.won.length}</td>
+          <td class="num">${d.lost.length}</td><td class="num">${d.open.length}</td>
+          <td class="num">${d.winRate.toFixed(0)}%</td><td class="num">${money(d.value)}</td>
+          <td class="num">${money(d.wonValue)}</td><td class="num">${d.avgDays? Math.round(d.avgDays)+"d":"—"}</td></tr>
+        </tbody></table>
+    </div>`:""}
+
+    <div class="of-rep-card">
+      <div class="of-rep-h">Every offer${d.rows.length>60? " (most recent 60)":""}</div>
+      <table class="of-rep-t">
+        <thead><tr><th class="num">Sent</th><th>Client</th><th>Company</th>${mgr?"<th>Salesperson</th>":""}
+          <th>Project</th><th class="num">Area</th><th class="num">Value</th><th>Sent by</th><th>Outcome</th></tr></thead>
+        <tbody>${d.rows.slice(0,60).map(l=>{
+          const off=(l.stageMeta&&l.stageMeta.lastOffer)||null;
+          const out = l.status==="Won"? '<span class="ofb ok">Won</span>'
+                    : l.status==="Lost"? '<span class="ofb bad">Lost'+(l.lostCat? " · "+esc(l.lostCat):"")+'</span>'
+                    : offerOverdue(l)? '<span class="ofb warn">Awaiting · overdue</span>'
+                    : '<span class="ofb">Awaiting reply</span>';
+          return `<tr>
+            <td class="num">${esc(fmtDate(l.offerDate||""))}</td>
+            <td>${esc(l.name)}</td><td>${esc(l.company||"—")}</td>
+            ${mgr? `<td>${esc(memberName(l.owner)||"—")}</td>`:""}
+            <td>${esc(off? off.project : (l.project||"—"))}</td>
+            <td class="num">${off&&off.area? Number(off.area).toLocaleString()+" m²" : (l.land? Number(l.land).toLocaleString()+" m²":"—")}</td>
+            <td class="num">${money(Number(l.value)||0)}</td>
+            <td>${esc((l.stageMeta&&l.stageMeta.offerChannel)||"—")}</td>
+            <td>${out}</td></tr>`;
+        }).join("")}</tbody></table>
+      ${!d.rows.length? '<p class="muted" style="margin:10px 0 0">No offers were sent in this period.</p>':""}
+    </div>
+  </div>`;
+}
+function offerReportPrint(){
+  const w = window.open("", "_blank");
+  if(!w){ toast("Allow pop-ups to download the report"); return; }
+  const css = [...document.querySelectorAll("style")].map(s=>s.innerHTML).join("\n");
+  const logo = (typeof SDM_LOGOS!=="undefined" && SDM_LOGOS[0])? SDM_LOGOS[0] : "";
+  w.document.write("<!doctype html><html><head><meta charset='utf-8'><title>Offers report</title>"
+    + "<link rel='preconnect' href='https://fonts.googleapis.com'><link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>"
+    + "<link href='https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Archivo+Expanded:wght@700;800&family=Cormorant+Garamond:wght@500;600&display=swap' rel='stylesheet'>"
+    + "<style>"+css+"body{margin:0;padding:22px;background:#fff;font-family:'Archivo',Arial,sans-serif}"
+    + ".no-print{display:none!important}@page{size:A4 landscape;margin:10mm}"
+    + ".of-rep-brand{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #E01E25;padding-bottom:10px;margin-bottom:16px}"
+    + ".of-rep-brand img{height:34px}</style></head><body>"
+    + `<div class="of-rep-brand">${logo? `<img src="${logo}" referrerpolicy="no-referrer">`:"<b>ELSEWEDY INDUSTRIAL DEVELOPMENT</b>"}`
+    + `<span style="font-size:11px;color:#8A9099">Generated ${new Date().toLocaleString("en-GB")} · ${esc(currentUser.name)}</span></div>`
+    + offerReportHtml(true) + "</body></html>");
+  w.document.close();
+  setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} }, 500);
+}
+let offersTab = "board";
 function viewOffers(){
+  if(offersTab==="report"){
+    return `<div class="rep-wrap">
+      <div class="section-head" style="margin-top:0"><h2>${canManage()? "Offers report — the whole team":"My offers report"}</h2>
+        <span style="display:flex;gap:8px">
+          <button class="rep-pill" onclick="offersTab='board';render()">← Back to the board</button>
+        </span></div>
+      ${repFilterBar(false)}
+      ${offerReportHtml(false)}
+    </div>`;
+  }
   const scope = visibleLeads().filter(l=>!isMergedAway(l) && offerAwaiting(l));
   const overdue = scope.filter(offerOverdue);
   const dueToday = scope.filter(l=>{ const d=(l.stageMeta&&l.stageMeta.offerDue)||l.next; return d===today(); });
@@ -4878,7 +5088,10 @@ function viewOffers(){
       <tbody>${rows.map(rowFor).join("")}</tbody></table></div>` : "";
   return `<div class="rep-wrap">
     <div class="section-head" style="margin-top:0"><h2>${mgr? "Offers — the whole team":"My offers"}</h2>
-      <span class="muted" style="font-size:.8rem">Every offer is chased within ${OFFER_FOLLOWUP_DAYS} days</span></div>
+      <span style="display:flex;gap:8px;align-items:center">
+        <span class="muted" style="font-size:.8rem">Chased within ${OFFER_FOLLOWUP_DAYS} days</span>
+        <button class="rep-pill" onclick="offersTab='report';render()">📊 Offers report &amp; PDF</button>
+      </span></div>
     <div class="rep-kpis">
       ${repKpi("Awaiting an answer", scope.length, fmtMoney(value(scope))+" on the table")}
       ${repKpi("Overdue to chase", overdue.length, "past the "+OFFER_FOLLOWUP_DAYS+"-day mark")}
@@ -5075,27 +5288,14 @@ function repFilterBar(full){
 }
 /* ---- the funnel, from the real stages ---- */
 function repFunnel(a){
-  const steps = [
-    {k:"Total leads", n:a.total}, {k:"Contacted", n:a.contacted}, {k:"Qualified", n:a.qualified},
-    {k:"Opportunity", n:a.opportunity}, {k:"Negotiation", n:a.negotiation}, {k:"Won", n:a.won}
-  ];
-  if(!steps[0].n) return `<div class="muted" style="padding:14px">No leads in this period.</div>`;
-  const shades = ["#E01E25","#E7434A","#ED6870","#F08A90","#4FA88A","#1E8A5A"];
-  let worst = null;
-  for(let i=1;i<steps.length;i++){ const lost = steps[i-1].n-steps[i].n; if(lost>0 && (!worst||lost>worst.lost)) worst={lost, from:steps[i-1].k, to:steps[i].k}; }
-  return `<div class="fn-body">${steps.map((s,i)=>{
-    const pct = a.total? s.n/a.total*100 : 0;
-    const step = i===0? null : (steps[i-1].n? Math.round(s.n/steps[i-1].n*100) : 0);
-    const drop = i===0? 0 : steps[i-1].n-s.n;
-    return `<div class="fn-row">
-      <div class="fn-label"><span class="fn-name">${s.k}</span><span class="fn-hint">${Math.round(pct*10)/10}% of all leads</span></div>
-      <div class="fn-barwrap">
-        <div class="fn-bar" style="width:${Math.max(pct,2)}%;background:${shades[i]}"><span class="fn-n">${s.n.toLocaleString()}</span></div>
-      </div>
-      ${step===null?"":`<div class="fn-step ${step>=70?"good":step>=35?"mid":"low"}"><span>${step}% carried on</span>${drop>0?`<span class="fn-lost">−${drop.toLocaleString()} dropped</span>`:""}</div>`}
-    </div>`;
-  }).join("")}</div>
-  ${worst? `<div class="fn-note"><b>Biggest drop-off:</b> ${worst.from} → ${worst.to}, losing ${worst.lost.toLocaleString()} leads. That step is where the pipeline leaks.</div>`:""}`;
+  return chartFunnel([
+    {k:"Total leads",  n:a.total},
+    {k:"Contacted",    n:a.contacted, click:"kpiGo({},'leads')"},
+    {k:"Qualified",    n:a.qualified},
+    {k:"Opportunity",  n:a.opportunity},
+    {k:"Negotiation",  n:a.negotiation},
+    {k:"Won",          n:a.won, click:"kpiGo({status:'Won'},'leads')"}
+  ]);
 }
 /* ---- lost analysis ---- */
 function repLost(a){
@@ -6978,8 +7178,58 @@ function chartArea(points, opts){
     ${points.map((p,i)=> i%showEvery===0? `<text x="${X(i).toFixed(1)}" y="${H-4}" text-anchor="middle" class="ch-x">${esc(p.x)}</text>`:"").join("")}
   </svg></div>`;
 }
-/* a compact funnel built from stacked chevrons */
-function chartFunnelBars(steps){
+/* A true funnel: tapering SVG segments, each one as wide as its share of the
+   top, with the drop between stages drawn in the gap. */
+function chartFunnel(steps, opts){
+  const o = opts||{};
+  const top = steps[0]? steps[0].n : 0;
+  if(!top) return `<div class="ch-empty">No leads in this period</div>`;
+  const W = 660, SEG = 54, GAP = 20, PAD = 26;
+  const H = PAD*2 + steps.length*SEG + (steps.length-1)*GAP;
+  const COLS = ["#C8161D","#E01E25","#EE5A45","#F2933C","#3FA796","#1E8A5A"];
+  const MINW = 120;
+  const wOf = n => MINW + (W-MINW-PAD*2) * (top? n/top : 0);
+  let y = PAD, out = "";
+  steps.forEach((s,i)=>{
+    const w1 = wOf(s.n), w2 = wOf(steps[i+1]? steps[i+1].n : s.n);
+    const x1 = (W-w1)/2, x2 = (W-w2)/2;
+    const col = s.color || COLS[i%COLS.length];
+    const pctTop = top? s.n/top*100 : 0;
+    const stepPct = i? (steps[i-1].n? Math.round(s.n/steps[i-1].n*100) : 0) : 100;
+    const drop = i? steps[i-1].n - s.n : 0;
+    /* the segment: a trapezoid narrowing toward the next stage */
+    out += `<g class="fnl-seg" ${s.click? `onclick="${s.click}" style="cursor:pointer"`:""}>
+      <path d="M${x1},${y} L${x1+w1},${y} L${x2+w2},${y+SEG} L${x2},${y+SEG} Z" fill="${col}">
+        <title>${esc(s.k)}: ${s.n.toLocaleString()} (${pctTop.toFixed(1)}% of all leads)</title></path>
+      <text x="${W/2}" y="${y+SEG/2-3}" text-anchor="middle" class="fnl-n">${s.n.toLocaleString()}</text>
+      <text x="${W/2}" y="${y+SEG/2+13}" text-anchor="middle" class="fnl-k">${esc(s.k)}</text>
+      <text x="${x1-12}" y="${y+SEG/2+4}" text-anchor="end" class="fnl-pct">${pctTop.toFixed(0)}%</text>
+    </g>`;
+    /* the gap: how many carried on, how many fell away */
+    if(i < steps.length-1){
+      const nx = steps[i+1], sp = s.n? Math.round(nx.n/s.n*100) : 0, lost = s.n - nx.n;
+      const gy = y + SEG + GAP/2;
+      out += `<g class="fnl-gap">
+        <text x="${W/2}" y="${gy+4}" text-anchor="middle" class="fnl-flow ${sp>=70?"good":sp>=35?"mid":"low"}">▼ ${sp}%</text>
+        ${lost>0? `<text x="${W-PAD}" y="${gy+4}" text-anchor="end" class="fnl-lost">−${lost.toLocaleString()}</text>`:""}
+      </g>`;
+    }
+    y += SEG + GAP;
+  });
+  /* the widest single drop, named */
+  let worst=null;
+  for(let i=1;i<steps.length;i++){ const l=steps[i-1].n-steps[i].n; if(l>0 && (!worst||l>worst.lost)) worst={lost:l, from:steps[i-1].k, to:steps[i].k}; }
+  const overall = top? (steps[steps.length-1].n/top*100) : 0;
+  return `<div class="fnl">
+    <svg viewBox="0 0 ${W} ${H}" class="fnl-svg">${out}</svg>
+    <div class="fnl-foot">
+      <div class="fnl-rate"><b>${overall.toFixed(1)}%</b><span>of leads become deals</span></div>
+      ${worst? `<div class="fnl-worst"><b>Biggest drop</b> ${esc(worst.from)} → ${esc(worst.to)} · ${worst.lost.toLocaleString()} leads</div>`:""}
+    </div>
+  </div>`;
+}
+function chartFunnelBars(steps){ return chartFunnel(steps); }
+function chartFunnelBarsOld(steps){
   const top = steps[0]? steps[0].n : 0;
   if(!top) return `<div class="ch-empty">No leads in this period</div>`;
   const cols = ["#E01E25","#E7434A","#EE6C63","#F09055","#4FA88A","#1E8A5A"];
