@@ -1152,7 +1152,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev BX";
+const APP_BUILD = "20 Aug 2026 · rev BY";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -3665,6 +3665,9 @@ function offerUpd(field, val){
     offerState.park = val;
     const t = OFFER_PARKS[val];
     offerState.price = t.pricePerSqm; offerState.plan = t.defaultPlan||"1"; offerState.freq = t.defaultFreq||"Quarterly";
+    /* land type belongs to the PARK, so a fresh park starts on its own default;
+       the client's sector and plot stay — they belong to the lead, not the park */
+    offerLandType = null;
   }
   else if(field==="electricity") offerState.electricity = !!val;
   else offerState[field] = val;
@@ -4448,10 +4451,21 @@ function offerPrint(){
        so those negatives pushed it above the page top and off both sides, slicing
        the banner and hiding the logo. Neutralise them and print it whole. */
     .offer-doc .od-header{ width:100% !important; max-width:100% !important;
-              margin:0 0 8px !important; display:block !important; height:auto !important;
+              margin:0 0 8px !important; height:auto !important;
               page-break-inside:avoid !important; break-inside:avoid !important;
               page-break-after:avoid !important; break-after:avoid !important;
               page-break-before:avoid !important; break-before:avoid !important; }
+    /* only the plain single-image letterhead is a block; October's banner and
+       SOKHNA360's two-image head are flex rows and must STAY flex, or the logo
+       collapses onto the coloured Sales-Offer bar */
+    img.od-header{ display:block !important; }
+    .offer-doc .od-october{ display:flex !important; align-items:center !important;
+              justify-content:space-between !important; gap:12px !important; }
+    .offer-doc .od-s360head{ display:flex !important; align-items:center !important; gap:14px !important; }
+    .offer-doc .od-s360head .ods-bar{ flex:1 1 auto !important; min-width:0 !important; width:auto !important; height:auto !important; }
+    .offer-doc .od-s360head .ods-logo{ flex:0 0 auto !important; width:auto !important; height:14mm !important; }
+    .offer-doc .od-october .odo-bar{ flex:1 1 auto !important; }
+    .offer-doc .od-october .odo-logo{ flex:0 0 auto !important; white-space:nowrap !important; }
     .offer-doc .od-s360head img{ page-break-inside:avoid !important; break-inside:avoid !important; }
     .pk-page:last-child{ page-break-after:auto; break-after:auto; }
     .pk-cover{ min-height:0 !important; }
