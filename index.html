@@ -1152,7 +1152,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev BV";
+const APP_BUILD = "20 Aug 2026 · rev BX";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -4434,8 +4434,8 @@ function offerPrint(){
        width (which was clipping the offer sheet) and no viewport heights
        (which were producing blank pages) */
     /* one printed sheet per page, exactly A4 minus the margins, and never split */
-    .pk-page{ width:192mm !important; height:279mm !important; max-width:192mm !important;
-              min-height:0 !important; overflow:hidden !important;
+    .pk-page{ width:192mm !important; height:auto !important; max-width:192mm !important;
+              min-height:0 !important; overflow:visible !important;
               box-shadow:none !important; border:0 !important; padding:0 !important;
               margin:0 !important; display:block !important;
               page-break-after:always; break-after:page;
@@ -4443,6 +4443,16 @@ function offerPrint(){
     /* the offer sheet in particular must stay whole */
     .pk-sheet,.offer-doc,.offer-doc table,.offer-doc .nl{
       page-break-inside:avoid !important; break-inside:avoid !important; }
+    /* THE LETTERHEAD. On screen it bleeds over the document's 22px padding with
+       width:calc(100% + 44px) and margin:-18px -22px — but here the padding is 0,
+       so those negatives pushed it above the page top and off both sides, slicing
+       the banner and hiding the logo. Neutralise them and print it whole. */
+    .offer-doc .od-header{ width:100% !important; max-width:100% !important;
+              margin:0 0 8px !important; display:block !important; height:auto !important;
+              page-break-inside:avoid !important; break-inside:avoid !important;
+              page-break-after:avoid !important; break-after:avoid !important;
+              page-break-before:avoid !important; break-before:avoid !important; }
+    .offer-doc .od-s360head img{ page-break-inside:avoid !important; break-inside:avoid !important; }
     .pk-page:last-child{ page-break-after:auto; break-after:auto; }
     .pk-cover{ min-height:0 !important; }
     .pk-cover-top,.pk-cover-mid,.pk-foot-row{ padding-left:0 !important; padding-right:0 !important; }
@@ -4486,7 +4496,7 @@ function offerPrint(){
             p.style.zoom = 1;
             var h = p.scrollHeight, wdt = p.scrollWidth;
             var s = Math.min(MAX_H / h, MAX_W / wdt, 1);
-            if(s < 1) p.style.zoom = Math.max(0.45, s * 0.985);   // a hair under, for rounding
+            if(s < 1) p.style.zoom = s * 0.96;                    // comfortably under, for rounding; no floor — fitting always wins
           }
         }
         function ready(){
