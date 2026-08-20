@@ -1152,7 +1152,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev BU";
+const APP_BUILD = "20 Aug 2026 · rev BV";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -4433,10 +4433,16 @@ function offerPrint(){
     /* every page fills the printable width and breaks cleanly — no fixed pixel
        width (which was clipping the offer sheet) and no viewport heights
        (which were producing blank pages) */
-    .pk-page{ width:auto !important; max-width:100% !important; min-height:0 !important;
+    /* one printed sheet per page, exactly A4 minus the margins, and never split */
+    .pk-page{ width:192mm !important; height:279mm !important; max-width:192mm !important;
+              min-height:0 !important; overflow:hidden !important;
               box-shadow:none !important; border:0 !important; padding:0 !important;
               margin:0 !important; display:block !important;
-              page-break-after:always; break-after:page; page-break-inside:avoid; }
+              page-break-after:always; break-after:page;
+              page-break-inside:avoid !important; break-inside:avoid !important; }
+    /* the offer sheet in particular must stay whole */
+    .pk-sheet,.offer-doc,.offer-doc table,.offer-doc .nl{
+      page-break-inside:avoid !important; break-inside:avoid !important; }
     .pk-page:last-child{ page-break-after:auto; break-after:auto; }
     .pk-cover{ min-height:0 !important; }
     .pk-cover-top,.pk-cover-mid,.pk-foot-row{ padding-left:0 !important; padding-right:0 !important; }
@@ -4465,9 +4471,48 @@ function offerPrint(){
     .offer-doc img{ max-width:100% !important; height:auto !important; }
     img{ max-width:100%; }
     </style></head><body>`
-    + offerPackHtml() + "</body></html>");
+    + offerPackHtml()
+    + `<script>
+      /* A4 minus 9mm margins is 192 x 279 mm. Content that runs longer than a
+         page is shrunk to fit rather than being allowed to spill onto the next,
+         which is what split the offer sheet in two. */
+      (function(){
+        var MAX_H = 279 / 25.4 * 96;          // 279mm in CSS pixels
+        var MAX_W = 192 / 25.4 * 96;
+        function fitPages(){
+          var pages = document.querySelectorAll('.pk-page');
+          for(var i=0;i<pages.length;i++){
+            var p = pages[i];
+            p.style.zoom = 1;
+            var h = p.scrollHeight, wdt = p.scrollWidth;
+            var s = Math.min(MAX_H / h, MAX_W / wdt, 1);
+            if(s < 1) p.style.zoom = Math.max(0.45, s * 0.985);   // a hair under, for rounding
+          }
+        }
+        function ready(){
+          var imgs = Array.prototype.slice.call(document.images);
+          var left = imgs.filter(function(im){ return !im.complete; }).length;
+          if(!left) return finish();
+          var done = 0;
+          imgs.forEach(function(im){
+            if(im.complete) return;
+            var go = function(){ if(++done >= left) finish(); };
+            im.addEventListener('load', go); im.addEventListener('error', go);
+          });
+          setTimeout(finish, 4000);            // never wait forever on a slow tile
+        }
+        var printed = false;
+        function finish(){
+          if(printed) return; printed = true;
+          fitPages();
+          setTimeout(function(){ try{ window.focus(); window.print(); }catch(e){} }, 250);
+        }
+        if(document.readyState === 'complete') ready();
+        else window.addEventListener('load', ready);
+      })();
+    <\/script>`
+    + "</body></html>");
   w.document.close();
-  setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} }, 500);
   /* printing is not sending — the salesperson may just be reviewing a draft */
 }
 /* ---------- the printed offer document, in the company's own format ---------- */
