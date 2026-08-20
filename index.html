@@ -479,6 +479,13 @@ th.num{text-align:right}
 .ch-g-lbl{font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--steel)}
 .ch-g-sub{font-size:.8rem;margin-top:3px}
 /* ---- my performance layout ---- */
+.mk-ups{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.mk-up{border:1px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff}
+.mk-up b{display:block;font-family:'Archivo Expanded','Archivo',sans-serif;font-size:1.5rem;line-height:1.1}
+.mk-up span{display:block;font-size:.72rem;font-weight:700;color:var(--steel);margin-top:3px}
+.mk-up i{display:block;font-style:normal;font-size:.68rem;color:var(--steel);margin-top:2px}
+.mk-up.warn{background:#FFFDF5;border-color:#EFE4C8} .mk-up.warn b{color:#8A6A00}
+.mk-up.ok{background:#F3FAF6;border-color:#CBE7DA} .mk-up.ok b{color:var(--green)}
 .mr-alert{background:#FFF8F8;border:1px solid #F0D2D3;border-radius:10px;padding:11px 14px;font-size:.86rem;margin-bottom:14px;
   display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .mr-hero{display:grid;grid-template-columns:1fr auto;gap:12px;margin-bottom:12px;align-items:stretch}
@@ -1145,7 +1152,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "18 Aug 2026 · rev BQ";
+const APP_BUILD = "18 Aug 2026 · rev BS";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -2128,6 +2135,26 @@ function viewMarketingDay(){
     <div class="card kpi k-green"><div class="k-label">Won this month</div><div class="k-val">${wonMo.length}</div><div class="k-sub">${won.length} won overall</div></div>
     <div class="card kpi"><div class="k-label">Conversion</div><div class="k-val">${conv.toFixed(1)}%</div><div class="k-sub">of our leads become deals</div></div>
     <div class="card kpi"><div class="k-label">Lost</div><div class="k-val">${lost.length}</div><div class="k-sub">closed without a deal</div></div>
+  </div>
+  <div class="card card-pad" style="margin-top:12px">
+    <div class="eyebrow red">Leads we uploaded</div>
+    ${(function(){
+      const all = visibleLeads().filter(l=>!isMergedAway(l));
+      const cnt = f => all.filter(f).length;
+      const today_ = cnt(l=>String(l.created||"").slice(0,10)===t);
+      const week_  = cnt(l=>inWeek(l.created));            // weekStart() is a Date, so use the helper
+      const month_ = cnt(l=>String(l.created||"").slice(0,7)===mo);
+      const yr_    = cnt(l=>String(l.created||"").slice(0,4)===t.slice(0,4));
+      const unassigned = all.filter(l=>!l.owner && l.status!=="Won" && l.status!=="Lost").length;
+      const box = (n,lb,sub,tone)=>`<div class="mk-up ${tone||""}"><b>${n.toLocaleString()}</b><span>${lb}</span>${sub?`<i>${sub}</i>`:""}</div>`;
+      return `<div class="mk-ups">
+        ${box(today_, "uploaded today", "")}
+        ${box(week_, "this week", "")}
+        ${box(month_, "this month", "")}
+        ${box(yr_, "this year", "")}
+        ${box(unassigned, "waiting for Sales Ops", unassigned? "not yet distributed":"all distributed", unassigned?"warn":"ok")}
+      </div>`;
+    })()}
   </div>
   <div class="card card-pad" style="margin-top:12px">
     <div class="eyebrow red">This month by channel</div>
@@ -3578,6 +3605,15 @@ function marketingSection(leads, title){
 const OFFER_FREQS = {"Monthly":12, "Quarterly":4, "Semi Annually":2, "Annually":1};
 let offerState = { leadId:"", park:"october", area:5000, price:0, plan:"", freq:"", electricity:false, date:"" };
 let offerNoteAr = false;                       // which language the covering note is written in
+let offerSector = null, offerPlot = null, offerLandType = null;   // null = follow the lead / the park
+/* typing on the offer overrides what came from the lead, for this offer only */
+function offerField(which, val){
+  if(which==="sector") offerSector = val;
+  else if(which==="plot") offerPlot = val;
+  else if(which==="landType") offerLandType = val;
+  const inner = $("offerDocInner");
+  if(inner){ inner.innerHTML = offerPackHtml(); setTimeout(offerFitDoc, 20); }
+}
 function offerSetLang(ar){
   offerNoteAr = !!ar;
   const box = $("offerNoteBox");
@@ -3617,6 +3653,7 @@ function openOffer(leadId){
     return Object.keys(OFFER_TEMPLATES)[0];
   })();
   const t = OFFER_PARKS[park];
+  offerSector = null; offerPlot = null; offerLandType = null;      // start from the lead each time
   offerState = { leadId, park, area: Number(l.soldArea||l.land)||5000, price: t.pricePerSqm,
                  plan: t.defaultPlan||"1", freq: t.defaultFreq||"Quarterly", electricity:false, date: today() };
   $("offerBody").innerHTML = offerFormHtml();
@@ -3662,6 +3699,19 @@ function offerFormHtml(){
             ${Object.keys(t.freqs||{"Quarterly":4,"Semi Annually":2,"Annually":1,"Monthly":12}).map(f=>`<option ${s.freq===f?"selected":""}>${f}</option>`).join("")}
           </select></div>
       </div>
+      <div class="of-two">
+        <div class="of-f"><label>Client's sector</label>
+          <input id="of_sector" list="of_sectorList" value="${esc(OSTATE.sector||"")}"
+            placeholder="e.g. Pharmaceuticals" onchange="offerField('sector', this.value)">
+          <datalist id="of_sectorList">${(typeof INDUSTRIES!=="undefined"? INDUSTRIES : []).map(x=>`<option value="${esc(x)}">`).join("")}
+            ${Object.values(OFFER_PARKS).map(p=>`<option value="${esc(p.sector||"")}">`).join("")}</datalist></div>
+        <div class="of-f"><label>Plot no.</label>
+          <input value="${esc(OSTATE.plot||"")}" placeholder="optional" onchange="offerField('plot', this.value)"></div>
+      </div>
+      ${((t.landTypes||[]).length>1)? `<div class="of-f"><label>Land type</label>
+        <select onchange="offerField('landType', this.value)">
+          ${t.landTypes.map(x=>`<option ${OSTATE.landType===x?"selected":""}>${esc(x)}</option>`).join("")}
+        </select></div>`:""}
       <div class="of-f"><label>First installment from</label>
         <input type="date" value="${esc(s.date)}" onchange="offerUpd('date', this.value)" ${s.plan==="cash"?"disabled":""}></div>
       ${t.elecHandover? `<label class="of-chk"><input type="checkbox" ${s.electricity?"checked":""} onchange="offerUpd('electricity', this.checked)"> Include electricity connection (${ofmt(t.elecHandover)} EGP)</label>`:""}
@@ -3888,7 +3938,11 @@ function offerSaveToLead(quiet, channel){
     l.stageMeta.offerCount = (Number(l.stageMeta.offerCount)||0) + 1;
   }
   l.stageMeta = l.stageMeta || {};
+  /* a sector typed on the offer is worth keeping on the lead */
+  if(offerSector!==null && offerSector.trim() && !l.industry) l.industry = offerSector.trim();
+  if(offerPlot!==null && offerPlot.trim() && !l.plotNo) l.plotNo = offerPlot.trim();
   l.stageMeta.lastOffer = { at:nowStamp(), park:c.t.key, project:c.t.project, area:c.area, price:c.price,
+                            sector:OSTATE.sector, plot:OSTATE.plot,
                             total:c.total, plan:offerState.plan, freq:c.freq, due:c.dueAtContract, by:currentUser.name };
   pushLog(l, "Offer sent — "+c.t.project+" · "+oMoney(c.area)+" m² · "+oMoney(c.total)+" EGP"
     +(c.cash? " · cash" : " · "+c.years+"yr "+c.freq.toLowerCase()));
@@ -4349,9 +4403,10 @@ function offerSyncOstate(){
   OSTATE.plan = s.plan; OSTATE.freq = s.freq; OSTATE.electricity = !!s.electricity;
   OSTATE.date = s.date || today();
   OSTATE.client = l.name || ""; OSTATE.company = l.company || "";
-  OSTATE.sector = l.industry || (OFFER_TEMPLATES[s.park]||{}).sector || "";
-  OSTATE.plot = l.plotNo || "";
-  OSTATE.landType = ((OFFER_TEMPLATES[s.park]||{}).landTypes||["Industrial"])[0];
+  /* the client's own sector, typed on the offer — it is rarely the park's default */
+  OSTATE.sector = (offerSector!==null? offerSector : (l.industry || (OFFER_TEMPLATES[s.park]||{}).sector || ""));
+  OSTATE.plot = (offerPlot!==null? offerPlot : (l.plotNo || ""));
+  OSTATE.landType = offerLandType || ((OFFER_TEMPLATES[s.park]||{}).landTypes||["Industrial"])[0];
   OSTATE.rep = currentUser? currentUser.name : "";
   return OSTATE;
 }
@@ -8976,7 +9031,10 @@ function runSmartPaste(){
   let assigned = 0, aEntries = [];
   if($("pasteAutoAssign").checked){ const r = autoAssignLeads(created.filter(l=>!l.owner)); assigned = r.count; aEntries = r.entries; }
   logImport({method:"Paste", added, updated:0, dupes, failed, assigned});
-  persist(); updateBell();
+  persistNow().catch(e=>{
+    toast("\u26A0 NOT SAVED \u2014 "+((e&&e.message)||"the server refused these leads")+". They will disappear on refresh.");
+  });
+  updateBell();
   if(aEntries.length) notifyAssigned(aEntries);
   else { const unNew = created.filter(l=>!l.owner); if(unNew.length) notifyOps(unNew); }
   const res = $("pasteResult");
@@ -9550,7 +9608,19 @@ function importExcel(file){
       gsSuppress = false;
       gsTouched.forEach(gsMirrorLead);          // one Lead row per imported lead, straight into the workbook
       logImport({method:"Excel", added, updated, dupes:dupN, failed:skipped, assigned:assignedN});
-      persist(); render(); updateBell();
+      /* Wait for the server. Imported leads that appear and then vanish are
+         leads the database refused — the person must be told, not left guessing. */
+      persistNow().then(()=>{
+        const box = $("importResult");
+        if(box) box.innerHTML += `<div style="margin-top:8px;color:var(--green);font-size:.82rem">\u2713 Saved to the database \u2014 these leads will still be here after a refresh.</div>`;
+      }).catch(e=>{
+        const msg = (e && e.message) || "the server refused the import";
+        const box = $("importResult");
+        if(box) box.innerHTML += `<div style="margin-top:8px;padding:10px 12px;background:#FFF6F6;border:1px solid #F0D2D3;border-radius:8px;font-size:.82rem">
+          <b style="color:var(--red)">\u26A0 NOT SAVED \u2014 ${esc(msg)}</b><div style="margin-top:4px">The leads are on screen but the database rejected them, so they will disappear on refresh. Run the latest supabase_schema.sql, then import again.</div></div>`;
+        toast("\u26A0 Import NOT saved \u2014 "+msg);
+      });
+      render(); updateBell();
       if(aEntries.length) notifyAssigned(aEntries);
       else { const unNew = newLeads.filter(l=>!l.owner); if(unNew.length) notifyOps(unNew); }
       const badList = Object.keys(badNames);

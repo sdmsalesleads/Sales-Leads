@@ -518,15 +518,13 @@ create policy leads_insert on public.leads for insert
     -- salespeople and managers may add their OWN leads, but only from the
     -- self-generated channels; sales operations may add the same channels
     -- for anyone (they distribute afterwards)
-    or (public.app_role() in ('sales','manager')
-        and owner = auth.uid()
-        and source in ('Personal','Management','Walk-In'))
-    or (public.app_role()::text in ('salesops','opsmgr')
-        and source in ('Personal','Management','Walk-In'))
-    -- business development adds its own research-sourced cold leads
-    or (public.app_role()::text = 'bizdev'
-        and owner = auth.uid()
-        and source in ('Personal','Management','Walk-In','BD Research'))
+    -- Salespeople record where a lead truly came from — including a marketing
+    -- channel, when the client says they saw the campaign — so the channel is
+    -- no longer restricted. What still holds is that they own what they add.
+    or (public.app_role()::text in ('sales','manager','bizdev','bdmgr')
+        and owner = auth.uid())
+    -- sales operations add for the team and distribute afterwards
+    or (public.app_role()::text in ('salesops','opsmgr'))
   );
 drop policy if exists leads_update on public.leads;
 create policy leads_update on public.leads for update
