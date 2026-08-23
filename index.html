@@ -1156,7 +1156,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev CB";
+const APP_BUILD = "20 Aug 2026 · rev CD";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -3659,7 +3659,7 @@ function openOffer(leadId){
   })();
   const t = OFFER_PARKS[park];
   offerSector = null; offerPlot = null; offerLandType = null;      // start from the lead each time
-  offerState = { leadId, park, area: Number(l.soldArea||l.land)||5000, price: t.pricePerSqm,
+  offerState = { leadId, park, area: Number(l.soldArea||l.land)||t.area||5000, price: t.pricePerSqm,
                  plan: t.defaultPlan||"1", freq: t.defaultFreq||"Quarterly", electricity:false, date: today() };
   $("offerBody").innerHTML = offerFormHtml();
   $("offerOverlay").classList.add("open");
@@ -3994,10 +3994,12 @@ function offerDaysWaiting(l){
 function offerFeeTable(f,c){
  let head;
  if(f.cols==='pct4')head='<tr><th>Item</th><th>Percentage</th><th>Amount</th><th>Notes</th></tr>';
+ else if(f.cols==='pct3')head='<tr><th>Item</th><th>Percentage</th><th>Notes</th></tr>';
  else if(f.cols==='psqm')head='<tr><th>Item</th><th>Price/SQM</th><th>Amount</th><th>Notes</th></tr>';
  else head='<tr><th>Item</th><th>Amount</th><th>Notes</th></tr>';
  const rows=f.rows.map(r=>{const amt=ofmt(typeof r.amt==='function'?r.amt(c):r.amt,r.dp||0);
    if(f.cols==='amt3')return `<tr><td class="l">${r.label}</td><td>${amt}</td><td>${r.note||''}</td></tr>`;
+   if(f.cols==='pct3')return `<tr><td class="l">${r.label}</td><td>${r.col2||''}</td><td>${r.note||''}</td></tr>`;
    return `<tr><td class="l">${r.label}</td><td>${r.col2||''}</td><td>${amt}</td><td>${r.note||''}</td></tr>`;}).join('');
  const notes=f.notes?`<ul class="nl">${f.notes.map(n=>`<li class="${n.cls||''}">${n.h}</li>`).join('')}</ul>`:'';
  return `<table class="od-t">${head}${rows}</table>${notes}`;
@@ -4059,7 +4061,7 @@ const PARK_FACTS = {
     inds:["Food processing","Logistics","Engineering","Chemicals","Heavy industrial"],
     adv:["Within the Suez Canal Economic Zone","100% freehold ownership",
          "Customs & tax incentives","Adjacent to Ain Sokhna Port"] },
-  borgelarab:{ name:"Industria Borg El Arab", city:"Borg Al Arab Industrial City", gov:"Alexandria",
+  borgelarab:{ name:"Industria Borg Al Arab", city:"Borg Al Arab Industrial City", gov:"Alexandria",
     coord:[30.857464,29.632111], area:"Figure not yet published",
     inds:["Automotive & spare parts","Food processing","Textiles & garments","Light manufacturing","Engineering","Logistics"],
     adv:["Direct access to Alexandria Port and national road networks","Within Egypt's investment zones — potential tax & customs advantages",
@@ -4212,37 +4214,33 @@ const OFFER_TEMPLATES={
         notes:[{h:'Will be paid upon signing the contract and it\u2019s equivalent to 1/1000 of the land value. <span class="red">(Excluding VAT)</span>'}]},
        {cols:'psqm',rows:[{label:'Maintnenance Deposit',col2:'24',amt:c=>c.maint,dp:0,note:'Upon contract '}]}]}},
 
- borgelarab:{key:'borgelarab',project:'Industria Borg El Arab',sector:'Logistics',landTypes:['Logistics','Industrial','Warehouse'],
-   pricePerSqm:6790,currency:'EGP',area:5000,advancePct:0.30,defaultPlan:'3',defaultFreq:'Quarterly',
-   infraInsurancePct:0.01,contractFeesPct:0.002,maintenancePerSqm:24,handoverFees:15000,
+ borgelarab:{key:'borgelarab',project:'Industria Borg Al Arab',sector:'',landTypes:['Industrial','Warehouse','Logistics'],
+   pricePerSqm:5000,currency:'EGP',area:4173.3,advancePct:0.30,defaultPlan:'3',defaultFreq:'Quarterly',
+   infraInsurancePct:0.01,contractFeesPct:0.002,maintenancePerSqm:30,handoverFees:20000,
    freqs:{'Quarterly':4,'Semi Annually':2,'Annually':1,'Monthly':12},
    reps:['Mohamed Tarek','Yara Adel'],
    headerCss:'borg',
-   /* dedicated electricity capacity by bracket, from the workbook's product matrix;
-      brackets not in the matrix (e.g. Logistics) use the sheet's own 30 KVA */
-   kva:(lt,a)=> lt==='Industrial'? (a<=2500?30: a<=10000?60: a<=15000?120: a<=25000?180: a<=50000?300: 600)
-             : lt==='Warehouse'?  (a<=10000?50: a<=40000?100: 400)
-             : 30,
-   dp:{area:0,price:0,total:0,down:0,rem:0,inst:2},
-   sign:{repTitle:'Sales representative',dirTitle:'Sales & BD Director',chairTitle:'CEO',director:'Yara Adel',chairman:'Eng. Mohamed AL Kammah'},
-   pay:{splitPct:false,eoiPct:0.10,instLabel:'Total Installments',cashStyle:'cashDown'},
-   doc:{headerAR:'auto',validity:'This is offer is valid for 2 days',
+   dp:{area:1,price:0,total:0,down:0,rem:0,inst:2},
+   sign:{repTitle:'Sales representative',dirTitle:'Sales & BD Director',chairTitle:'Chairman and Managing Director',director:'Yara Adel',chairman:'Eng. Mohamed AL Kammah'},
+   pay:{splitPct:true,downLabel:'Down Payment',instLabel:'Total Installments',cashStyle:'cashDown'},
+   doc:{headerAR:'auto',validity:'This is offer is valid for 7 days',
      notes:c=>[
        {h:`The Amount of installment ${OSTATE.freq}&nbsp;&nbsp;&nbsp;&nbsp;${ofmt(c.inst,2)}&nbsp;&nbsp;EGP`},
        {h:'The contract shall be signed within 3 months of signing reservation form'},
        {h:'The client shall hand over all cheques upon the reservation form'},
-       {h:'The maximum installment period is 5 years with interest'},
-       {h:`Price includes Electricty  ${c.t.kva(OSTATE.landType,c.area)} KVA`},
-       {h:'Price includes public utilities: Water, Roads, Sewage, Street lighting up to boundaries of land.'}],
+       {h:'The maximum installment period is 4 years with interest'},
+       {h:'Price includes public utilities: Water, Roads, Sewage, Street lighting up to boundaries of land.'},
+       {h:"The price doesn't include the electricity connections network from the external source to the selected plot."}],
      fees:[
        {cols:'pct4',rows:[{label:'Infrastructure insurance ',col2:'1%',amt:c=>c.infra,dp:0,note:'Upon contract'}],
         notes:[{h:'Shall be paid upon handingover as a guarantee for our facilities and infrastructure during the period of construction of the client.'},
                {h:'After the client completes all construction without any damages to our infrastructure , the amount will be refunded.'}]},
-       {cols:'amt3',rows:[{label:'Handover fees',amt:c=>c.handover,dp:0,note:'Upon handover'}],
-        notes:[{h:'<span class="red">(excluding VAT)</span>'}]},
-       {cols:'pct4',rows:[{label:'Contract Fees ',col2:'0.2%',amt:c=>c.contract,dp:0,note:'Upon contract '}],
-        notes:[{h:'Will be paid upon signing the contract and it\u2019s equivalent to 1/1000 of the land value. <span class="red">(excluding VAT)</span>'}]},
-       {cols:'psqm',rows:[{label:'Maintnenance deposit',col2:'24',amt:c=>c.maint,dp:0,note:'Upon contract '}]}]}},
+       {cols:'amt3',rows:[{label:'Handover Fees',amt:c=>c.handover,dp:0,note:'Upon Handover'}],
+        notes:[{h:'<span class="red">(Excluding VAT)</span>'}]},
+       {cols:'pct4',rows:[{label:'Contract Fees ',col2:'0.2%',amt:c=>c.contract,dp:0,note:'Upon Contract '}],
+        notes:[{h:'Will be paid upon signing the contract and it\u2019s equivalent to 1/1000 of the land value. <span class="red">(Excluding VAT)</span>'}]},
+       {cols:'psqm',rows:[{label:'Maintnenance Deposit',col2:'30',amt:c=>c.maint,dp:0,note:'Upon Contract '}]},
+       {cols:'pct3',rows:[{label:'IDA approval fees',col2:'4%',note:'Upon Contract '}]}]}},
 
  sokhna360:{key:'sokhna360',project:'Sokhna 360',sector:'Industrial',landTypes:['Industrial'],
    pricePerSqm:3300,currency:'EGP',area:20590.63,advancePct:0.30,defaultPlan:'cash',defaultFreq:'Quarterly',
