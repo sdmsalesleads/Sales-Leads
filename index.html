@@ -1156,7 +1156,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev CF";
+const APP_BUILD = "20 Aug 2026 · rev CG";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -2336,6 +2336,60 @@ function logCall(id){
 }
 
 /* =================== Admin / Manager dashboard =================== */
+/* ---- Team week in review: what every member DID, from the leads' activity logs ---- */
+let twrPrevWeek = false;
+function twrToggle(){ twrPrevWeek = !twrPrevWeek; render(); }
+const TWR_CALL_STATUSES = ["No Answer \u2013 Sent WhatsApp","Out of Coverage \u2013 Sent WhatsApp","Wrong Number","Call Back","Client Will Call Back","Need Time to Study Our Offer","Mail Sent"];
+function twrRange(){
+  const ws = weekStart(); const from = new Date(ws), to = new Date();
+  if(twrPrevWeek){ from.setDate(from.getDate()-7); to.setTime(ws.getTime()-864e5); }
+  const f = d=>d.toLocaleDateString("en-GB",{day:"numeric",month:"short"});
+  return f(from)+" \u2013 "+f(to);
+}
+function teamWeekReview(){
+  const W = twrPrevWeek? inPrevWeek : inWeek;
+  const leads = visibleLeads().filter(l=>!isMergedAway(l));
+  const money = typeof canSeeMoney==="function"? canSeeMoney() : true;
+  /* every log entry in the window, attributed to whoever wrote it */
+  const perName = {};
+  leads.forEach(l=>(l.log||[]).forEach(e=>{
+    if(!e || !W(e.d)) return;
+    const nm = e.by||""; if(!nm) return;
+    const p = perName[nm] || (perName[nm]={acts:0,calls:0,offers:0,meets:0,visits:0});
+    p.acts++;
+    const t = String(e.t||"");
+    if(TWR_CALL_STATUSES.some(s=>t.indexOf(s)===0)) p.calls++;
+    if(/^Offer Sent/.test(t) || /^Offer generated/.test(t)) p.offers++;
+    if(/^Scheduled Meeting/.test(t)) p.meets++;
+    if(/^Site Visit Scheduled/.test(t)) p.visits++;
+  }));
+  const team = teamMembers().filter(m=>!m.mkt && !m.fin);
+  const rows = team.map(m=>{
+    const p = perName[m.name] || {acts:0,calls:0,offers:0,meets:0,visits:0};
+    const own = leads.filter(l=>l.owner===m.id);
+    const fresh = own.filter(l=>W(l.assignedAt||l.created)).length;
+    const wonL = own.filter(l=>l.status==="Won" && W(l.wonDate));
+    return {m, ...p, fresh, won:wonL.length, val:wonL.reduce((s,l)=>s+(Number(l.value)||0),0)};
+  }).filter(r=> r.acts||r.fresh||r.won)
+    .sort((a,b)=> b.acts-a.acts || b.won-a.won);
+  const tot = rows.reduce((s,r)=>{ for(const k of ["acts","calls","offers","meets","visits","fresh","won","val"]) s[k]=(s[k]||0)+r[k]; return s; },{});
+  const added = leads.filter(l=>W(l.created)).length;
+  return `
+  <div class="section-head"><h2>\ud83d\udcca Week in review \u2014 ${twrPrevWeek?"last week":"this week"} <span class="muted" style="font-weight:400;font-size:.78rem">(${twrRange()})</span></h2>
+    <button class="btn btn-ghost btn-sm" onclick="twrToggle()">${twrPrevWeek? "Show this week":"Show last week"}</button></div>
+  <div class="grid g4">
+    <div class="card kpi"><div class="k-label">Activities logged</div><div class="k-val">${tot.acts||0}</div><div class="k-sub">every update the team recorded</div></div>
+    <div class="card kpi"><div class="k-label">Call attempts</div><div class="k-val">${tot.calls||0}</div><div class="k-sub">no answer, call back, mail\u2026</div></div>
+    <div class="card kpi"><div class="k-label">Meetings & site visits</div><div class="k-val">${(tot.meets||0)+(tot.visits||0)}</div><div class="k-sub">${tot.meets||0} meetings \u00b7 ${tot.visits||0} site visits</div></div>
+    <div class="card kpi k-green"><div class="k-label">Deals won</div><div class="k-val">${tot.won||0}</div><div class="k-sub">${money? fmtMoney(tot.val||0)+" \u00b7 ":""}${added} lead${added===1?"":"s"} added</div></div>
+  </div>
+  <div class="card" style="overflow-x:auto">
+    ${rows.length? `<table><thead><tr><th>Member</th><th class="num">Activities</th><th class="num">Calls</th><th class="num">Offers sent</th><th class="num">Meetings</th><th class="num">Site visits</th><th class="num">New leads</th><th class="num">Won</th>${money?`<th class="num">Value won</th>`:""}</tr></thead><tbody>
+      ${rows.map(r=>`<tr><td><b>${esc(r.m.name)}</b></td><td class="num">${r.acts}</td><td class="num">${r.calls}</td><td class="num">${r.offers}</td><td class="num">${r.meets}</td><td class="num">${r.visits}</td><td class="num">${r.fresh}</td><td class="num">${r.won}</td>${money?`<td class="num">${r.val?fmtMoney(r.val):"\u2014"}</td>`:""}</tr>`).join("")}
+    </tbody></table>`
+    : `<div class="empty">No team activity recorded ${twrPrevWeek?"last week":"this week yet"}.</div>`}
+  </div>`;
+}
 function viewAdminDashboard(){
   const t = today();
   const scopeLeads = visibleLeads();
@@ -2358,6 +2412,7 @@ function viewAdminDashboard(){
   return `
   ${greetingCard()}
   ${newLeadsTodayCard()}
+  ${teamWeekReview()}
   ${(function(){
     const hot = fullView()||isOps()? state.leads.filter(l=>l.bdReady && l.status!=="Won" && l.status!=="Lost") : [];
     if(!hot.length) return "";
