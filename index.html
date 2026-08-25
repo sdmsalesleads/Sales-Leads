@@ -1156,7 +1156,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev CE";
+const APP_BUILD = "20 Aug 2026 · rev CF";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1931,10 +1931,48 @@ function myFollowups(userId){
     upcoming: mine.filter(l=>l.next>t).sort((a,b)=>a.next.localeCompare(b.next)).slice(0,5)
   };
 }
+/* ---- leads added TODAY, for the homepage and the bell ---- */
+function newLeadsToday(){
+  const t = today();
+  return visibleLeads().filter(l=>!isMergedAway(l) && String(l.created||"").slice(0,10)===t)
+    .sort((a,b)=> String(b.id).localeCompare(String(a.id)));
+}
+function newLeadsBySource(list){
+  const by = {};
+  list.forEach(l=>{ const k = normSource(l.source)||"Source not set"; by[k]=(by[k]||0)+1; });
+  return Object.entries(by).sort((a,b)=>b[1]-a[1]);
+}
+/* The section renders ONLY when leads were added today — otherwise nothing. */
+function newLeadsTodayCard(){
+  const fresh = newLeadsToday();
+  if(!fresh.length) return "";
+  const src = newLeadsBySource(fresh).map(([k,c])=>`<b>${esc(k)}</b> ${c}`).join(" · ");
+  return `
+  <div class="section-head"><h2>🆕 New leads today — ${fresh.length}</h2>
+    <span class="muted" style="font-size:.78rem">${src}</span></div>
+  <div class="card">
+    ${fresh.slice(0,8).map(l=>`
+      <div class="cs-item" style="cursor:pointer" onclick="if(!event.target.closest('button,a,input,select,label')) openLeadModal('${l.id}')">
+        <div class="avatar" style="background:var(--blue,#146EB2)">${esc(initials(l.name))}</div>
+        <div class="cs-main"><div class="cs-name">${esc(l.name)}</div>
+          <div class="cs-meta">${statusPill(l.status)} &nbsp;${esc(normSource(l.source)||"Source not set")} · ${esc(l.project||"No project")} · added ${fmtDate(l.created)}${canManage()&&l.owner? " · "+esc(memberName(l.owner)) : (canManage()&&!l.owner? " · <b style='color:var(--amber)'>unassigned</b>":"")}</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="openLeadModal('${l.id}')">Open</button>
+      </div>`).join("")}
+    ${fresh.length>8? `<div class="cs-item" style="cursor:pointer;justify-content:center" onclick="setView('leads')"><span class="muted">and ${fresh.length-8} more — open Leads</span></div>`:""}
+  </div>`;
+}
 function updateBell(){
   if(!currentUser) return;
   const f = isFinance()? {overdue:[],due:[],upcoming:[]} : myFollowups(currentUser.id);
   let extra = [];
+  /* today's newly added leads, grouped by source */
+  if(!isFinance()){
+    const fresh = newLeadsToday();
+    if(fresh.length) extra.push({
+      t:`🆕 ${fresh.length} new lead${fresh.length>1?"s":""} added today`,
+      s:"By source: "+newLeadsBySource(fresh).map(([k,c])=>`${k} ${c}`).join(" · "),
+      go:"dashboard"});
+  }
   if(isFinance()){
     const pc = state.leads.filter(l=>l.status==="Won" && l.cashStatus!=="confirmed").length;
     if(pc) extra.push({t:`${pc} won deal${pc>1?"s":""} awaiting cash confirmation`, s:"Confirm or edit the cash value in Won Deals", go:"finance"});
@@ -2132,6 +2170,7 @@ function viewMarketingDay(){
   const top = Object.entries(bySrc).sort((a,b)=>b[1]-a[1]).slice(0,6);
   return `
   ${greetingCard()}
+  ${newLeadsTodayCard()}
   <div class="section-head" style="margin-top:0"><h2>Marketing at a glance</h2>
     ${canAddLead()?`<button class="btn btn-red btn-sm" onclick="openLeadModal()">+ Add lead</button>`:""}</div>
   <div class="kpis">
@@ -2198,6 +2237,8 @@ function viewDashboard(){
     <div class="card kpi" onclick="kpiGo(${noNext.length?"{due:'none'}":"{}"})" style="cursor:pointer" title="Open my leads"><div class="k-label">My open leads</div><div class="k-val">${open.length}</div><div class="k-sub">${noNext.length? `<span style="color:var(--amber);font-weight:700">${noNext.length} without a follow-up date</span>`:"All scheduled"}</div></div>
     <div class="card kpi k-green" onclick="setView('reports')" style="cursor:pointer" title="Open my report"><div class="k-label">Achieved ${yr}</div><div class="k-val">${fmtMoney(achieved)}</div><div class="k-sub">${target? pct.toFixed(1)+"% of my target ("+fmtMoney(target)+")" : "No personal target set"}</div></div>
   </div>
+
+  ${newLeadsTodayCard()}
 
   <div class="section-head">
     <h2>Today's call sheet</h2>
@@ -2316,6 +2357,7 @@ function viewAdminDashboard(){
 
   return `
   ${greetingCard()}
+  ${newLeadsTodayCard()}
   ${(function(){
     const hot = fullView()||isOps()? state.leads.filter(l=>l.bdReady && l.status!=="Won" && l.status!=="Lost") : [];
     if(!hot.length) return "";
