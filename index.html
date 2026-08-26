@@ -1156,7 +1156,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev CG";
+const APP_BUILD = "20 Aug 2026 · rev CH";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1488,7 +1488,7 @@ let currentUser = null;
 let editingLeadId = null;
 let editingMemberId = null;
 let currentView = "dashboard";
-let leadFilters = { q:"", source:"", sources:[], status:"", project:"", owner:"", due:"", dup:"", sort:"", outcome:"" };
+let leadFilters = { q:"", source:"", sources:[], status:"", statuses:[], project:"", owner:"", due:"", dup:"", sort:"", outcome:"" };
 /* pick any combination of channels: empty means every source */
 let srcPickerOpen = false;                 // the list is rebuilt on every render, so remember its state
 function srcSelected(){ return Array.isArray(leadFilters.sources)? leadFilters.sources : []; }
@@ -1516,6 +1516,42 @@ function sourceFilterUI(){
       ${SOURCES.map(s=>`<label style="display:flex;align-items:center;gap:8px;padding:5px 2px;font-size:.82rem;cursor:pointer">
         <input type="checkbox" ${sel.includes(s)?"checked":""} onchange="toggleSource('${s.replace(/'/g,"\\'")}', this.checked)"> ${esc(s)}
       </label>`).join("")}
+    </div>
+  </details>`;
+}
+/* pick any combination of statuses: empty means every status */
+let stPickerOpen = false;
+function stSelected(){
+  const a = Array.isArray(leadFilters.statuses)? leadFilters.statuses : [];
+  /* a single-status deep link (e.g. the Won KPI) shows as that one ticked */
+  return a.length? a : (leadFilters.status? [leadFilters.status] : []);
+}
+function toggleStatusF(s, on){
+  const cur = new Set(stSelected());
+  if(on) cur.add(s); else cur.delete(s);
+  leadFilters.statuses = [...cur];
+  leadFilters.status = "";
+  stPickerOpen = true;                     // stay open so several can be ticked in a row
+  render();
+}
+function setAllStatuses(on){ leadFilters.statuses = on? STATUSES.slice() : []; leadFilters.status=""; stPickerOpen = true; render(); }
+function closeStPicker(){ stPickerOpen = false; render(); }
+function statusFilterUI(){
+  const sel = stSelected();
+  const label = !sel.length? "All statuses" : sel.length===1? sel[0] : sel.length+" statuses";
+  return `<details class="srcpick stpick ${sel.length?"on":""}" ${stPickerOpen?"open":""} ontoggle="stPickerOpen=this.open">
+    <summary>${esc(label)}</summary>
+    <div class="srcmenu">
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button class="btn btn-ghost btn-sm" onclick="setAllStatuses(true)">Select all</button>
+        <button class="btn btn-ghost btn-sm" onclick="setAllStatuses(false)">Clear</button>
+        <button class="btn btn-red btn-sm" style="margin-left:auto" onclick="closeStPicker()">Done</button>
+      </div>
+      ${STATUS_GROUPS.map(g=>`
+        <div class="muted" style="font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;margin:6px 0 2px">${esc(g.g)}</div>
+        ${g.items.map(s=>`<label style="display:flex;align-items:center;gap:8px;padding:5px 2px;font-size:.82rem;cursor:pointer">
+          <input type="checkbox" ${sel.includes(s)?"checked":""} onchange="toggleStatusF('${s.replace(/'/g,"\\'")}', this.checked)"> ${statusPill(s)}
+        </label>`).join("")}`).join("")}
     </div>
   </details>`;
 }
@@ -1558,7 +1594,7 @@ function sortLeads(rows, mode){
   return rows.slice().sort(byNext);
 }
 function kpiGo(patch, view){
-  Object.assign(leadFilters, {q:"", source:"", sources:[], status:"", project:"", owner:"", due:"", dup:"", sort:"", outcome:""}, patch||{});
+  Object.assign(leadFilters, {q:"", source:"", sources:[], status:"", statuses:[], project:"", owner:"", due:"", dup:"", sort:"", outcome:""}, patch||{});
   setView(view||"leads");
 }
 let selectedLeads = new Set();
@@ -2562,7 +2598,8 @@ function viewLeads(){
     });
   }
   if(F.source) rows = rows.filter(l=>l.source===F.source);
-  if(F.status) rows = rows.filter(l=>l.status===F.status);
+  const stSel = stSelected();
+  if(stSel.length) rows = rows.filter(l=>stSel.includes(l.status));
   if(F.project) rows = rows.filter(l=>l.project===F.project);
   if(F.owner==="__none") rows = rows.filter(l=>!l.owner);
   else if(F.owner) rows = rows.filter(l=>l.owner===F.owner);
@@ -2595,7 +2632,7 @@ function viewLeads(){
   <div class="filters no-print">
     <input type="search" id="fl_q" placeholder="Search name, company, phone (with or without +2)…" value="${esc(F.q)}">
     ${(adm && !isMarketing())?`<select id="fl_owner"><option value="">All owners</option>${fullView()?`<option value="__none" ${F.owner==="__none"?"selected":""}>Unassigned</option>`:""}${teamMembers().filter(canOwnLeads).map(m=>`<option value="${m.id}" ${F.owner===m.id?"selected":""}>${esc(m.name)}${m.bd? " · BD":""}</option>`).join("")}</select>`:""}
-    ${isMarketing()? "" : `<select id="fl_status"><option value="">All statuses</option>${STATUSES.map(s=>`<option ${F.status===s?"selected":""}>${s}</option>`).join("")}</select>`}
+    ${isMarketing()? "" : statusFilterUI()}
     ${sourceFilterUI()}
     ${isMarketing()? `<select onchange="leadFilters.outcome=this.value;render()">
       <option value="">All outcomes</option>
@@ -7086,7 +7123,8 @@ document.addEventListener("click", e=>{
   const inside = sel => !!(t && typeof t.closest==="function" && t.closest(sel));
   if(!inside("#gsWrap")){ const b=$("gsResults"); if(b){ b.style.display="none"; } }
   /* clicking anywhere outside the source list closes it */
-  if(srcPickerOpen && !inside(".srcpick")){ srcPickerOpen = false; const d=document.querySelector(".srcpick"); if(d) d.open=false; }
+  if(srcPickerOpen && !inside(".srcpick:not(.stpick)")){ srcPickerOpen = false; const d=document.querySelector(".srcpick:not(.stpick)"); if(d) d.open=false; }
+  if(stPickerOpen && !inside(".stpick")){ stPickerOpen = false; const d=document.querySelector(".stpick"); if(d) d.open=false; }
 });
 
 /* =================== Conversion funnel =================== */
