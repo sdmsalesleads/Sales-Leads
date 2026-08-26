@@ -1156,7 +1156,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev CH";
+const APP_BUILD = "20 Aug 2026 · rev CI";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1869,7 +1869,13 @@ function enterApp(m){
   $("chipAvatar").textContent = initials(m.name);
   $("chipAvatar").classList.toggle("admin", !!m.admin);
   buildNav();
-  setView(isFinance()? "finance" : "dashboard");
+  let firstView = isFinance()? "finance" : "dashboard";
+  try{
+    const saved = localStorage.getItem("crm_last_view_"+m.id);
+    const item = saved && NAV_ITEMS.find(nv=>nv.v===saved);
+    if(item && (!item.show || item.show())) firstView = saved;
+  }catch(ig){}
+  setView(firstView);
   runDailyReminders();
   runOpsChecks();
   loadGamFromServer().then(()=>{
@@ -1925,6 +1931,7 @@ function setView(v){
   closeSidebar();
   if(v!=="guide" && typeof gdStop==="function") gdStop();     // the walkthrough only runs while you're watching it
   currentView=v; selectedLeads.clear();
+  try{ if(currentUser) localStorage.setItem("crm_last_view_"+currentUser.id, v); }catch(ig){}
   document.querySelectorAll("#navBar button").forEach(b=>b.classList.toggle("active", b.dataset.view===v));
   const item = NAV_ITEMS.find(n=>n.v===v);
   $("pageTitle").textContent = item? item.label():"";
