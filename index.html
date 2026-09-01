@@ -1210,7 +1210,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev CS";
+const APP_BUILD = "20 Aug 2026 · rev CU";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -4621,6 +4621,21 @@ function resCalcDues(){ const T = resTotals();
   return `إجمالي المستحقات ذات الصلة: <b>${T.dues? resMoney(T.dues):"—"}</b> ج.م`; }
 function resCalcInst(){ const T = resTotals();
   return `إجمالي الأقساط: <b>${T.instTotal? resMoney(T.instTotal):"—"}</b> ج.م`; }
+/* the two down-payment boxes mirror each other: type 30 in the percentage and
+   the amount appears at once, type an amount and the percentage appears */
+function resDownAmount(){
+  const R = RES;
+  if(R.downPay !== "" && R.downPay != null) return R.downPay;
+  const d = resTotals().down;
+  return d? Math.round(d*100)/100 : "";
+}
+function resDownPctVal(){
+  const R = RES;
+  if(R.downPayPct !== "" && R.downPayPct != null) return R.downPayPct;
+  const T = resTotals();
+  if(!T.price || !T.down) return "";
+  return Math.round(T.down / T.price * 10000) / 100;
+}
 function resFeesHtml(){
   const T = resTotals(), K = resRates();
   const row = (label, value, note) => `<div class="rf-fee"><span>${label}</span>` +
@@ -4643,6 +4658,10 @@ function resPaint(){
   const m = $("resCalcRem");   if(m) m.innerHTML = resCalcRem();
   const tb = $("resTermBox");  if(tb) tb.value = resTermText();
   const fe = $("resFees");     if(fe) fe.innerHTML = resFeesHtml();
+  const db = $("resDownBox");
+  if(db && document.activeElement !== db) db.value = resDownAmount();
+  const pb = $("resPctBox");
+  if(pb && document.activeElement !== pb) pb.value = resDownPctVal();
   /* the caret is never inside this list while a driver is being typed */
   const li = $("resInstList");
   if(li && document.activeElement && !li.contains(document.activeElement)) li.innerHTML = resInstListHtml();
@@ -4728,10 +4747,10 @@ function resFormHtml(){
       <div class="eyebrow red">ملحق رقم 1 — جدول الأقساط</div>
       <div class="of-two">
         <div class="of-f"><label>الدفعة المقدمة (ج.م)</label>
-          <input type="number" min="0" step="0.01" dir="ltr" value="${esc(R.downPay)}"
+          <input type="number" min="0" step="0.01" dir="ltr" id="resDownBox" value="${esc(resDownAmount())}"
             oninput="resUpd('downPay', this.value)"></div>
         <div class="of-f"><label>أو نسبة مئوية (%)</label>
-          <input type="number" min="0" max="100" step="0.5" dir="ltr" value="${esc(R.downPayPct)}"
+          <input type="number" min="0" max="100" step="0.5" dir="ltr" id="resPctBox" value="${esc(resDownPctVal())}"
             oninput="resUpd('downPayPct', this.value)"></div>
       </div>
       <div class="of-two">
@@ -5154,14 +5173,28 @@ function resPrint(){
     @page{ size:Letter portrait; margin:1in; }
     html,body{ margin:0; padding:0; background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     .rf-doc{ height:auto; overflow:visible; padding:0; background:#fff; border:0; box-shadow:none; }
+    /* The screen preview is cut into pages so it can be reviewed; on paper the
+       document must FLOW, exactly as the Word file does. Forcing a break after
+       each preview page is what left half-empty sheets, so the pages are
+       unwrapped here and only the real break — before the dues annex — is kept. */
     .rf-page{ width:auto; max-width:none; margin:0; box-shadow:none; border:0; padding:0;
-              page-break-after:always; break-after:page; }
-    .rf-page:last-child{ page-break-after:auto; break-after:auto; }
-    /* nothing splits mid-way: a table, a row, a terms clause or the signatures
-       either fit on the page or move to the next one whole */
-    .rf-grid,.rf-grid tr,.rf-t tr,.rf-sig,.rf-title,.rf-band{ page-break-inside:avoid; break-inside:avoid; }
+              page-break-after:auto; break-after:auto; }
+    .rf-page + .rf-page{ padding-top:0; }
+    /* the running head and the page number belong to the printer's own header
+       and footer; repeating them inside the flow would drop them mid-page */
+    .rf-code,.rf-pno{ display:none; }
+    /* the dues annex starts its own sheet — the one break the original has */
+    .rf-page:last-child{ page-break-before:always; break-before:page; }
+    /* a long schedule SPLITS at row boundaries, the way Word does — forbidding
+       the whole table from breaking is what pushed it to the next sheet and left
+       the bottom of the page empty. Rows and the signature block stay whole. */
+    .rf-grid{ page-break-inside:auto; break-inside:auto; }
+    .rf-grid tr,.rf-t tr,.rf-sig,.rf-title{ page-break-inside:avoid; break-inside:avoid; }
+    .rf-grid thead{ display:table-header-group; }
     .rf-band{ page-break-after:avoid; break-after:avoid; }
     .rf-annex{ page-break-after:avoid; break-after:avoid; }
+    /* the printed copy is black, like the original — no screen colours */
+    .rf-v,.rf-words{ color:#000 !important; }
     .rf-blank{ border-bottom:1px solid #444; }
     </style></head><body><div class="rf-doc">${resDocHTML()}</div>
     <script>window.onload=function(){ setTimeout(function(){ window.print(); }, 250); };<\/script>
