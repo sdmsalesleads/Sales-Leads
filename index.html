@@ -1073,6 +1073,9 @@ th.th-sort.on .th-ar{opacity:1}
             <span class="muted doc-note" id="docNote"></span>
           </div>
         </div>
+        <div class="field" id="wonDateBlock" style="display:none"><label>Deal won on</label>
+          <input id="f_wonDate" type="date">
+          <div class="muted" style="font-size:.72rem;margin-top:3px">The date the deal actually closed — reports count it in that period, not the day it was entered</div></div>
         <div class="field" id="meetingBlock" style="display:none"><label id="meetingLabel" style="color:var(--red)">Meeting date &amp; time *</label>
           <div style="display:flex;gap:8px"><input id="f_meetingDate" type="date" style="flex:1.4"><input id="f_meetingTime" type="time" style="flex:1"></div>
         </div>
@@ -1317,7 +1320,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev ED";
+const APP_BUILD = "20 Aug 2026 · rev EE";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1735,7 +1738,7 @@ let currentUser = null;
 let editingLeadId = null;
 let editingMemberId = null;
 let currentView = "dashboard";
-let leadFilters = { q:"", source:"", sources:[], status:"", statuses:[], project:"", owner:"", due:"", dup:"", sort:"", sortDir:"", sortKeys:[], multiSort:false, outcome:"" };
+let leadFilters = { q:"", source:"", sources:[], status:"", statuses:[], project:"", owner:"", due:"", dup:"", sort:"", sortDir:"", sortKeys:[], multiSort:false, outcome:"", from:"", to:"", dateField:"" };
 /* pick any combination of channels: empty means every source */
 let srcPickerOpen = false;                 // the list is rebuilt on every render, so remember its state
 function srcSelected(){ return Array.isArray(leadFilters.sources)? leadFilters.sources : []; }
@@ -1928,10 +1931,23 @@ function sortLeadsLegacy(rows, mode){
   }
   return rows.slice().sort(byNext);
 }
+/* Clicking a figure must show the very leads behind it — the same period, the
+   same owner, and dated on the field that figure was counted by. */
 function kpiGo(patch, view){
   const keepMulti = leadFilters.multiSort;
-  Object.assign(leadFilters, {q:"", source:"", sources:[], status:"", statuses:[], project:"", owner:"", due:"", dup:"", sort:"", sortDir:"", sortKeys:[], multiSort:keepMulti, outcome:""}, patch||{});
+  Object.assign(leadFilters, {q:"", source:"", sources:[], status:"", statuses:[], project:"", owner:"",
+    due:"", dup:"", sort:"", sortDir:"", sortKeys:[], multiSort:keepMulti, outcome:"",
+    from:"", to:"", dateField:""}, patch||{});
   setView(view||"leads");
+}
+function kpiScope(extra, dateField){
+  const r = (typeof repRange==="function")? repRange() : null;
+  const p = Object.assign({}, extra||{});
+  if(r && r.from) p.from = r.from;
+  if(r && r.to)   p.to   = r.to;
+  if(dateField)   p.dateField = dateField;
+  if(typeof repFilters!=="undefined" && repFilters.owner) p.owner = repFilters.owner;
+  return p;
 }
 let selectedLeads = new Set();
 
@@ -2955,6 +2971,18 @@ function viewLeads(){
   const srcSel = srcSelected();
   if(srcSel.length) rows = rows.filter(l=>srcSel.includes(normSource(l.source)));
   if(F.dup==="only") rows = rows.filter(l=>isDupFlagged(l));
+  /* a figure clicked in the reports carries its period and the date it counted
+     by — a deal won in 2025 must not appear under this month */
+  if(F.from || F.to){
+    const fld = F.dateField || "created";
+    rows = rows.filter(l=>{
+      const d = String((fld==="wonDate"? (l.wonDate||l.created) : l[fld]) || "").slice(0,10);
+      if(!d) return false;
+      if(F.from && d < F.from) return false;
+      if(F.to   && d > F.to)   return false;
+      return true;
+    });
+  }
   rows = sortLeads(rows, F.sort);
   const adm = canManage();
   lastFilteredIds = rows.map(l=>l.id);            // so the export matches the list on screen
@@ -2998,6 +3026,12 @@ function viewLeads(){
     ${canEditLeads()? `<button class="btn btn-ghost btn-sm" onclick="bulkClearDup()">\u2713 Not duplicates</button>
       <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="bulkDelete()">\uD83D\uDDD1 Delete</button>`:""}
     <button class="btn btn-ghost btn-sm" onclick="selectedLeads.clear();render()">Clear selection</button>
+  </div>`:""}
+  ${(leadFilters.from||leadFilters.to)? `<div class="sort-chip">
+    <span>يعرض ${leadFilters.dateField==="wonDate"? "الصفقات المكتملة" : "الليدز"}
+      ${leadFilters.from? "من "+esc(fmtDate(leadFilters.from)):""}
+      ${leadFilters.to? "إلى "+esc(fmtDate(leadFilters.to)):""}</span>
+    <button class="btn btn-ghost btn-sm" onclick="kpiGo({})">عرض الكل</button>
   </div>`:""}
   ${leadSortChip()}
   <div class="card" style="overflow:auto">
@@ -3157,6 +3191,10 @@ function openLeadModal(id){
   }
   ["f_eoiApp","f_eoiDate","f_resDate","f_contractDate"].forEach(f=>$(f).disabled = !(canStages && (isOwnerUser||isOps()||isAdmin()||isManager()||isDirector())));
   $("stagesBlock").style.display = canStages? "block":"none";
+  /* the closing date belongs to a won deal only, and only to whoever may edit stages */
+  const isWon = $("f_status").value==="Won";
+  $("wonDateBlock").style.display = isWon? "" : "none";
+  $("f_wonDate").disabled = !(canStages && isWon);
   ["valueField","totalSoldField","soldAreaField","plotField"].forEach(f=>{ if(currentUser.mkt) $(f).style.display="none"; });
   $("f_notes").disabled = !(canCore || canFollow);
   $("f_name").value = l?l.name:"";
@@ -3171,6 +3209,7 @@ function openLeadModal(id){
   $("f_land").value = l?l.land||"":"";
   $("f_industry").value = l?l.industry||"":"";
   $("f_nat").value = l? leadNat(l) : "";
+  $("f_wonDate").value = l? (l.wonDate||"") : "";
   fillStatusSelect($("f_status"), l? l.status : "New");
   /* a rep who cannot leave leads unassigned defaults to themselves */
   $("f_owner").value = l? (l.owner||"") : "";
@@ -3235,6 +3274,15 @@ function openLeadModal(id){
   setTimeout(modalTop, 220);
 }
 $("f_status").addEventListener("change", toggleValueField);
+/* choosing Won asks when the deal actually closed, offering today as the default */
+$("f_status").addEventListener("change", function(){
+  const won = this.value==="Won";
+  if($("wonDateBlock")) $("wonDateBlock").style.display = won? "" : "none";
+  if(won && $("f_wonDate")){
+    $("f_wonDate").disabled = false;
+    if(!$("f_wonDate").value) $("f_wonDate").value = today();
+  }
+});
 $("f_offer").addEventListener("change", ()=>{ if($("f_offer").checked && !$("f_offerDate").value) $("f_offerDate").value = today(); });
 $("f_qual").addEventListener("change", toggleQualFields);
 $("m_access").addEventListener("change", ()=>{ $("targetField").style.display = ["sales","manager"].includes($("m_access").value)? "flex":"none"; });
@@ -3817,10 +3865,14 @@ function saveLead(){
   if(!$("f_notes").disabled) l.notes = $("f_notes").value.trim();
   const status = l.status;
   if(l.offerSent && !prevOffer) pushLog(l, "Sales offer sent ("+fmtDate(l.offerDate)+")");
+  /* a deal closed months ago must not land in this month's figures just because
+     it was entered today — the typed date wins, today is only the default */
+  const typedWon = $("f_wonDate") && !$("f_wonDate").disabled? $("f_wonDate").value : "";
+  if(status==="Won" && typedWon) l.wonDate = typedWon;
   if(status==="Won" && prevStatus!=="Won"){
-    l.wonDate = today();
+    if(!l.wonDate) l.wonDate = today();
     l.cashStatus = "pending";
-    pushLog(l, "Deal won — "+fmtMoneyFull(l.value)+" (cash value pending AR confirmation)");
+    pushLog(l, "Deal won ("+fmtDate(l.wonDate)+") — "+fmtMoneyFull(l.value)+" (cash value pending AR confirmation)");
     confetti(true);
     celebrate("🏆", "Deal won — congratulations!", esc(l.name||"")+(l.value? " · <b>"+fmtMoneyFull(l.value)+"</b>":"")+"<br>"+praise()+" The whole team salutes you.");
   }
@@ -7598,11 +7650,11 @@ function repFilterBar(full){
 function repFunnel(a){
   return chartFunnel([
     {k:"Total leads",  n:a.total},
-    {k:"Contacted",    n:a.contacted, click:"kpiGo({},'leads')"},
+    {k:"Contacted",    n:a.contacted, click:"kpiGo(kpiScope({},'created'),'leads')"},
     {k:"Qualified",    n:a.qualified},
     {k:"Opportunity",  n:a.opportunity},
     {k:"Negotiation",  n:a.negotiation},
-    {k:"Won",          n:a.won, click:"kpiGo({status:'Won'},'leads')"}
+    {k:"Won",          n:a.won, click:"kpiGo(kpiScope({status:'Won'},'wonDate'),'leads')"}
   ]);
 }
 /* ---- lost analysis ---- */
@@ -7828,12 +7880,13 @@ function viewDirectorReports(){
     ${repFilterBar(true)}
     ${who? `<div class="rep-drill">Showing <b>${esc(who)}</b> only · <button class="rep-pill" onclick="repSet({owner:''})">← back to the whole team</button></div>`:""}
     <div class="rep-kpis">
-      ${repKpi("Total leads", a.total.toLocaleString(), "in this period", repDelta(a.total, p&&p.total), "kpiGo({},'leads')")}
+      ${repKpi("Total leads", a.total.toLocaleString(), "in this period", repDelta(a.total, p&&p.total), "kpiGo(kpiScope({},'created'),'leads')")}
       ${repKpi("Contacted", a.contacted.toLocaleString(), a.contactRate.toFixed(0)+"% of leads", repDelta(a.contacted, p&&p.contacted))}
       ${repKpi("Qualified", a.qualified.toLocaleString(), "real opportunities", repDelta(a.qualified, p&&p.qualified))}
       ${repKpi("Opportunities", a.opportunity.toLocaleString(), "offer or meeting stage", repDelta(a.opportunity, p&&p.opportunity))}
-      ${repKpi("Won deals", a.won.toLocaleString(), "closed in this period", repDelta(a.won, p&&p.won), "kpiGo({status:'Won'},'leads')")}
-      ${repKpi("Lost leads", a.lost.toLocaleString(), "closed without a deal", repDelta(a.lost, p&&p.lost, {lowerIsBetter:true}), "kpiGo({status:'Lost'},'leads')")}
+      ${repKpi("Won deals", a.won.toLocaleString(), "closed in this period", repDelta(a.won, p&&p.won),
+        "kpiGo(kpiScope({status:'Won'},'wonDate'),'leads')")}
+      ${repKpi("Lost leads", a.lost.toLocaleString(), "closed without a deal", repDelta(a.lost, p&&p.lost, {lowerIsBetter:true}), "kpiGo(kpiScope({status:'Lost'},'created'),'leads')")}
       ${repKpi("Conversion", a.convRate.toFixed(1)+"%", "leads that became deals", repDelta(a.convRate, p&&p.convRate))}
       ${repKpi("Won revenue", fmtMoney(a.wonValue), a.won+" deal"+(a.won===1?"":"s"), repDelta(a.wonValue, p&&p.wonValue))}
       ${repKpi("Open pipeline", fmtMoney(a.pipelineValue), a.open+" live leads", repDelta(a.pipelineValue, p&&p.pipelineValue))}
