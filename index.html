@@ -405,7 +405,18 @@ th.num{text-align:right}
 .ct-hrow{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
 .ct-hdot{width:9px;height:9px;border-radius:50%;background:var(--red);margin-top:6px;flex:0 0 auto}
 /* ---- offer generator ---- */
-.of-split{display:grid;grid-template-columns:340px minmax(0,1fr);gap:20px;align-items:start}
+.of-split{display:grid;grid-template-columns:380px minmax(0,1fr);gap:18px;align-items:stretch;
+  height:min(78vh,860px)}
+#resBody{overflow:hidden !important;max-height:none !important}
+#resBody .of-left{overflow:auto;padding-inline-end:6px}
+#resBody .of-doc-wrap{overflow:auto;height:100%}
+#resBody .rf-doc{height:auto;min-height:100%;overflow:visible}
+@media(max-width:900px){
+  .of-split{grid-template-columns:1fr;height:auto}
+  #resBody{overflow:auto !important;max-height:82vh !important}
+  #resBody .of-left,#resBody .of-doc-wrap{overflow:visible;height:auto}
+  #resBody .rf-doc{height:min(60vh,620px);overflow:auto}
+}
 .of-left{min-width:0}
 .of-right{min-width:0;position:sticky;top:0}
 .of-doc-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
@@ -722,9 +733,16 @@ th.th-sort.on .th-ar{opacity:1}
   background:#f2f6fb;border:1px solid #d6e2f0;border-radius:8px;padding:8px 10px;margin-bottom:12px;font-size:.78rem}
 .rf-doc .rf-words{font-size:10.5pt;color:#000;font-weight:400;display:inline}
 .rf-calc{background:#f6f7f9;border:1px solid #e6e8ec;border-radius:8px;padding:8px 10px;font-size:.8rem;margin:6px 0 12px}
-.rf-inst{display:grid;grid-template-columns:22px 1fr 90px 130px 30px;gap:6px;align-items:center;margin-bottom:6px}
-.rf-inst-n{font-size:.75rem;color:#6b7280;text-align:center}
-.rf-inst input{margin:0}
+.rf-inst,.rf-inst-head{display:grid;grid-template-columns:26px minmax(0,1fr) 110px 132px 26px;
+  gap:8px;align-items:center;margin-bottom:5px}
+.rf-inst-head{margin-bottom:4px;font-size:.66rem;font-weight:800;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--steel)}
+.rf-inst-head span:nth-child(3),.rf-inst-head span:nth-child(4){text-align:center}
+.rf-inst-n{font-size:.74rem;color:#8a8f98;text-align:center}
+.rf-inst input{margin:0;height:32px;font-size:.8rem}
+.rf-inst input[type=number]{text-align:center;font-variant-numeric:tabular-nums}
+.rf-inst .btn{padding:0;height:26px;width:26px;line-height:1;font-size:.9rem}
+.rf-inst:nth-child(even){background:#fafbfc;border-radius:6px}
 .rf-doc{direction:rtl;background:#f3f4f6;padding:14px;border-radius:10px;overflow:auto;height:min(74vh,900px);
   font-family:"Sakkal Majalla","Simplified Arabic","Traditional Arabic","Segoe UI",Tahoma,Arial,sans-serif}
 /* US Letter with 1" margins, exactly as the source document */
@@ -966,7 +984,7 @@ th.th-sort.on .th-ar{opacity:1}
 </div>
 <div class="overlay" id="resOverlay" style="z-index:161">
   <div class="modal" style="width:min(1320px,100%)">
-    <div class="modal-head"><h3>استمارة حجز — مدينة السادات</h3><button class="x-btn" onclick="closeResForm()">×</button></div>
+    <div class="modal-head"><h3 id="resTitle">استمارة حجز</h3><button class="x-btn" onclick="closeResForm()">×</button></div>
     <div style="padding:18px 22px 22px;max-height:82vh;overflow:auto" id="resBody"></div>
   </div>
 </div>
@@ -1272,7 +1290,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev DP";
+const APP_BUILD = "20 Aug 2026 · rev DS";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -5067,9 +5085,10 @@ function resXmlToHtml(xml){
   return out.join("\n");
 }
 function resPreviewHtml(){
-  /* the Sadat form has its pages laid out by hand; every other form is read
-     back from the file that will actually be produced */
-  return (RES && RES.form==="east")? resGenericPreview() : resDocHTML();
+  /* Only the Sadat form has its pages laid out by hand. Every other project is
+     read back from the file that will actually be produced, so the preview can
+     never show one project while another is being written. */
+  return (RES && RES.form==="newsadat")? resDocHTML() : resGenericPreview();
 }
 function resGenericPreview(){
   return `<div class="rf-page"><div class="rf-doc-plain">${resXmlToHtml(resFillDoc())}</div></div>`;
@@ -5107,6 +5126,7 @@ function openResForm(leadId){
   if(!saved){ resFromOffer(true, true); resApplyClient(false); }
   if(!Array.isArray(RES.installments) || !RES.installments.length) resBuildSchedule();
   $("resBody").innerHTML = resFormHtml();
+  resTitleSync();
   $("resOverlay").classList.add("open");
 }
 function closeResForm(){ $("resOverlay").classList.remove("open"); }
@@ -5123,11 +5143,13 @@ function resUpd(field, value, repaintForm){
   if(field === "downPay"    && String(value).trim() !== "") RES.downPayPct = "";
   if(field === "downPayPct" && String(value).trim() !== "") RES.downPay = "";
   if(RES_DRIVERS.indexOf(field) >= 0) resBuildSchedule();
-  if(repaintForm){ $("resBody").innerHTML = resFormHtml(); }
+  if(repaintForm){ $("resBody").innerHTML = resFormHtml(); resTitleSync(); }
   else resPaint();
 }
 function resInstListHtml(){
-  return (RES.installments||[]).map((it,i)=>`
+  if(!(RES.installments||[]).length) return `<div class="rf-hint">لا توجد أقساط بعد — حدّد الدفعة المقدمة وعدد السنوات.</div>`;
+  return `<div class="rf-inst-head"><span></span><span>نوع القسط</span><span>المبلغ</span><span>التاريخ</span><span></span></div>`
+   + (RES.installments||[]).map((it,i)=>`
         <div class="rf-inst">
           <span class="rf-inst-n">${i+1}</span>
           <input type="text" dir="rtl" placeholder="نوع القسط" value="${esc(it.type)}" oninput="resInst(${i},'type',this.value)">
@@ -5281,6 +5303,11 @@ function resSavedHtml(){
    parts the system works out for itself marked as such. Nothing is repeated. */
 let RES_OPEN = { doc:true, client:true, land:true, pay:true, sign:false };
 function resToggle(k){ RES_OPEN[k] = !RES_OPEN[k]; $("resBody").innerHTML = resFormHtml(); }
+function resTitleSync(){
+  const el = $("resTitle"); if(!el || !RES) return;
+  const F = RES_FORMS[RES.form] || {};
+  el.textContent = "استمارة حجز — " + (F.label || "");
+}
 function resSection(key, title, badge, body, note){
   const on = !!RES_OPEN[key];
   return `<div class="rs ${on?"open":""}">
