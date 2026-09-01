@@ -655,6 +655,42 @@ function logoTryNext(img){
   else { img.style.display = "none"; const fb = img.nextElementSibling; if(fb) fb.style.display = "block"; }
 }
 </script>
+<style id="resDocCss">
+/* ---- reservation form (RTL) ---- */
+.rf-tax{display:flex;align-items:center;gap:6px;font-size:.72rem;color:#6b7280;margin-top:5px;font-weight:500;text-transform:none;letter-spacing:0}
+.rf-tax input{width:auto;margin:0}
+.rf-calc{background:#f6f7f9;border:1px solid #e6e8ec;border-radius:8px;padding:8px 10px;font-size:.8rem;margin:6px 0 12px}
+.rf-inst{display:grid;grid-template-columns:22px 1fr 90px 130px 30px;gap:6px;align-items:center;margin-bottom:6px}
+.rf-inst-n{font-size:.75rem;color:#6b7280;text-align:center}
+.rf-inst input{margin:0}
+.rf-doc{direction:rtl;background:#f3f4f6;padding:14px;border-radius:10px;overflow:auto;height:min(74vh,900px);
+  font-family:"Segoe UI","Tahoma",Arial,sans-serif}
+.rf-page{background:#fff;width:100%;max-width:820px;margin:0 auto 16px;padding:26px 30px 34px;
+  box-shadow:0 1px 6px rgba(0,0,0,.12);color:#111;font-size:12.5px;line-height:1.75;position:relative}
+.rf-code{text-align:left;direction:ltr;font-size:11px;color:#333;margin-bottom:14px}
+.rf-title{background:#b9b4c4;padding:10px 14px;text-align:center;font-weight:800;border:1px solid #7d7d7d;border-bottom:0}
+.rf-t1{font-size:16px}.rf-t2{font-size:14px;margin-top:2px}.rf-t3{font-size:13px;margin-top:2px}
+.rf-band{background:#b9b4c4;border:1px solid #7d7d7d;border-top:0;padding:4px 12px;font-weight:800;font-size:13px;text-align:center}
+.rf-t{width:100%;border-collapse:collapse;margin-bottom:0}
+.rf-t td{border:1px solid #7d7d7d;padding:3px 10px;vertical-align:top}
+.rf-terms td{padding:7px 10px;text-align:justify}
+.rf-doc .hl{background:#ffff00;font-weight:700}
+.rf-v{font-weight:700;color:#0b4a8f}
+.rf-note{font-size:10.5px;color:#555;font-weight:400}
+.rf-blank{display:inline-block;min-width:120px;border-bottom:1px dotted #999;height:1em;vertical-align:-2px}
+.rf-blank.w{min-width:260px}
+.rf-grid{width:100%;border-collapse:collapse;margin-top:10px}
+.rf-grid th{background:#b0b0b0;border:1px solid #000;padding:6px;font-size:12px;font-weight:800}
+.rf-grid td{border:1px solid #000;padding:6px;font-size:12px;height:22px}
+.rf-grid td.c{text-align:center}
+.rf-grid tr.tot td{background:#e9e9e9;font-weight:800}
+.rf-annex{font-weight:800;text-decoration:underline;text-align:center;margin:6px 0 10px;font-size:14px}
+.rf-sig{margin-top:20px;font-size:12.5px}
+.rf-sig-h{font-weight:800;text-decoration:underline;margin-bottom:8px}
+.rf-sig-2{width:100%;border-collapse:collapse;margin-bottom:6px}
+.rf-sig-2 td{width:50%;vertical-align:top;padding:0 0 0 12px}
+.rf-doc [dir="ltr"]{unicode-bidi:isolate}
+</style>
 <style id="offerDocCss">
 /* ---- offer pack: cover and project pages ---- */
 .pk-doc{display:flex;flex-direction:column;gap:18px;align-items:center}
@@ -860,6 +896,12 @@ function logoTryNext(img){
     <div style="padding:18px 22px 22px;max-height:82vh;overflow:auto" id="offerBody"></div>
   </div>
 </div>
+<div class="overlay" id="resOverlay" style="z-index:161">
+  <div class="modal" style="width:min(1320px,100%)">
+    <div class="modal-head"><h3>استمارة حجز — مدينة السادات</h3><button class="x-btn" onclick="closeResForm()">×</button></div>
+    <div style="padding:18px 22px 22px;max-height:82vh;overflow:auto" id="resBody"></div>
+  </div>
+</div>
 <div class="overlay" id="ctOverlay" style="z-index:150">
   <div class="modal" style="width:min(940px,100%)">
     <div class="modal-head"><h3>Contract</h3><button class="x-btn" onclick="closeContract()">×</button></div>
@@ -908,7 +950,7 @@ function logoTryNext(img){
           <label>Documents</label>
           <div class="doc-btns">
             <button class="btn btn-red" onclick="openOffer(editingLeadId)" type="button" id="offerBtn">📄 Generate offer</button>
-            <button class="btn btn-red" onclick="toast('Reservation forms are coming next — the button is ready for them.')" type="button" id="resBtn" disabled title="Coming soon">📝 Reservation form</button>
+            <button class="btn btn-red" onclick="openResForm(editingLeadId)" type="button" id="resBtn" title="استمارة حجز — New Sadat">📝 Reservation form</button>
             <span class="muted doc-note" id="docNote"></span>
           </div>
         </div>
@@ -1156,7 +1198,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev CI";
+const APP_BUILD = "20 Aug 2026 · rev CJ";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -4321,6 +4363,399 @@ function offerBorgBanner(){return `<div class="od-header od-borg"><div class="od
 const ofmt=(v,d=0)=>isFinite(v)?Number(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}):'\u2014';
 let OSTATE = {tpl:'october', area:5000, price:4850, plan:'1', freq:'Quarterly', electricity:false, date:'',
               client:'', company:'', sector:'', plot:'', landType:'Industrial', rep:''};
+/* =================== RESERVATION FORM — New Sadat (استمارة حجز) =================== */
+/* A faithful, fillable copy of 1015-SDM-PL03/10-RF. Everything the printed form
+   leaves blank is a field here; the preview redraws on every keystroke, and one
+   field fills every place it appears in the document. Amounts entered without
+   VAT get the 14% added automatically, and the form keeps the original's own
+   yellow marking on the labels — only the value beside them is ours. */
+const RES_VAT = 0.14;
+const RES_PURPOSES = ["مصنع","منشأة خدمية","مستودع"];
+let RES = null;
+
+function resBlank(l){
+  return {
+    leadId: l.id,
+    resDate: today(),
+    purpose: "مصنع",
+    /* بيانات العميل */
+    company: l.company || "",
+    hqAddress: "",
+    crNo: "", crOffice: "", crDate: "",
+    taxId: "",                                  /* البطاقة الضريبية */
+    repName: l.name || "",
+    natId: "", nationality: "مصري",
+    address: "", phones: l.phone || "", email: l.email || "",
+    /* بيانات الأرض */
+    plotNo: l.plotNo || "",
+    area: Number(l.soldArea||l.land) || "",
+    sqmPrice: "",
+    priceIncl: false,                           /* الثمن الإجمالي غير شامل الضريبة */
+    term: "تقسيط على 3 سنوات.",
+    utilNet: "",  utilIncl: false,              /* مبلغ تأمين المرافق */
+    contractNet: "", contractIncl: true,        /* رسوم تحرير العقد — شاملة بنص الاستمارة */
+    maintNet: "",  maintIncl: false,            /* وديعة الصيانة */
+    handoverNet: "", handoverIncl: false,       /* محضر تسليم الأرض */
+    /* دفعة الحجز */
+    bookingAmt: "", bookingMethod: "شيك",
+    /* ملحق 1 */
+    installments: [{type:"", amount:"", date:""}],
+    /* الطرف الثاني */
+    sigName: "", sigTitle: ""
+  };
+}
+function resNum(v){ const n = Number(String(v).replace(/,/g,"")); return isFinite(n)? n : 0; }
+function resMoney(v, dp){
+  const n = resNum(v);
+  if(!n) return "";
+  return n.toLocaleString("en-US",{minimumFractionDigits:dp===0?0:2, maximumFractionDigits:dp===0?0:2});
+}
+/* net / VAT / gross for one amount, honouring whether it was typed inclusive */
+function resVat(value, incl){
+  const v = resNum(value);
+  if(!v) return {net:0, vat:0, gross:0};
+  const net = incl ? v/(1+RES_VAT) : v;
+  return {net, vat: net*RES_VAT, gross: net*(1+RES_VAT)};
+}
+function resTotals(){
+  const R = RES;
+  const land = resNum(R.area) * resNum(R.sqmPrice);
+  const price = R.priceIncl ? {net:land/(1+RES_VAT), vat:land/(1+RES_VAT)*RES_VAT, gross:land}
+                            : {net:land, vat:land*RES_VAT, gross:land*(1+RES_VAT)};
+  const util = resVat(R.utilNet, R.utilIncl);
+  const contract = resVat(R.contractNet, R.contractIncl);
+  const maint = resVat(R.maintNet, R.maintIncl);
+  const handover = resVat(R.handoverNet, R.handoverIncl);
+  const dues = util.gross + contract.gross + maint.gross + handover.gross;
+  const instTotal = (R.installments||[]).reduce((s,i)=>s+resNum(i.amount),0);
+  return {price, util, contract, maint, handover, dues, instTotal};
+}
+/* dates on an Arabic legal form read dd/mm/yyyy, not "1 Sept 2026" */
+function resDate(d){
+  const s = String(d||"").slice(0,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return "";
+  const [y,m,dd] = s.split("-");
+  return `${dd}/${m}/${y}`;
+}
+/* the blank a value goes into: keeps the form's own yellow label, value beside it.
+   Numbers, phones, emails and IDs are marked ltr — inside an RTL paragraph a bare
+   "+2010…" otherwise renders with its + at the wrong end. */
+function resVal(v, wide, ltr){
+  const s = String(v==null?"":v).trim();
+  if(!s) return `<span class="rf-blank${wide?" w":""}"></span>`;
+  /* U+2066 LRI \u2026 U+2069 PDI: the isolation survives engines that ignore the
+     dir attribute, so "+2010\u2026" never prints with its + on the wrong side */
+  return ltr? `<span class="rf-v" dir="ltr">\u2066${esc(s)}\u2069</span>` : `<span class="rf-v">${esc(s)}</span>`;
+}
+function resMoneyCell(o, incl){
+  if(!o.gross) return resVal("");
+  return incl
+    ? `<span class="rf-v" dir="ltr">${resMoney(o.gross)}</span> <span class="rf-note">(شاملة ض.ق.م)</span>`
+    : `<span class="rf-v" dir="ltr">${resMoney(o.gross)}</span> <span class="rf-note">(<span dir="ltr">${resMoney(o.net)}</span> + <span dir="ltr">${resMoney(o.vat)}</span> ض.ق.م 14%)</span>`;
+}
+
+function openResForm(leadId){
+  const l = state.leads.find(x=>x.id===leadId); if(!l) return;
+  const saved = l.stageMeta && l.stageMeta.res;
+  RES = Object.assign(resBlank(l), saved||{});
+  RES.leadId = l.id;
+  if(!Array.isArray(RES.installments) || !RES.installments.length) RES.installments = [{type:"",amount:"",date:""}];
+  $("resBody").innerHTML = resFormHtml();
+  $("resOverlay").classList.add("open");
+}
+function closeResForm(){ $("resOverlay").classList.remove("open"); }
+
+/* typing updates the state and repaints ONLY the preview, so the caret never moves */
+function resUpd(field, value, repaintForm){
+  if(!RES) return;
+  RES[field] = value;
+  if(repaintForm){ $("resBody").innerHTML = resFormHtml(); }
+  else resPaint();
+}
+function resInst(i, field, value){ if(RES && RES.installments[i]){ RES.installments[i][field] = value; resPaint(); } }
+function resInstAdd(){ RES.installments.push({type:"",amount:"",date:""}); $("resBody").innerHTML = resFormHtml(); }
+function resInstDel(i){ RES.installments.splice(i,1); if(!RES.installments.length) RES.installments=[{type:"",amount:"",date:""}]; $("resBody").innerHTML = resFormHtml(); }
+function resCalcPrice(){ const T = resTotals();
+  return `الثمن الإجمالي: <b>${T.price.gross? resMoney(T.price.gross):"—"}</b> ج.م` +
+    (T.price.gross? ` <span class="rf-note">(${resMoney(T.price.net)} + ${resMoney(T.price.vat)} ضريبة 14%)</span>`:""); }
+function resCalcDues(){ const T = resTotals();
+  return `إجمالي المستحقات ذات الصلة: <b>${T.dues? resMoney(T.dues):"—"}</b> ج.م`; }
+function resCalcInst(){ const T = resTotals();
+  return `إجمالي الأقساط: <b>${T.instTotal? resMoney(T.instTotal):"—"}</b> ج.م`; }
+/* one keystroke → the document AND the running totals redraw; the inputs are
+   left untouched so the caret stays exactly where the person is typing */
+function resPaint(){
+  const d = $("resDoc"); if(d) d.innerHTML = resDocHTML();
+  const p = $("resCalcPrice"); if(p) p.innerHTML = resCalcPrice();
+  const u = $("resCalcDues");  if(u) u.innerHTML = resCalcDues();
+  const i = $("resCalcInst");  if(i) i.innerHTML = resCalcInst();
+}
+
+function resSave(){
+  const l = state.leads.find(x=>x.id===RES.leadId); if(!l) return;
+  l.stageMeta = Object.assign({}, l.stageMeta||{}, {res: JSON.parse(JSON.stringify(RES))});
+  if(!l.resDate) l.resDate = RES.resDate;
+  pushLog(l, "استمارة الحجز — تم حفظ البيانات");
+  l.lastContact = today();
+  persist();
+  toast("تم حفظ استمارة الحجز");
+}
+
+function resFormHtml(){
+  const R = RES, T = resTotals();
+  const f = (label, field, type, ph) => `<div class="of-f"><label>${label}</label>
+    <input type="${type||"text"}" dir="${type==="number"||type==="date"?"ltr":"rtl"}" value="${esc(R[field]==null?"":R[field])}"
+      ${ph?`placeholder="${esc(ph)}"`:""} oninput="resUpd('${field}', this.value)"></div>`;
+  const money = (label, field, inclField) => `<div class="of-f"><label>${label}</label>
+    <input type="number" min="0" step="0.01" dir="ltr" value="${esc(R[field]==null?"":R[field])}" oninput="resUpd('${field}', this.value)">
+    <label class="rf-tax"><input type="checkbox" ${R[inclField]?"checked":""} onchange="resUpd('${inclField}', this.checked)"> شامل ضريبة القيمة المضافة</label></div>`;
+  return `
+  <div class="of-split">
+    <div class="of-left" dir="rtl">
+      <div class="eyebrow red">بيانات الاستمارة</div>
+      <div class="of-two">
+        ${f("تاريخ الحجز","resDate","date")}
+        <div class="of-f"><label>غرض الحجز</label>
+          <select dir="rtl" onchange="resUpd('purpose', this.value)">
+            ${RES_PURPOSES.map(p=>`<option ${R.purpose===p?"selected":""}>${p}</option>`).join("")}
+          </select></div>
+      </div>
+
+      <div class="eyebrow red">بيانات العميل</div>
+      ${f("اسم الشركة","company")}
+      ${f("عنوان المقر الرئيسي","hqAddress")}
+      <div class="of-two">
+        ${f("رقم السجل التجاري","crNo")}
+        ${f("مكتب السجل التجاري","crOffice")}
+      </div>
+      <div class="of-two">
+        ${f("تاريخ إصدار السجل","crDate","date")}
+        ${f("البطاقة الضريبية","taxId","text","000-000-000")}
+      </div>
+      ${f("اسم الممثل القانوني","repName")}
+      <div class="of-two">
+        ${f("بطاقة رقم قومي","natId")}
+        ${f("الجنسية","nationality")}
+      </div>
+      ${f("العنوان","address")}
+      <div class="of-two">
+        ${f("أرقام الهاتف / المحمول","phones")}
+        ${f("البريد الإلكتروني","email")}
+      </div>
+
+      <div class="eyebrow red">بيانات الأرض</div>
+      <div class="of-two">
+        ${f("رقم قطعة الأرض","plotNo")}
+        ${f("المساحة (م²)","area","number")}
+      </div>
+      <div class="of-f"><label>سعر المتر المربع (ج.م)</label>
+        <input type="number" min="0" step="0.01" dir="ltr" value="${esc(R.sqmPrice)}" oninput="resUpd('sqmPrice', this.value)">
+        <label class="rf-tax"><input type="checkbox" ${R.priceIncl?"checked":""} onchange="resUpd('priceIncl', this.checked)"> شامل ضريبة القيمة المضافة</label></div>
+      <div class="rf-calc" id="resCalcPrice">${resCalcPrice()}</div>
+      ${f("مدة السداد","term")}
+      ${money("مبلغ تأمين المرافق","utilNet","utilIncl")}
+      ${money("رسوم تحرير العقد","contractNet","contractIncl")}
+      ${money("وديعة الصيانة","maintNet","maintIncl")}
+      ${money("محضر تسليم الأرض","handoverNet","handoverIncl")}
+      <div class="rf-calc" id="resCalcDues">${resCalcDues()}</div>
+
+      <div class="eyebrow red">دفعة الحجز</div>
+      <div class="of-two">
+        <div class="of-f"><label>مبلغ دفعة الحجز (ج.م)</label>
+          <input type="number" min="0" step="0.01" dir="ltr" value="${esc(R.bookingAmt)}" oninput="resUpd('bookingAmt', this.value)"></div>
+        <div class="of-f"><label>طريقة الدفع</label>
+          <select dir="rtl" onchange="resUpd('bookingMethod', this.value)">
+            <option ${R.bookingMethod==="شيك"?"selected":""}>شيك</option>
+            <option ${R.bookingMethod==="تحويل"?"selected":""}>تحويل</option>
+          </select></div>
+      </div>
+
+      <div class="eyebrow red">ملحق رقم 1 — جدول الأقساط</div>
+      ${R.installments.map((it,i)=>`
+        <div class="rf-inst">
+          <span class="rf-inst-n">${i+1}</span>
+          <input type="text" dir="rtl" placeholder="نوع القسط" value="${esc(it.type)}" oninput="resInst(${i},'type',this.value)">
+          <input type="number" dir="ltr" placeholder="القيمة" value="${esc(it.amount)}" oninput="resInst(${i},'amount',this.value)">
+          <input type="date" dir="ltr" value="${esc(it.date)}" oninput="resInst(${i},'date',this.value)">
+          <button class="btn btn-ghost btn-sm" onclick="resInstDel(${i})" title="حذف">×</button>
+        </div>`).join("")}
+      <button class="btn btn-ghost btn-sm" onclick="resInstAdd()">+ إضافة قسط</button>
+      <div class="rf-calc" id="resCalcInst">${resCalcInst()}</div>
+
+      <div class="eyebrow red">الطرف الثاني</div>
+      <div class="of-two">
+        ${f("الاسم","sigName")}
+        ${f("الصفة","sigTitle")}
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button class="btn btn-red" onclick="resSave()">حفظ</button>
+        <button class="btn btn-ghost" onclick="resPrint()">طباعة / PDF</button>
+      </div>
+    </div>
+
+    <div class="of-right">
+      <div class="of-doc-wrap"><div class="rf-doc" id="resDoc">${resDocHTML()}</div></div>
+    </div>
+  </div>`;
+}
+
+/* the document itself — the printed form, with our values in the blanks */
+function resDocHTML(){
+  const R = RES, T = resTotals();
+  const M = (v)=> v? resMoney(v) : "";
+  const dues = [
+    {n:1, label:"تأمين المرافق", o:T.util, incl:R.utilIncl},
+    {n:2, label:"رسوم تحرير عقد شاملة ضريبة القيمة المضافة", o:T.contract, incl:true},
+    {n:3, label:"وديعة الصيانة", o:T.maint, incl:R.maintIncl},
+    {n:4, label:"محضر تسليم الأرض", o:T.handover, incl:R.handoverIncl}
+  ];
+  return `
+<div class="rf-page">
+  <div class="rf-code">1015-SDM-PL03/10-RF</div>
+  <div class="rf-title">
+    <div class="rf-t1">استمــارة حجــز</div>
+    <div class="rf-t2">(قطعة أرض بغرض إنشاء <span class="hl">${esc(R.purpose)}</span>)</div>
+    <div class="rf-t3">بمشروع اس دي ام الكائن في مدينة السادات</div>
+  </div>
+  <table class="rf-t">
+    <tr><td class="rf-lbl"><span class="hl">تاريخ الحجز:</span> ${resVal(resDate(R.resDate),0,1)}</td></tr>
+  </table>
+
+  <div class="rf-band">بيانات العميل</div>
+  <table class="rf-t">
+    <tr><td>• <span class="hl">اسم الشركة:</span> ${resVal(R.company, 1)}</td></tr>
+    <tr><td>• <span class="hl">عنـــوان المقــر الرئيســي</span> : ${resVal(R.hqAddress, 1)}</td></tr>
+    <tr><td>• <span class="hl">رقـــم السجــل التجــاري</span> : ${resVal(R.crNo,0,1)}</td></tr>
+    <tr><td>• <span class="hl">مكتـــب السجــل التجاري</span> : ${resVal(R.crOffice)}</td></tr>
+    <tr><td>• <span class="hl">تاريخ إصدار السجل التجارى</span> : ${resVal(resDate(R.crDate),0,1)}</td></tr>
+    <tr><td>• <span class="hl">البطاقة الضريبية</span> : ${resVal(R.taxId,0,1)}</td></tr>
+    <tr><td>• <span class="hl">اســم الممثــل القانوني</span> : ${resVal(R.repName, 1)}</td></tr>
+    <tr><td>• <span class="hl">بطـاقــة رقــم قـومي</span> : ${resVal(R.natId,0,1)}</td></tr>
+    <tr><td>• <span class="hl">الجنسية</span> : ${resVal(R.nationality)}</td></tr>
+    <tr><td>• <span class="hl">العنوان</span> : ${resVal(R.address, 1)}</td></tr>
+    <tr><td>• <span class="hl">أرقام الهاتف / المحمول</span> : ${resVal(R.phones,0,1)}</td></tr>
+    <tr><td>• <span class="hl">البريد الالكتروني</span> : ${resVal(R.email,0,1)}</td></tr>
+  </table>
+
+  <div class="rf-band">بيانات المطور</div>
+  <table class="rf-t">
+    <tr><td>• اسم الشركة: اس دي ام للتطوير والإدارة</td></tr>
+    <tr><td>• رقم السجل التجاري: 116205</td></tr>
+    <tr><td>• العنوان: القطعة 27 – القطاع الخدمي الأول – التجمع الخامس – القاهرة الجديدة – القاهرة</td></tr>
+  </table>
+
+  <div class="rf-band">بيانات الأرض</div>
+  <table class="rf-t">
+    <tr><td>• عنوان المشروع محل قطعة الأرض: مدينة السادات – قطعة رقم 3/10</td></tr>
+    <tr><td>• رقم <span class="hl">قطعة الأرض:</span> ${resVal(R.plotNo,0,1)}</td></tr>
+    <tr><td>• <span class="hl">مساحة قطعة الأرض بالمتر المربع</span> : ${resVal(M(resNum(R.area))||"",0,1)} ${resNum(R.area)?"م²":""}</td></tr>
+    <tr><td>• <span class="hl">سعر المتر المربع:</span> ${resVal(M(resNum(R.sqmPrice)),0,1)} ${resNum(R.sqmPrice)?"ج.م":""}${R.sqmPrice&&!R.priceIncl?` <span class="rf-note">(غير شامل ض.ق.م)</span>`:""}</td></tr>
+    <tr><td>• <span class="hl">الثمن الإجمالي لقطعة الأرض:</span> ${T.price.gross? `<span class="rf-v" dir="ltr">${M(T.price.gross)}</span> ج.م <span class="rf-note">(${M(T.price.net)} + ${M(T.price.vat)} ضريبة القيمة المضافة 14%)</span>` : resVal("")}</td></tr>
+    <tr><td>• طريقة السداد: وفقاً لملحق رقم 1.</td></tr>
+    <tr><td>• <span class="hl">مدة السداد:</span> ${resVal(R.term, 1)}</td></tr>
+    <tr><td>• <span class="hl">مبلغ تأمين المرافق:</span> ${resMoneyCell(T.util, R.utilIncl)}</td></tr>
+    <tr><td>• <span class="hl">رسوم تحرير العقد (شاملة ضريبة القيمة المضافة):</span> ${T.contract.gross? `<span class="rf-v" dir="ltr">${M(T.contract.gross)}</span> ج.م` : resVal("")}</td></tr>
+    <tr><td>• التكاليف الاستثمارية / التكاليف الإضافية: وفقاُ لما يتم النص عليه بالتعاقد.</td></tr>
+  </table>
+
+  <div class="rf-band">تفاصيل دفعة الحجز</div>
+  <table class="rf-t">
+    <tr><td>• مبلغ دفعة الحجز – كما هو موضح بالملحق رقم 1 ${R.bookingAmt? `: <span class="rf-v" dir="ltr">${M(resNum(R.bookingAmt))}</span> ج.م`:""}</td></tr>
+    <tr><td>• طريقة دفع مبلغ الحجز: <span class="rf-v">${esc(R.bookingMethod)}</span></td></tr>
+  </table>
+
+  <div class="rf-band">المرافق التي يقوم المطور بتوفيرها للمستثمر لكل 1000م</div>
+  <table class="rf-t">
+    <tr><td>1. الكهرباء: 17 كيلو فولت أمبير</td></tr>
+    <tr><td>2. المياه: 4,40 م 3 وحتى 11 م 3 لكل 1000 متر في اليوم (طبقاً لاحتياجات المستثمر)</td></tr>
+    <tr><td>3. الصرف: %80 من المتعاقد عليه</td></tr>
+  </table>
+</div>
+
+<div class="rf-page">
+  <div class="rf-code">1015-SDM-PL03/10-RF</div>
+  <div class="rf-band">الشروط العامة للحجز</div>
+  <table class="rf-t rf-terms">
+    <tr><td>مبلغ الحجز المذكور في استمارة الحجز غير قابل للاسترداد ويخصم من ثمن قطعة الأرض المذكور أعلاه.</td></tr>
+    <tr><td>الثمن الإجمالي لا يشمل أي مصروفات تُسدد للهيئة العامة للتنمية الصناعية نظير اعتماد عقد البيع المزمع توقيعه لإتمام هذه البيعة والثمن الإجمالي غير شامل ضريبة القيمة المضافة وواجبة الدفع على المستثمر في حالة خضوعها.</td></tr>
+    <tr><td>لا يشمل الثمن الإجمالي لقطعة الأرض مبلغ تأمين المرافق ومصاريف استهلاكات المرافق والتكاليف الاستثمارية لتوصيل المرافق ولا يشمل أيضاً رسوم الصيانة والمصروفات الإدارية، كما يلتزم العميل بسداد التكاليف الاستثمارية عند طلبه أية أحمال زائدة عن مقننات المرافق كما يلتزم بسداد التكاليف الاستثمارية لشبكة الاتصالات وشبكة الغاز الطبيعي وقيمة زيادة الأحمال فور احتسابها من المهندس المختص لدى المطور.</td></tr>
+    <tr><td>يلتزم العميل بالحضور لإتمام إجراءات التعاقد خلال ثلاثة أشهر ميلادية من تاريخ التوقيع على هذه الاستمارة من الطرفين، وفى حالة عدم حضور العميل للتعاقد وتسليم الشيكات الموضحة بهذه الاستمارة خلال هذه الفترة يعتبر الحجز مفسوخاً من تلقاء نفسه دون الحاجة إلى تنبيه أو إنذار أو أي إجراء قضائي أخر.</td></tr>
+    <tr><td>في حالة ارتداد شيك دفعة الحجز وعدم صرفه حال تقديمه للبنك المسحوب عليه في تاريخ استحقاقه أو عدم تحويل مبلغ الحجز في الموعد المحدد للسداد في هذه الاستمارة، فإن هذا الحجز يكون لاغي ويصبح معدوم الأثر فوراً وتلقائياً كما يكون للمطور كامل الحق في التصرف في الأرض محل الحجز وفقاً لسلطته المنفردة ولا يحق للعميل مطالبة الشركة بالأرض أو بأية مطالبات أو تعويضات في الحال أو المستقبل.
+      <div>في حالة وجود شطب أو كشط أو تعديل أو تحشير في استمارة الحجز تعتبر الاستمارة لاغية وكأن لم تكن.</div>
+      <div>قد يطرأ تغيير في مساحات الأراضي بنسبة -/+ 10% ويتم تسوية المبالغ التي نتجت عن هذه التغيرات في محضر استلام الأرض وبنفس السعر المتفق عليه عند التعاقد.</div>
+      <div>وفي حالة صدور أي قرار من جهة سيادية أو حكومية مما يعوق تنفيذ المشروع فسوف تقوم الشركة برد كامل مبلغ الحجز للعميل دون أي خصم، وفي هذه الحالة لا يحق للعميل المطالبة بأية فوائد أو الرجوع على الشركة بأية تعويضات أو مطالبات.</div></td></tr>
+    <tr><td>يُقر العميل بصحة جميع البيانات المذكورة أعلاه وإنه في حالة تخلف العميل عن توقيع العقد وتسليم الشيكات الخاصة بالأقساط والصيانة خلال ثلاثة أشهر من التوقيع على هذه الاستمارة يعتبر ذلك عدولاً نهائياً من جانب العميل عن الحجز وموافقة منه بإلغائه دون تنبيه أو إنذار أو اعذار أو أي إجراء قضائي آخر ويحق للمطور في هذه الحالة مصادرة ما تم سداده من العميل أو خصم 10% من إجمالي قيمة الأرض محل هذه الاستمارة (أيهما أعلى) كتعويض اتفاقي غير خاضع لرقابة القضاء وذلك مقابل ما أنفقه المطور من مصاريف إدارية وما لحقه من خسارة نتيجة فوات الفرصة البديلة عليه، كما يقر العميل في هذه الحالة بعدم أحقيته في مطالبة المطور برد المبلغ المخصوم، كما يُقر العميل بأحقية المطور في التصرف في الأرض المحجوزة ولا يحق له الاعتراض على ذلك حالاً أو مستقبلاً.</td></tr>
+    <tr><td>يُقر العميل بأنه اتخذ موطناً مختاراً له في العنوان المبين قرين اسمه بصدر هذه الاستمارة والذي يصح توجيه كافة المراسلات عليه، وفي حالة رغبته في تغيير عنوانه يتعين عليه أن يخطر المطور بذلك كتابة بموجب إخطار مدته (5) خمسة أيام من تاريخ حصول مثل هذا التغيير وإلا صحت المراسلات أو الإجراءات التي توجه إلى العنوان بصدر الاستمارة.</td></tr>
+    <tr><td>لا يجوز للعميل التنازل أو حوالة أو نقل التزاماته الناتجة عن استمارة الحجز كلياً أو جزئياً عن طريق التنازل، أو الحوالة أو بأي وسيلة أخرى لأي طرف ثالث دون الحصول على موافقة كتابية مسبقة من المطور.</td></tr>
+    <tr><td>لا تعتبر هذه الاستمارة منتجة لآثارها مالم تكن مختومة بخاتم الشركة ومصحوبة بالإيصال الدال على تسليم شيكات الحجز/ إيصال سداد دفعة الحجز.
+      <div>يتوقف سريان هذه الاستمارة فور التوقيع على العقد ويعتبر العقد هو الإطار الحاكم للعلاقة التعاقدية بين المطور والمشتري.</div></td></tr>
+  </table>
+
+  <div class="rf-sig">
+    <div class="rf-sig-h">الطرف الأول:  شركة اس دي ام للتطوير والإدارة</div>
+    <table class="rf-sig-2"><tr>
+      <td>الاسم: أ. محمد مصطفى<div>الصفة: رئيس القطاع المالي</div><div>التوقيع:</div></td>
+      <td>الاسم: م. محمد القمـاح<div>الصفة: رئيس مجلس الإدارة والعضو المنتدب</div><div>التوقيع:</div></td>
+    </tr></table>
+    <div class="rf-sig-h" style="margin-top:14px">الطرف الثاني:</div>
+    <div><span class="hl">الاسم:</span> ${resVal(R.sigName, 1)}</div>
+    <div><span class="hl">الصفة:</span> ${resVal(R.sigTitle, 1)}</div>
+    <div><span class="hl">التوقيع:</span> <span class="rf-blank w"></span></div>
+  </div>
+</div>
+
+<div class="rf-page">
+  <div class="rf-code">1015-SDM-PL03/10-RF</div>
+  <div class="rf-annex">ملحق رقم 1</div>
+  <p>بموجب هذه الاستمارة تم حجز <span class="hl">قطعة أرض بمساحه</span> ${resVal(M(resNum(R.area)),0,1)} م2.</p>
+  <p><span class="hl">بإجمالي ثمن:</span> ${T.price.gross? `<span class="rf-v" dir="ltr">${M(T.price.gross)}</span> ج.م` : resVal("")} وغير شامل قيمة الضريبة المضافة وواجبة الدفع على المستثمر في حالة خضوعها.</p>
+  <p>ويتم سداد قيمة الثمن على النحو التالي:</p>
+  <p>• <span class="hl">يلتزم العميل عند التوقيع على هذه الاستمارة بسداد مبلغ وقدره</span> ${R.bookingAmt? `<span class="rf-v" dir="ltr">${M(resNum(R.bookingAmt))}</span> ج.م`:resVal("")}</p>
+  <p>• <span class="hl">يلتزم العميل بسداد كافة الدفعات المتبقية من الثمن وباقي المستحقات ذات الصلة وفقاُ للجدول التالي، كما يلتزم ويتعهد العميل بموافاة الشركة بكافة الشيكات الموضحة عند التعاقد:</span></p>
+  <table class="rf-grid">
+    <tr><th style="width:12%">مسلسل</th><th style="width:28%">نوع القسط</th><th style="width:32%">القيمة (بالجنيه المصري)</th><th style="width:28%">التاريخ</th></tr>
+    ${(R.installments||[]).map((it,i)=>`<tr>
+      <td class="c">${i+1}</td><td>${it.type? esc(it.type):"&nbsp;"}</td>
+      <td class="c">${it.amount? M(resNum(it.amount)):"&nbsp;"}</td>
+      <td class="c">${it.date? resDate(it.date):"&nbsp;"}</td></tr>`).join("")}
+    ${T.instTotal? `<tr class="tot"><td class="c">الإجمالي</td><td></td><td class="c">${M(T.instTotal)}</td><td></td></tr>`:""}
+  </table>
+</div>
+
+<div class="rf-page">
+  <div class="rf-code">1015-SDM-PL03/10-RF</div>
+  <div class="rf-annex">"المستحقات ذات الصلة"</div>
+  <table class="rf-grid">
+    <tr><th style="width:14%">الدفعات</th><th style="width:36%">بيان</th><th style="width:28%">المبلغ / جنيه مصري</th><th style="width:22%">تاريخ الاستحقاق</th></tr>
+    ${dues.map(d=>`<tr>
+      <td class="c">${d.n}</td><td>${d.label}</td>
+      <td class="c">${d.o.gross? M(d.o.gross):"&nbsp;"}${d.o.gross&&!d.incl? `<div class="rf-note">${M(d.o.net)} + ${M(d.o.vat)} ض.ق.م</div>`:""}</td>
+      <td class="c">عند توقيع العقد</td></tr>`).join("")}
+    <tr class="tot"><td class="c">الإجمالي</td><td></td><td class="c">${T.dues? M(T.dues):"&nbsp;"}</td><td></td></tr>
+  </table>
+</div>`;
+}
+
+function resPrint(){
+  const css = (document.getElementById("resDocCss")||{}).innerHTML || "";
+  const w = window.open("", "_blank", "width=1000,height=800");
+  if(!w){ toast("اسمح بالنوافذ المنبثقة للطباعة"); return; }
+  w.document.write(`<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8">
+    <title>استمارة حجز — ${esc(RES.company||"")}</title><style>${css}
+    @page{ size:A4 portrait; margin:12mm; }
+    html,body{ margin:0; padding:0; background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .rf-doc{ height:auto; overflow:visible; padding:0; background:#fff; border:0; box-shadow:none; }
+    .rf-page{ width:auto; margin:0; box-shadow:none; border:0; padding:0;
+              page-break-after:always; break-after:page; }
+    .rf-page:last-child{ page-break-after:auto; break-after:auto; }
+    .rf-blank{ border-bottom:1px solid #444; }
+    </style></head><body><div class="rf-doc">${resDocHTML()}</div>
+    <script>window.onload=function(){ setTimeout(function(){ window.print(); }, 250); };<\/script>
+    </body></html>`);
+  w.document.close();
+}
+
 const OFFER_TEMPLATES={
  sokhna:{key:'sokhna',project:'INDUSTRIA 1 SOKHNA',sector:'Engineering/Chemical',landTypes:['Industrial','Logistic'],
    pricePerSqm:6579,currency:'EGP',area:2279.78,advancePct:0.30,maxYears:3,defaultPlan:'3',defaultFreq:'Quarterly',
