@@ -681,6 +681,9 @@ function logoTryNext(img){
 .rf-doc-plain p.l{text-align:left;direction:ltr}
 .rf-doc-plain .rf-band2{background:#b9b4c4;padding:3px 10px;font-weight:700;text-align:center}
 .rf-doc-plain .rf-gap{height:7px}
+.rf-doc-plain .rf-tab{display:inline-block;width:3.2em}
+.rf-doc-plain .rf-sp{display:inline-block}
+.rf-doc-plain .rf-frame{display:block}
 .rf-doc-plain table.rf-x{width:100%;border-collapse:collapse;table-layout:auto;margin:6px 0 10px}
 .rf-doc-plain table.rf-x td.num{white-space:nowrap;font-variant-numeric:tabular-nums;text-align:center}
 .rf-doc-plain table.rf-x td.num p{text-align:center}
@@ -726,6 +729,13 @@ th.th-sort.on .th-ar{opacity:1}
 .rs-x{color:#9aa0a8;font-size:.8rem}
 .rs-b{padding:12px}
 .rf-sub{font-weight:700;font-size:.78rem;margin:14px 0 6px;color:var(--ink)}
+.rf-miss{background:#fff6f6;border:1px solid #f0d2d2;border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:.76rem}
+.rf-miss b{color:var(--red)}
+.rf-miss span{display:inline-block;background:#fff;border:1px solid #f0d2d2;border-radius:12px;
+  padding:1px 8px;margin:2px 3px 0 0;font-size:.72rem}
+.rf-ok-bar{background:#eef8f1;border:1px solid #cfe8d8;color:#1a7f4b;border-radius:8px;
+  padding:7px 10px;margin-bottom:10px;font-size:.76rem;font-weight:700}
+.btn.dim{opacity:.45}
 .rf-all{display:flex;align-items:center;gap:7px;font-size:.74rem;color:#6b7280;margin-top:6px;
   font-weight:600;text-transform:none;letter-spacing:0;cursor:pointer}
 .rf-all input{width:auto;margin:0}
@@ -787,6 +797,7 @@ th.th-sort.on .th-ar{opacity:1}
 .rf-annex{font-weight:800;text-decoration:underline;text-align:center;margin:6px 0 10px;font-size:14px}
 .rf-sig{margin-top:20px;font-size:12.5px}
 .rf-sig-h{font-weight:700;text-decoration:underline;margin-bottom:8px}
+.rf-doc .rf-sig{margin-top:16px;line-height:1.9}
 .rf-sig-2nd{font-size:12pt;font-weight:700;line-height:1.5}
 .rf-sig-2nd.rf-sig-h{margin-top:14px}
 .rf-sig-2{width:100%;border-collapse:collapse;margin-bottom:6px}
@@ -1306,7 +1317,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev DZ";
+const APP_BUILD = "20 Aug 2026 · rev EC";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -5071,68 +5082,112 @@ function resScanHtml(){
    never drift from the file, because it IS the file. */
 function resXmlToHtml(xml){
   const body = xml.slice(xml.indexOf("<w:body>"), xml.lastIndexOf("</w:body>"));
-  const out = [];
   const unesc = s => s.replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&amp;/g,"&");
-  /* a self-closing <w:t/> must be dropped first, or the lazy match runs on into
-     the next run's markup and raw XML lands in the preview */
   const textOf = frag => {
     const parts = [];
     frag.replace(/<w:t\b[^>]*\/>/g, "")
+        .replace(/<w:tab\s*\/>/g, "\u0009")
         .replace(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g, (m,t)=>{ parts.push(t); return m; });
     return unesc(parts.join(""));
   };
-  const parasOf = frag => (frag.match(/<w:p\b[\s\S]*?<\/w:p>/g) || []);
-  const isBold = frag => /<w:b\s*\/>/.test(frag);
-  const shade  = frag => { const m = frag.match(/<w:shd[^>]*w:fill="([0-9A-Fa-f]{6})"/); return m? m[1] : ""; };
-  const align  = frag => { const m = frag.match(/<w:jc w:val="(\w+)"/); return m? m[1] : ""; };
+  /* keep the gap the document actually has: a tab becomes a wide space, and a
+     run of spaces is preserved rather than collapsed to one */
+  const gaps = s => esc(s)
+    .replace(/\t/g, '<span class="rf-tab"></span>')
+    .replace(/ {2,}/g, m => '<span class="rf-sp" style="width:'+Math.min(m.length*0.42, 14)+'em"></span>');
+  /* These documents put whole pages inside one table, with the schedule nested
+     in a cell. A lazy regex stops at the first closing tag and scrambles both,
+     so blocks are read with the nesting counted. */
+  let spanOf, partsOf, cellsOf, rowsOf;
+  const blocks = (s) => {
+    const out = []; let i = 0;
+    while(i < s.length){
+      const p = s.indexOf("<w:p", i), t = s.indexOf("<w:tbl>", i);
+      const isP = p >= 0 && (t < 0 || p < t);
+      const start = isP? p : t;
+      if(start < 0) break;
+      if(isP && !/^<w:p[ >]/.test(s.slice(p, p+5))){ i = p + 4; continue; }
+      const tag = isP? "w:p" : "w:tbl";
+      const sp = spanOf(s, tag, start);
+      if(!sp) break;
+      out.push({tag: isP? "p":"tbl", frag: s.slice(sp.start, sp.end)});
+      i = sp.end;
+    }
+    return out;
+  };
+  const isBold = f => /<w:b\s*\/>/.test(f);
+  const shade  = f => { const m = f.match(/<w:shd[^>]*w:fill="([0-9A-Fa-f]{6})"/); return m? m[1] : ""; };
+  const align  = f => { const m = f.match(/<w:jc w:val="(\w+)"/); return m? m[1] : ""; };
   const paraHtml = (p, inCell) => {
-    const t = textOf(p).trim();
+    const raw = textOf(p);
+    const t = raw.trim();
     if(!t) return inCell? "" : `<div class="rf-gap"></div>`;
     const jc = align(p), cls = [];
     if(isBold(p)) cls.push("b");
     if(jc==="center") cls.push("c");
     if(jc==="left") cls.push("l");
     const sh = inCell? "" : shade(p);
-    return `<p class="${cls.join(" ")}${sh? " rf-band2":""}">${esc(t)}</p>`;
+    return `<p class="${cls.join(" ")}${sh? " rf-band2":""}">${gaps(t)}</p>`;
   };
-  const re = /<w:(p|tbl)\b[\s\S]*?<\/w:\1>/g;
-  let m, guard = 0;
-  while((m = re.exec(body)) && guard++ < 4000){
-    const frag = m[0];
-    if(m[1] === "p"){ out.push(paraHtml(frag, false)); continue; }
-    /* the file's own column widths, so labels and values keep their proportions */
-    const grid = (frag.match(/<w:gridCol w:w="(\d+)"/g) || []).map(g=> Number(g.match(/\d+/)[0]));
-    const total = grid.reduce((a,b)=>a+b, 0) || 1;
-    const cols = grid.length? `<colgroup>${grid.map(w=>`<col style="width:${(w/total*100).toFixed(2)}%">`).join("")}</colgroup>` : "";
-    const rows = frag.match(/<w:tr\b[\s\S]*?<\/w:tr>/g) || [];
-    /* borders may be declared on the table or on each cell — either counts */
-    const tblLined = /<w:tblBorders>[\s\S]*?w:val="single"[\s\S]*?<\/w:tblBorders>/.test(frag);
-    /* Cell order: a table marked bidiVisual reads right to left, the rest read
-       left to right. Forcing every table to RTL mirrored the label and value
-       columns, which is why labels ended up on the wrong side. */
-    const rtlTable = /<w:bidiVisual\s*\/>/.test(frag.slice(0, frag.indexOf("</w:tblPr>")+11));
-    out.push(`<table class="rf-x" dir="${rtlTable?"rtl":"ltr"}">${cols}${rows.map(tr=>{
-      const cells = tr.match(/<w:tc\b[\s\S]*?<\/w:tc>/g) || [];
-      const spans = cells.map(tc=>{ const s = tc.match(/<w:gridSpan w:val="(\d+)"/); return s? Number(s[1]) : 1; });
-      /* a row that uses fewer grid columns than the table declares stretches
-         its last cell across the rest, as Word does */
+  spanOf = (s, tag, from) => {
+    /* the opening tag must end at a space or a bracket, otherwise <w:trPr>
+       counts as a row and the nesting is miscounted */
+    const open = new RegExp("<"+tag+"(?=[ >/])", "g"), close = new RegExp("</"+tag+">", "g");
+    open.lastIndex = from;
+    const first = open.exec(s);
+    if(!first) return null;
+    let depth = 0, k = first.index, end = -1;
+    while(k < s.length){
+      open.lastIndex = k; close.lastIndex = k;
+      const o = open.exec(s), c = close.exec(s);
+      if(!c) break;
+      if(o && o.index < c.index){ depth++; k = o.index + 1; }
+      else { depth--; k = c.index + 1; if(depth === 0){ end = c.index + tag.length + 3; break; } }
+    }
+    return end < 0? null : {start:first.index, end};
+  };
+  partsOf = (s, tag) => {
+    const out = []; let i = 0, sp;
+    while((sp = spanOf(s, tag, i))){ out.push(s.slice(sp.start, sp.end)); i = sp.end; }
+    return out;
+  };
+  cellsOf = (tr) => partsOf(tr, "w:tc");
+  rowsOf  = (tbl) => partsOf(tbl.slice(tbl.indexOf(">")+1, tbl.lastIndexOf("</w:tbl>")), "w:tr");
+  const render = (list) => list.map(b => b.tag==="p"? paraHtml(b.frag,false) : tableHtml(b.frag)).join("\n");
+  const cellHtml = (tc) => {
+    const inner = tc.slice(tc.indexOf(">")+1, tc.lastIndexOf("</w:tc>"));
+    const parts = blocks(inner).map(b => b.tag==="p"? paraHtml(b.frag,true) : tableHtml(b.frag)).filter(Boolean);
+    return parts.join("") || "&nbsp;";
+  };
+  function tableHtml(frag){
+    const head = frag.slice(0, frag.indexOf("</w:tblPr>")+11);
+    const grid = (frag.slice(0, frag.indexOf("</w:tblGrid>")+12).match(/<w:gridCol w:w="(\d+)"/g)||[])
+                 .map(g=> Number(g.match(/\d+/)[0]));
+    const rtl = /<w:bidiVisual\s*\/>/.test(head);
+    const tblLined = /<w:tblBorders>[\s\S]*?w:val="single"[\s\S]*?<\/w:tblBorders>/.test(head);
+    /* a document laid out inside one big table is a page frame, not a grid */
+    const rows = rowsOf(frag);
+    const single = rows.every(r => cellsOf(r).length <= 1);
+    if(single && rows.length > 3)
+      return `<div class="rf-frame">${rows.map(r=> cellsOf(r).map(cellHtml).join("")).join("")}</div>`;
+    const cols = grid.length? `<colgroup>${grid.map(w=>`<col style="width:${(w/grid.reduce((a,b)=>a+b,0)*100).toFixed(2)}%">`).join("")}</colgroup>` : "";
+    return `<table class="rf-x" dir="${rtl?"rtl":"ltr"}">${cols}${rows.map(tr=>{
+      const cells = cellsOf(tr);
+      const spans = cells.map(tc=>{ const s=tc.match(/<w:gridSpan w:val="(\d+)"/); return s? Number(s[1]) : 1; });
       const used = spans.reduce((a,b)=>a+b,0);
       if(grid.length && used < grid.length && spans.length) spans[spans.length-1] += grid.length - used;
       return `<tr>${cells.map((tc,ci)=>{
         const pr = (tc.match(/<w:tcPr>[\s\S]*?<\/w:tcPr>/)||[""])[0];
         const sh = shade(pr);
         const lined = tblLined || /<w:tcBorders>[\s\S]*?w:val="single"/.test(pr);
-        const inner = parasOf(tc).map(p=>paraHtml(p, true)).filter(Boolean).join("") || "&nbsp;";
-        const style = sh && sh.toUpperCase()!=="FFFFFF"? ` style="background:#${sh}"` : "";
-        /* an amount or a date must stay on one line — "2,567,424.68" split over
-           two rows is unreadable */
         const plain = textOf(tc).trim();
         const num = plain && /^[\d\s.,\/\-:]+$/.test(plain);
-        return `<td${spans[ci]>1? ` colspan="${spans[ci]}"`:""}${style} class="${lined?"ln ":""}${num?"num":""}">${inner}</td>`;
+        const style = sh && sh.toUpperCase()!=="FFFFFF"? ` style="background:#${sh}"` : "";
+        return `<td${spans[ci]>1? ` colspan="${spans[ci]}"`:""}${style} class="${lined?"ln ":""}${num?"num":""}">${cellHtml(tc)}</td>`;
       }).join("")}</tr>`;
-    }).join("")}</table>`);
+    }).join("")}</table>`;
   }
-  return out.join("\n");
+  return render(blocks(body));
 }
 function resPreviewHtml(){
   /* Only the Sadat form has its pages laid out by hand. Every other project is
@@ -5379,6 +5434,45 @@ function resStoreClient(l){
   resClientFields().forEach(k=>{ if(RES[k]) p[k] = RES[k]; });
   if(Object.keys(p).length) l.stageMeta = Object.assign({}, l.stageMeta||{}, {client:p});
 }
+/* Everything the chosen document has a place for must be filled before it can
+   be printed. Saving a half-finished form is fine — issuing one is not. */
+function resMissing(){
+  const R = RES, T = resTotals(), out = [];
+  Object.keys(RES_TOKEN_FIELD).forEach(tok=>{
+    const d = RES_TOKEN_FIELD[tok];
+    if(!resFormTokens(R.form)[tok]) return;
+    if(tok==="CDATE") return;                       // worked out from the reservation date
+    const v = R[d.f];
+    if(v===undefined || v===null || String(v).trim()==="") out.push(d.l);
+  });
+  if(!resNum(R.sqmPrice)) out.push("سعر المتر المربع");
+  if(!T.price) out.push("الثمن الإجمالي");
+  if(!(R.installments||[]).length) out.push("جدول الأقساط");
+  return out;
+}
+function resMissingHtml(){
+  const m = resMissing();
+  if(!m.length) return `<div class="rf-ok-bar">✓ الاستمارة مكتملة — يمكن الطباعة والتنزيل</div>`;
+  return `<div class="rf-miss">
+    <b>ناقص ${m.length}:</b> ${m.slice(0,8).map(x=>`<span>${esc(x)}</span>`).join("")}
+    ${m.length>8? `<span>و${m.length-8} غيرها</span>`:""}
+    <div class="rf-hint">يمكن الحفظ الآن — الطباعة والتنزيل بعد اكتمال البيانات</div>
+  </div>`;
+}
+function resReady(){ return resMissing().length===0; }
+function resGuard(what){
+  const m = resMissing();
+  if(!m.length) return true;
+  toast("لا يمكن " + what + " — ناقص: " + m.slice(0,4).join("، ") + (m.length>4? " و"+(m.length-4)+" غيرها":""));
+  return false;
+}
+/* keep this lead's client details without saving the whole form */
+function resSaveClientOnly(){
+  const l = state.leads.find(x=>x.id===RES.leadId); if(!l) return;
+  resStoreClient(l); persist();
+  $("resBody").innerHTML = resFormHtml();
+  toast("تم حفظ بيانات العميل على هذا العميل");
+}
 function resApplyClient(force){
   const l = state.leads.find(x=>x.id===RES.leadId);
   const p = resClientProfile(l);
@@ -5473,10 +5567,11 @@ function resFormHtml(){
         </div>
         <div class="rf-bar-b">
           <button class="btn btn-red btn-sm" onclick="resSave()">حفظ</button>
-          <button class="btn btn-ghost btn-sm" onclick="resDownloadWord()">Word ⬇</button>
-          <button class="btn btn-ghost btn-sm" onclick="resPrint()">PDF ⬇</button>
+          <button class="btn btn-ghost btn-sm ${resReady()?"":"dim"}" onclick="resDownloadWord()">Word ⬇</button>
+          <button class="btn btn-ghost btn-sm ${resReady()?"":"dim"}" onclick="resPrint()">PDF ⬇</button>
         </div>
       </div>
+      ${resMissingHtml()}
 
       ${resSavedStrip()}
 
@@ -5485,10 +5580,14 @@ function resFormHtml(){
         <div class="of-two">${resFieldsFor("doc")}</div>`, esc(F.en||""))}
 
       ${resSection("client","بيانات العميل","", `
-        ${prof? `<div class="rf-reuse">
-          <span>بيانات هذا العميل محفوظة — <b>${esc(prof.company||prof.repName||"")}</b></span>
-          <button class="btn btn-ghost btn-sm" onclick="resApplyClient(true)">استخدامها</button>
-        </div>`:""}
+        <div class="rf-reuse">
+          <span>${prof? `بيانات هذا العميل محفوظة — <b>${esc(prof.company||prof.repName||"")}</b>`
+                      : "احفظ بيانات العميل لتُملأ تلقائياً في أي استمارة أخرى لنفس العميل"}</span>
+          <span style="display:flex;gap:6px">
+            ${prof? `<button class="btn btn-ghost btn-sm" onclick="resApplyClient(true)">استخدامها</button>`:""}
+            <button class="btn btn-ghost btn-sm" onclick="resSaveClientOnly()">حفظ بيانات العميل</button>
+          </span>
+        </div>
         ${resScanHtml()}
         ${resFieldsFor("client")}
         ${resAllToggleHtml()}`,
@@ -5997,6 +6096,7 @@ async function resBuildDocx(){
   return resZipBuild(entries);
 }
 async function resDownloadWord(){
+  if(!resGuard("التنزيل")) return;
   try{
     const bytes = await resBuildDocx();
     const blob = new Blob([bytes], {type:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
@@ -6010,6 +6110,7 @@ async function resDownloadWord(){
 }
 
 function resPrint(){
+  if(!resGuard("الطباعة")) return;
   const css = (document.getElementById("resDocCss")||{}).innerHTML || "";
   const w = window.open("", "_blank", "width=1000,height=800");
   if(!w){ toast("اسمح بالنوافذ المنبثقة للطباعة"); return; }
