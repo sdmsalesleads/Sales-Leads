@@ -675,17 +675,21 @@ function logoTryNext(img){
 .rf-fee small{color:#8a8f98;font-size:.68rem;min-width:112px;text-align:left}
 .rf-doc-plain{background:#fff;padding:26px 30px;font-size:12pt;line-height:1.7;
   font-family:"Sakkal Majalla","Simplified Arabic","Traditional Arabic","Segoe UI",Tahoma,sans-serif}
-.rf-doc-plain p{margin:0 0 6px;text-align:justify}
+.rf-doc-plain p{margin:0 0 6px;text-align:justify;unicode-bidi:plaintext}
 .rf-doc-plain p.b{font-weight:700}
 .rf-doc-plain p.c{text-align:center}
 .rf-doc-plain p.l{text-align:left;direction:ltr}
 .rf-doc-plain .rf-band2{background:#b9b4c4;padding:3px 10px;font-weight:700;text-align:center}
 .rf-doc-plain .rf-gap{height:7px}
-.rf-doc-plain table.rf-x{width:100%;border-collapse:collapse;table-layout:fixed;margin:6px 0 10px}
+.rf-doc-plain table.rf-x{width:100%;border-collapse:collapse;table-layout:auto;margin:6px 0 10px}
+.rf-doc-plain table.rf-x td.num{white-space:nowrap;font-variant-numeric:tabular-nums;text-align:center}
+.rf-doc-plain table.rf-x td.num p{text-align:center}
+.rf-doc-plain table.rf-x[dir=ltr] td{direction:rtl;text-align:right}
+.rf-doc-plain table.rf-x[dir=ltr] td.num{direction:ltr}
 .rf-doc-plain table.rf-x td{padding:3px 8px;vertical-align:middle;font-size:11pt;line-height:1.55;
   overflow-wrap:break-word}
 .rf-doc-plain table.rf-x td.ln{border:1px solid #444}
-.rf-doc-plain table.rf-x td p{margin:0;text-align:right}
+.rf-doc-plain table.rf-x td p{margin:0;text-align:right;unicode-bidi:plaintext}
 .rf-doc-plain table.rf-x td p.c{text-align:center}
 .cbx{position:relative}
 .cbx-menu{display:none;position:absolute;z-index:40;top:100%;left:0;right:0;max-height:240px;overflow:auto;
@@ -722,6 +726,12 @@ th.th-sort.on .th-ar{opacity:1}
 .rs-x{color:#9aa0a8;font-size:.8rem}
 .rs-b{padding:12px}
 .rf-sub{font-weight:700;font-size:.78rem;margin:14px 0 6px;color:var(--ink)}
+.rf-all{display:flex;align-items:center;gap:7px;font-size:.74rem;color:#6b7280;margin-top:6px;
+  font-weight:600;text-transform:none;letter-spacing:0;cursor:pointer}
+.rf-all input{width:auto;margin:0}
+.rf-book{background:#fafbfc;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:10px}
+.rf-book-r{display:flex;gap:8px;align-items:center}
+.rf-book-r select{flex:1;min-width:0}
 .rf-reuse{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;
   background:#f2f6fb;border:1px solid #d6e2f0;border-radius:8px;padding:7px 10px;margin-bottom:10px;font-size:.76rem}
 .rf-chips{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px;font-size:.74rem}
@@ -1299,7 +1309,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev DU";
+const APP_BUILD = "20 Aug 2026 · rev DX";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -5100,7 +5110,11 @@ function resXmlToHtml(xml){
     const rows = frag.match(/<w:tr\b[\s\S]*?<\/w:tr>/g) || [];
     /* borders may be declared on the table or on each cell — either counts */
     const tblLined = /<w:tblBorders>[\s\S]*?w:val="single"[\s\S]*?<\/w:tblBorders>/.test(frag);
-    out.push(`<table class="rf-x">${cols}${rows.map(tr=>{
+    /* Cell order: a table marked bidiVisual reads right to left, the rest read
+       left to right. Forcing every table to RTL mirrored the label and value
+       columns, which is why labels ended up on the wrong side. */
+    const rtlTable = /<w:bidiVisual\s*\/>/.test(frag.slice(0, frag.indexOf("</w:tblPr>")+11));
+    out.push(`<table class="rf-x" dir="${rtlTable?"rtl":"ltr"}">${cols}${rows.map(tr=>{
       const cells = tr.match(/<w:tc\b[\s\S]*?<\/w:tc>/g) || [];
       const spans = cells.map(tc=>{ const s = tc.match(/<w:gridSpan w:val="(\d+)"/); return s? Number(s[1]) : 1; });
       /* a row that uses fewer grid columns than the table declares stretches
@@ -5113,7 +5127,11 @@ function resXmlToHtml(xml){
         const lined = tblLined || /<w:tcBorders>[\s\S]*?w:val="single"/.test(pr);
         const inner = parasOf(tc).map(p=>paraHtml(p, true)).filter(Boolean).join("") || "&nbsp;";
         const style = sh && sh.toUpperCase()!=="FFFFFF"? ` style="background:#${sh}"` : "";
-        return `<td${spans[ci]>1? ` colspan="${spans[ci]}"`:""}${style} class="${lined?"ln":""}">${inner}</td>`;
+        /* an amount or a date must stay on one line — "2,567,424.68" split over
+           two rows is unreadable */
+        const plain = textOf(tc).trim();
+        const num = plain && /^[\d\s.,\/\-:]+$/.test(plain);
+        return `<td${spans[ci]>1? ` colspan="${spans[ci]}"`:""}${style} class="${lined?"ln ":""}${num?"num":""}">${inner}</td>`;
       }).join("")}</tr>`;
     }).join("")}</table>`);
   }
@@ -5143,9 +5161,9 @@ function resFormPicker(){
         ${Object.values(RES_CUR).map(c=>`<option value="${c.code}" ${resCur().code===c.code?"selected":""}>${esc(c.ar)}</option>`).join("")}
       </select>
       <div class="rf-hint">تظهر في الأرقام والتفقيط ونص الاستمارة</div></div>
-    <div class="of-f"><label>تاريخ التعاقد</label>
+    ${resHas("CDATE")? `<div class="of-f"><label>تاريخ التعاقد</label>
       <input type="date" dir="ltr" value="${esc(cd)}" onchange="resUpd('contractDate', this.value)">
-      <div class="rf-hint">${R.contractDate? "محدد يدوياً" : "ثلاثة أشهر من تاريخ الحجز — تلقائي"}</div></div>
+      <div class="rf-hint">${R.contractDate? "محدد يدوياً" : "ثلاثة أشهر من تاريخ الحجز — تلقائي"}</div></div>`:""}
   </div>`;
 }
 
@@ -5272,6 +5290,7 @@ function resSave(){
   const list = [snap].concat(kept).slice(0, RES_KEEP);
   l.stageMeta = Object.assign({}, l.stageMeta||{}, {reservations:list, res:snap});
   resStoreClient(l);          // so the next form for this client starts filled
+  resBookSave();              // and any future lead can pick them straight up
   if(!l.resDate) l.resDate = RES.resDate;
   const T = resTotals();
   pushLog(l, "استمارة حجز محفوظة — " + ((RES_FORMS[snap.form]||{}).label || "") +
@@ -5373,6 +5392,120 @@ function resApplyClient(force){
   if(force){ $("resBody").innerHTML = resFormHtml(); toast("تم ملء بيانات العميل المحفوظة"); }
   return n>0;
 }
+
+
+/* ---- the form decides which fields it needs ----
+   Each project's document asks for different things: one wants a tax card and a
+   sector, another wants neither. The tokens actually present in that file drive
+   what the editor shows, so no one fills in a box the document has no place for.
+   "كل الحقول" overrides it when something unusual is needed. */
+const RES_TOKEN_FIELD = {
+  RESDATE:{f:"resDate",  l:"تاريخ الحجز", t:"date",  s:"doc"},
+  CDATE:  {f:"contractDate", l:"تاريخ التعاقد", t:"date", s:"doc"},
+  COMPANY:{f:"company",  l:"اسم الشركة",  s:"client"},
+  HQ:     {f:"hqAddress",l:"عنوان المقر الرئيسي", s:"client"},
+  CRNO:   {f:"crNo",     l:"رقم السجل التجاري", s:"client"},
+  CROFFICE:{f:"crOffice",l:"مكتب السجل التجاري", s:"client"},
+  CRDATE: {f:"crDate",   l:"تاريخ إصدار السجل", t:"date", s:"client"},
+  TAXID:  {f:"taxId",    l:"البطاقة الضريبية", s:"client"},
+  REPNAME:{f:"repName",  l:"اسم الممثل القانوني", s:"client"},
+  NATID:  {f:"natId",    l:"بطاقة رقم قومي", s:"client"},
+  NATIONALITY:{f:"nationality", l:"الجنسية", s:"client"},
+  ADDRESS:{f:"address",  l:"العنوان", s:"client"},
+  PHONES: {f:"phones",   l:"أرقام الهاتف / المحمول", s:"client"},
+  EMAIL:  {f:"email",    l:"البريد الإلكتروني", s:"client"},
+  PLOTNO: {f:"plotNo",   l:"رقم قطعة الأرض", s:"land"},
+  SECTOR: {f:"sector",   l:"القطاع", s:"land"},
+  AREA:   {f:"area",     l:"المساحة (م²)", t:"number", s:"land"},
+  SIGTITLE:{f:"sigTitle",l:"الصفة", s:"sign"}
+};
+let RES_TOK_CACHE = {};
+function resFormTokens(key){
+  if(RES_TOK_CACHE[key]) return RES_TOK_CACHE[key];
+  const doc = (RES_FORMS[key]||{}).doc || "";
+  const set = {};
+  (doc.match(/\{\{[A-Z_0-9]+\}\}/g)||[]).forEach(t=> set[t.slice(2,-2)] = true);
+  RES_TOK_CACHE[key] = set;
+  return set;
+}
+function resHas(tok){ return RES_ALLFIELDS || !!resFormTokens(RES.form)[tok]; }
+let RES_ALLFIELDS = false;
+function resToggleAll(){ RES_ALLFIELDS = !RES_ALLFIELDS; $("resBody").innerHTML = resFormHtml(); }
+/* the inputs this form actually needs, in the order they are asked for */
+function resFieldsFor(section){
+  const R = RES;
+  return Object.keys(RES_TOKEN_FIELD).filter(tok=>{
+    const d = RES_TOKEN_FIELD[tok];
+    return d.s === section && resHas(tok);
+  }).map(tok=>{
+    const d = RES_TOKEN_FIELD[tok];
+    return `<div class="of-f"><label>${d.l}</label>
+      <input type="${d.t||"text"}" dir="${d.t==="number"||d.t==="date"?"ltr":"rtl"}"
+        value="${esc(R[d.f]==null?"":R[d.f])}" oninput="resUpd('${d.f}', this.value)"></div>`;
+  }).join("");
+}
+function resAllToggleHtml(){
+  return `<label class="rf-all"><input type="checkbox" ${RES_ALLFIELDS?"checked":""} onchange="resToggleAll()">
+    كل الحقول <span class="muted">— حتى ما لا تطلبه هذه الاستمارة</span></label>`;
+}
+
+/* ---- the client book ----
+   A client's registration details belong to the client, not to one lead. They
+   are kept once and offered on every reservation form, so the same commercial
+   register never has to be typed twice. */
+const RES_BOOK_MAX = 300;
+function resBook(){
+  const b = state.settings && state.settings.clientBook;
+  return Array.isArray(b)? b : [];
+}
+function resBookKey(p){
+  return String(p.company || p.repName || "").trim().toLowerCase();
+}
+function resBookSave(){
+  const p = {};
+  resClientFields().forEach(k=>{ if(RES[k]) p[k] = RES[k]; });
+  const key = resBookKey(p);
+  if(!key) return false;
+  p.id = "cb"+Date.now().toString(36);
+  p.savedAt = new Date().toISOString();
+  const rest = resBook().filter(x=> resBookKey(x) !== key);
+  state.settings = Object.assign({}, state.settings||{}, {clientBook:[p].concat(rest).slice(0, RES_BOOK_MAX)});
+  persist();
+  return true;
+}
+function resBookUse(id){
+  const p = resBook().find(x=>x.id===id);
+  if(!p) return;
+  resClientFields().forEach(k=>{ if(p[k]) RES[k] = p[k]; });
+  $("resBody").innerHTML = resFormHtml();
+  toast("تم ملء بيانات " + (p.company || p.repName || "العميل"));
+}
+function resBookForget(id){
+  state.settings = Object.assign({}, state.settings||{},
+    {clientBook: resBook().filter(x=>x.id!==id)});
+  persist();
+  $("resBody").innerHTML = resFormHtml();
+}
+function resBookHtml(){
+  const list = resBook();
+  const cur = resBookKey(RES);
+  return `<div class="rf-book">
+    <div class="rf-book-r">
+      <select dir="rtl" onchange="if(this.value) resBookUse(this.value)">
+        <option value="">— اختر عميلاً محفوظاً —</option>
+        ${list.map(p=>`<option value="${p.id}" ${resBookKey(p)===cur?"selected":""}>${esc(p.company||p.repName||"")}</option>`).join("")}
+      </select>
+      <button class="btn btn-ghost btn-sm" onclick="resBookStore()">حفظ بيانات العميل</button>
+    </div>
+    <div class="rf-hint">${list.length? list.length+" عميل محفوظ — تُملأ كل البيانات باختيار الاسم"
+      : "احفظ بيانات هذا العميل لتستخدمها في أي استمارة قادمة"}</div>
+  </div>`;
+}
+function resBookStore(){
+  if(resBookSave()){ $("resBody").innerHTML = resFormHtml(); toast("تم حفظ بيانات العميل"); }
+  else toast("أدخل اسم الشركة أو الممثل أولاً");
+}
+
 function resFormHtml(){
   const R = RES, T = resTotals(), l = state.leads.find(x=>x.id===R.leadId);
   const F = RES_FORMS[R.form] || {};
@@ -5411,19 +5544,14 @@ function resFormHtml(){
         </div>`, esc(F.en||""))}
 
       ${resSection("client","بيانات العميل","", `
+        ${resBookHtml()}
         ${prof? `<div class="rf-reuse">
           <span>بيانات هذا العميل محفوظة — <b>${esc(prof.company||prof.repName||"")}</b></span>
           <button class="btn btn-ghost btn-sm" onclick="resApplyClient(true)">استخدامها</button>
         </div>`:""}
         ${resScanHtml()}
-        ${f("اسم الشركة","company")}
-        ${f("عنوان المقر الرئيسي","hqAddress")}
-        <div class="of-two">${f("رقم السجل التجاري","crNo")}${f("مكتب السجل التجاري","crOffice")}</div>
-        <div class="of-two">${f("تاريخ إصدار السجل","crDate","date")}${f("البطاقة الضريبية","taxId")}</div>
-        ${f("اسم الممثل القانوني","repName")}
-        <div class="of-two">${f("بطاقة رقم قومي","natId")}${f("الجنسية","nationality")}</div>
-        ${f("العنوان","address")}
-        <div class="of-two">${f("أرقام الهاتف / المحمول","phones")}${f("البريد الإلكتروني","email")}</div>`,
+        ${resFieldsFor("client")}
+        ${resAllToggleHtml()}`,
         esc(R.company||R.repName||"—"))}
 
       ${resSection("land","الأرض والسعر","", `
@@ -5431,8 +5559,7 @@ function resFormHtml(){
           <span>عرض سعر محفوظ — ${resMoney(resOfferOf(R.leadId).total)} ${esc(resCur().short)}</span>
           <button class="btn btn-ghost btn-sm" onclick="resFromOffer(true)">جلب الأرقام</button>
         </div>`:""}
-        <div class="of-two">${f("رقم قطعة الأرض","plotNo")}${f("المساحة (م²)","area","number")}</div>
-        ${R.form==="east"? f("القطاع","sector") : ""}
+        ${resFieldsFor("land")}
         <div class="of-f"><label>سعر المتر المربع</label>
           <input type="number" min="0" step="0.01" dir="ltr" value="${esc(R.sqmPrice)}" oninput="resUpd('sqmPrice', this.value)">
           <div class="rf-hint">ثمن الأرض لا يشمل ضريبة القيمة المضافة</div></div>
