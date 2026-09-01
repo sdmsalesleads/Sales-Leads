@@ -681,6 +681,8 @@ th.th-sort:hover{color:var(--red)}
 th.th-sort.on{color:var(--red)}
 .th-ar{font-size:.68em;margin-inline-start:4px;opacity:.45}
 th.th-sort.on .th-ar{opacity:1}
+.doc-badge{display:inline-block;min-width:16px;height:16px;line-height:16px;text-align:center;
+  background:#fff;color:var(--red);border-radius:8px;font-size:.66rem;font-weight:800;margin-inline-start:5px}
 .of-saved{display:flex;flex-direction:column;gap:6px}
 .of-saved-r{display:flex;align-items:center;gap:8px;border:1px solid #e6e8ec;border-radius:8px;padding:7px 10px}
 .of-saved-r.on{border-color:var(--red);background:#fff7f7}
@@ -1246,7 +1248,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev DI";
+const APP_BUILD = "20 Aug 2026 · rev DJ";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -3066,9 +3068,14 @@ function openLeadModal(id){
   $("f_nat").disabled = !(canFollow || canEditIdentity());
   ["f_value","f_totalSold","f_soldArea","f_plotNo"].forEach(f=>$(f).disabled = !canValue);
   { /* documents row: only meaningful once the lead exists */
-    const row = $("docsRow"), ob = $("offerBtn"), note = $("docNote");
+    const row = $("docsRow"), ob = $("offerBtn"), note = $("docNote"), rb = $("resBtn");
     if(row) row.style.display = l? "" : "none";
     if(ob) ob.disabled = !(l && bestPhone(l));
+    if(rb){
+      const saved = l? ((typeof resSavedList==="function")? resSavedList(l).length : 0) : 0;
+      rb.innerHTML = "📝 Reservation form" + (saved? ` <span class="doc-badge">${saved}</span>` : "");
+      rb.title = saved? "استمارة حجز محفوظة — افتحها للاطلاع أو التعديل" : "استمارة حجز";
+    }
     if(note){
       if(l && l.offerSent){
         note.innerHTML = "✓ Offer sent"+(l.offerDate? " "+esc(fmtDate(l.offerDate)):"")
@@ -5059,7 +5066,9 @@ function resFormPicker(){
 
 function openResForm(leadId){
   const l = state.leads.find(x=>x.id===leadId); if(!l) return;
-  const saved = l.stageMeta && l.stageMeta.res;
+  const want = resFormForLead(l);
+  const list = resSavedList(l);
+  const saved = list.find(x=>x.form===want) || list[0] || (l.stageMeta && l.stageMeta.res);
   RES = Object.assign(resBlank(l), saved||{});
   RES.leadId = l.id;
   /* a new form starts from the saved offer: those figures are the ones that were
@@ -5153,14 +5162,72 @@ function resPaint(){
   if(li && document.activeElement && !li.contains(document.activeElement)) li.innerHTML = resInstListHtml();
 }
 
+/* ---- saved reservation forms ----
+   A saved form is kept on the lead and listed, so it can be found and reopened
+   later instead of being filled in again from scratch. One is kept per project
+   form: saving the Sadat form again replaces the Sadat one and leaves East be. */
+const RES_KEEP = 20;
+function resSavedList(l){
+  const a = l && l.stageMeta && l.stageMeta.reservations;
+  if(Array.isArray(a)) return a;
+  /* a form saved before this list existed is still shown */
+  const one = l && l.stageMeta && l.stageMeta.res;
+  return one? [Object.assign({id:"res0", form:one.form||"newsadat", savedAt:one.savedAt||""}, one)] : [];
+}
 function resSave(){
   const l = state.leads.find(x=>x.id===RES.leadId); if(!l) return;
-  l.stageMeta = Object.assign({}, l.stageMeta||{}, {res: JSON.parse(JSON.stringify(RES))});
+  const snap = JSON.parse(JSON.stringify(RES));
+  snap.id = "res"+Date.now().toString(36);
+  snap.savedAt = new Date().toISOString();
+  snap.savedBy = currentUser? currentUser.name : "";
+  const kept = resSavedList(l).filter(x=>x.form !== snap.form);
+  const list = [snap].concat(kept).slice(0, RES_KEEP);
+  l.stageMeta = Object.assign({}, l.stageMeta||{}, {reservations:list, res:snap});
   if(!l.resDate) l.resDate = RES.resDate;
-  pushLog(l, "استمارة الحجز — تم حفظ البيانات");
+  const T = resTotals();
+  pushLog(l, "استمارة حجز محفوظة — " + ((RES_FORMS[snap.form]||{}).label || "") +
+              (T.price? " · " + resMoney(T.price) + " ج.م" : ""));
   l.lastContact = today();
   persist();
-  toast("تم حفظ استمارة الحجز");
+  $("resBody").innerHTML = resFormHtml();
+  toast("تم حفظ استمارة الحجز — ستجدها في قائمة الاستمارات المحفوظة");
+}
+function resLoadSaved(id){
+  const l = state.leads.find(x=>x.id===RES.leadId); if(!l) return;
+  const s = resSavedList(l).find(x=>x.id===id); if(!s) return;
+  RES = Object.assign({}, s);
+  RES.leadId = l.id;
+  if(!Array.isArray(RES.installments)) RES.installments = [];
+  $("resBody").innerHTML = resFormHtml();
+  toast("تم فتح الاستمارة المحفوظة — يمكنك التعديل والحفظ مرة أخرى");
+}
+function resDeleteSaved(id){
+  const l = state.leads.find(x=>x.id===RES.leadId); if(!l) return;
+  const list = resSavedList(l).filter(x=>x.id!==id);
+  l.stageMeta = Object.assign({}, l.stageMeta||{}, {reservations:list});
+  if(l.stageMeta.res && l.stageMeta.res.id===id) l.stageMeta.res = list[0] || null;
+  persist();
+  $("resBody").innerHTML = resFormHtml();
+}
+function resSavedHtml(){
+  const l = RES && state.leads.find(x=>x.id===RES.leadId);
+  const list = l? resSavedList(l) : [];
+  if(!list.length) return `<div class="rf-hint" style="margin-bottom:10px">لم تُحفظ أي استمارة لهذا العميل بعد.</div>`;
+  return `
+  <div class="eyebrow red">الاستمارات المحفوظة</div>
+  <div class="of-saved" style="margin-bottom:12px">
+    ${list.map(s=>{
+      const price = (Number(s.area)||0) * (Number(String(s.sqmPrice).replace(/,/g,""))||0);
+      return `<div class="of-saved-r ${s.form===RES.form?"on":""}">
+        <div class="of-saved-m">
+          <b>${esc((RES_FORMS[s.form]||{}).label || "")}</b>
+          <div class="muted">${esc(s.company||s.repName||"—")}${price? " · "+resMoney(price)+" ج.م":""}</div>
+          <div class="muted" style="font-size:.66rem">${esc(resDate((s.savedAt||"").slice(0,10)))}${s.savedBy? " · "+esc(s.savedBy):""}</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="resLoadSaved('${s.id}')">فتح</button>
+        <button class="btn btn-ghost btn-sm" onclick="resDeleteSaved('${s.id}')" title="حذف">×</button>
+      </div>`;}).join("")}
+  </div>`;
 }
 
 function resFormHtml(){
@@ -5175,6 +5242,7 @@ function resFormHtml(){
         <span>عرض السعر: <b>${esc(resOfferOf(R.leadId).project||"")}</b> — ${resMoney(resOfferOf(R.leadId).total)} ج.م</span>
         <button class="btn btn-ghost btn-sm" onclick="resFromOffer(true)">جلب الأرقام من عرض السعر</button>
       </div>` : `<div class="rf-hint" style="margin-bottom:10px">لا يوجد عرض سعر محفوظ لهذا العميل — أنشئ عرضاً أولاً لتُملأ الأرقام تلقائياً.</div>`}
+      ${resSavedHtml()}
       <div class="eyebrow red">بيانات الاستمارة</div>
       ${resFormPicker()}
       <div class="of-two">
