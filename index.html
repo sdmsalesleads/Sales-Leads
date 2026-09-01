@@ -673,11 +673,20 @@ function logoTryNext(img){
 .rf-fee{display:flex;align-items:baseline;gap:8px;padding:5px 0;border-bottom:1px dashed #e6e8ec;font-size:.78rem}
 .rf-fee span{flex:1}
 .rf-fee small{color:#8a8f98;font-size:.68rem;min-width:112px;text-align:left}
-.rf-doc-plain{background:#fff;padding:26px 30px;font-size:12pt;line-height:1.7}
-.rf-doc-plain p{margin:0 0 7px;text-align:justify}
+.rf-doc-plain{background:#fff;padding:26px 30px;font-size:12pt;line-height:1.7;
+  font-family:"Sakkal Majalla","Simplified Arabic","Traditional Arabic","Segoe UI",Tahoma,sans-serif}
+.rf-doc-plain p{margin:0 0 6px;text-align:justify}
 .rf-doc-plain p.b{font-weight:700}
+.rf-doc-plain p.c{text-align:center}
+.rf-doc-plain p.l{text-align:left;direction:ltr}
 .rf-doc-plain .rf-band2{background:#b9b4c4;padding:3px 10px;font-weight:700;text-align:center}
 .rf-doc-plain .rf-gap{height:7px}
+.rf-doc-plain table.rf-x{width:100%;border-collapse:collapse;table-layout:fixed;margin:6px 0 10px}
+.rf-doc-plain table.rf-x td{padding:3px 8px;vertical-align:middle;font-size:11pt;line-height:1.55;
+  overflow-wrap:break-word}
+.rf-doc-plain table.rf-x td.ln{border:1px solid #444}
+.rf-doc-plain table.rf-x td p{margin:0;text-align:right}
+.rf-doc-plain table.rf-x td p.c{text-align:center}
 .cbx{position:relative}
 .cbx-menu{display:none;position:absolute;z-index:40;top:100%;left:0;right:0;max-height:240px;overflow:auto;
   background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 22px rgba(0,0,0,.12);margin-top:2px}
@@ -1290,7 +1299,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev DS";
+const APP_BUILD = "20 Aug 2026 · rev DU";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -5056,31 +5065,57 @@ function resScanHtml(){
 function resXmlToHtml(xml){
   const body = xml.slice(xml.indexOf("<w:body>"), xml.lastIndexOf("</w:body>"));
   const out = [];
+  const unesc = s => s.replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&amp;/g,"&");
+  /* a self-closing <w:t/> must be dropped first, or the lazy match runs on into
+     the next run's markup and raw XML lands in the preview */
   const textOf = frag => {
     const parts = [];
-    frag.replace(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g, (m,t)=>{ parts.push(t); return m; });
-    return parts.join("")
-      .replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&amp;/g,"&");
+    frag.replace(/<w:t\b[^>]*\/>/g, "")
+        .replace(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g, (m,t)=>{ parts.push(t); return m; });
+    return unesc(parts.join(""));
   };
-  /* walk the top level only: a paragraph, or a table with its rows */
+  const parasOf = frag => (frag.match(/<w:p\b[\s\S]*?<\/w:p>/g) || []);
+  const isBold = frag => /<w:b\s*\/>/.test(frag);
+  const shade  = frag => { const m = frag.match(/<w:shd[^>]*w:fill="([0-9A-Fa-f]{6})"/); return m? m[1] : ""; };
+  const align  = frag => { const m = frag.match(/<w:jc w:val="(\w+)"/); return m? m[1] : ""; };
+  const paraHtml = (p, inCell) => {
+    const t = textOf(p).trim();
+    if(!t) return inCell? "" : `<div class="rf-gap"></div>`;
+    const jc = align(p), cls = [];
+    if(isBold(p)) cls.push("b");
+    if(jc==="center") cls.push("c");
+    if(jc==="left") cls.push("l");
+    const sh = inCell? "" : shade(p);
+    return `<p class="${cls.join(" ")}${sh? " rf-band2":""}">${esc(t)}</p>`;
+  };
   const re = /<w:(p|tbl)\b[\s\S]*?<\/w:\1>/g;
   let m, guard = 0;
   while((m = re.exec(body)) && guard++ < 4000){
     const frag = m[0];
-    if(m[1] === "p"){
-      const t = textOf(frag).trim();
-      const shaded = /<w:shd[^>]*w:fill="(?!auto)([0-9A-Fa-f]{6})"/.test(frag);
-      const bold = /<w:b\s*\/>/.test(frag);
-      if(!t){ out.push(`<div class="rf-gap"></div>`); continue; }
-      out.push(`<p class="${shaded?"rf-band2":""}${bold?" b":""}">${esc(t)}</p>`);
-    } else {
-      const rows = frag.match(/<w:tr\b[\s\S]*?<\/w:tr>/g) || [];
-      out.push(`<table class="rf-grid">${rows.map((tr,i)=>{
-        const cells = tr.match(/<w:tc\b[\s\S]*?<\/w:tc>/g) || [];
-        const tag = i===0? "th" : "td";
-        return `<tr>${cells.map(tc=>`<${tag}>${esc(textOf(tc).trim())||"&nbsp;"}</${tag}>`).join("")}</tr>`;
-      }).join("")}</table>`);
-    }
+    if(m[1] === "p"){ out.push(paraHtml(frag, false)); continue; }
+    /* the file's own column widths, so labels and values keep their proportions */
+    const grid = (frag.match(/<w:gridCol w:w="(\d+)"/g) || []).map(g=> Number(g.match(/\d+/)[0]));
+    const total = grid.reduce((a,b)=>a+b, 0) || 1;
+    const cols = grid.length? `<colgroup>${grid.map(w=>`<col style="width:${(w/total*100).toFixed(2)}%">`).join("")}</colgroup>` : "";
+    const rows = frag.match(/<w:tr\b[\s\S]*?<\/w:tr>/g) || [];
+    /* borders may be declared on the table or on each cell — either counts */
+    const tblLined = /<w:tblBorders>[\s\S]*?w:val="single"[\s\S]*?<\/w:tblBorders>/.test(frag);
+    out.push(`<table class="rf-x">${cols}${rows.map(tr=>{
+      const cells = tr.match(/<w:tc\b[\s\S]*?<\/w:tc>/g) || [];
+      const spans = cells.map(tc=>{ const s = tc.match(/<w:gridSpan w:val="(\d+)"/); return s? Number(s[1]) : 1; });
+      /* a row that uses fewer grid columns than the table declares stretches
+         its last cell across the rest, as Word does */
+      const used = spans.reduce((a,b)=>a+b,0);
+      if(grid.length && used < grid.length && spans.length) spans[spans.length-1] += grid.length - used;
+      return `<tr>${cells.map((tc,ci)=>{
+        const pr = (tc.match(/<w:tcPr>[\s\S]*?<\/w:tcPr>/)||[""])[0];
+        const sh = shade(pr);
+        const lined = tblLined || /<w:tcBorders>[\s\S]*?w:val="single"/.test(pr);
+        const inner = parasOf(tc).map(p=>paraHtml(p, true)).filter(Boolean).join("") || "&nbsp;";
+        const style = sh && sh.toUpperCase()!=="FFFFFF"? ` style="background:#${sh}"` : "";
+        return `<td${spans[ci]>1? ` colspan="${spans[ci]}"`:""}${style} class="${lined?"ln":""}">${inner}</td>`;
+      }).join("")}</tr>`;
+    }).join("")}</table>`);
   }
   return out.join("\n");
 }
