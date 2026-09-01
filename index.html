@@ -1317,7 +1317,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev EC";
+const APP_BUILD = "20 Aug 2026 · rev ED";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -4256,6 +4256,18 @@ function closeOffer(){
   offerSnapshot(); persist();
   $("offerOverlay").classList.remove("open");
 }
+/* The pack already says "updates as you type" — make that true. Only the
+   document pane is redrawn, so the caret stays where it is. */
+function offerPaint(){
+  const d = $("offerDocInner");
+  if(d){ d.innerHTML = offerPackHtml(); setTimeout(offerFitDoc, 20); }
+  offerSnapshot();
+}
+function offerLive(field, val){
+  if(!offerState) return;
+  offerState[field] = val;
+  offerPaint();
+}
 function offerUpd(field, val){
   if(field==="park"){
     offerState.park = val;
@@ -4285,9 +4297,9 @@ function offerFormHtml(){
         </select></div>
       <div class="of-two">
         <div class="of-f"><label>Plot area (m²)</label>
-          <input type="number" min="1" step="100" value="${s.area}" onchange="offerUpd('area', this.value)"></div>
+          <input type="number" min="1" step="100" value="${s.area}" oninput="offerLive('area', this.value)"></div>
         <div class="of-f"><label>Price per m² (EGP)</label>
-          <input type="number" min="0" step="10" value="${s.price}" onchange="offerUpd('price', this.value)"></div>
+          <input type="number" min="0" step="10" value="${s.price}" oninput="offerLive('price', this.value)"></div>
       </div>
       <div class="of-two">
         <div class="of-f"><label>Payment plan</label>
@@ -4302,11 +4314,11 @@ function offerFormHtml(){
       <div class="of-two">
         <div class="of-f"><label>Client's sector</label>
           <input id="of_sector" list="of_sectorList" value="${esc(OSTATE.sector||"")}"
-            placeholder="e.g. Pharmaceuticals" onchange="offerField('sector', this.value)">
+            placeholder="e.g. Pharmaceuticals" oninput="offerField('sector', this.value)">
           <datalist id="of_sectorList">${(typeof INDUSTRIES!=="undefined"? INDUSTRIES : []).map(x=>`<option value="${esc(x)}">`).join("")}
             ${Object.values(OFFER_PARKS).map(p=>`<option value="${esc(p.sector||"")}">`).join("")}</datalist></div>
         <div class="of-f"><label>Plot no.</label>
-          <input value="${esc(OSTATE.plot||"")}" placeholder="optional" onchange="offerField('plot', this.value)"></div>
+          <input value="${esc(OSTATE.plot||"")}" placeholder="optional" oninput="offerField('plot', this.value)"></div>
       </div>
       ${((t.landTypes||[]).length>1)? `<div class="of-f"><label>Land type</label>
         <select onchange="offerField('landType', this.value)">
@@ -6207,7 +6219,7 @@ const OFFER_TEMPLATES={
        {cols:'amt3',rows:[{label:'Handover Fees',amt:c=>c.handover,dp:0,note:'Upon Handover'}],
         notes:[{h:'<span class="red">(Excluding VAT)</span>'}]},
        {cols:'pct4',rows:[{label:'Contract Fees ',col2:'0.2%',amt:c=>c.contract,dp:0,note:'Upon Contract '}],
-        notes:[{h:'Will be paid upon signing the contract and it\u2019s equivalent to 1/1000 of the land value. <span class="red">(Excluding VAT)</span>'}]},
+        notes:[{h:'Will be paid upon signing the contract and it\u2019s equivalent to 2/1000 of the land value. <span class="red">(Excluding VAT)</span>'}]},
        {cols:'psqm',rows:[{label:'Maintnenance Deposit',col2:'30',amt:c=>c.maint,dp:0,note:'Upon Contract '}]},
        {cols:'pct3',rows:[{label:'IDA approval fees',col2:'4%',note:'Upon Contract '}]}]}},
 
