@@ -1320,7 +1320,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev EE";
+const APP_BUILD = "20 Aug 2026 · rev EF";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -2630,7 +2630,7 @@ function viewDashboard(){
     <div class="card kpi ${f.overdue.length?"k-red":""}" onclick="kpiGo({due:'overdue'})" style="cursor:pointer" title="Open my overdue leads"><div class="k-label">Overdue follow-ups</div><div class="k-val">${f.overdue.length}</div><div class="k-sub">Call these first</div></div>
     <div class="card kpi k-red" onclick="kpiGo({due:'today'})" style="cursor:pointer" title="Open leads due today"><div class="k-label">Due today</div><div class="k-val" style="color:var(--ink)">${f.due.length}</div><div class="k-sub">On today's call sheet</div></div>
     <div class="card kpi" onclick="kpiGo(${noNext.length?"{due:'none'}":"{}"})" style="cursor:pointer" title="Open my leads"><div class="k-label">My open leads</div><div class="k-val">${open.length}</div><div class="k-sub">${noNext.length? `<span style="color:var(--amber);font-weight:700">${noNext.length} without a follow-up date</span>`:"All scheduled"}</div></div>
-    <div class="card kpi k-green" onclick="setView('reports')" style="cursor:pointer" title="Open my report"><div class="k-label">Achieved ${yr}</div><div class="k-val">${fmtMoney(achieved)}</div><div class="k-sub">${target? pct.toFixed(1)+"% of my target ("+fmtMoney(target)+")" : "No personal target set"}</div></div>
+    <div class="card kpi k-green" onclick="goWonYear(currentUser.id)" style="cursor:pointer" title="Open the deals I closed this year"><div class="k-label">Achieved ${yr}</div><div class="k-val">${fmtMoney(achieved)}</div><div class="k-sub">${target? pct.toFixed(1)+"% of my target ("+fmtMoney(target)+")" : "No personal target set"}</div></div>
   </div>
 
   ${newLeadsTodayCard()}
@@ -2827,7 +2827,7 @@ function viewAdminDashboard(){
     : `<div class="card kpi ${pend.length?"k-amber":""}"><div class="k-label">Awaiting my confirmation</div><div class="k-val" style="${pend.length?"color:var(--amber)":""}">${pend.length}</div><div class="k-sub">External sales to confirm</div></div>`}
     <div class="card kpi ${overdueAll.length?"k-red":""}" onclick="kpiGo({due:'overdue'})" style="cursor:pointer" title="Open overdue leads"><div class="k-label">Team overdue</div><div class="k-val">${overdueAll.length}</div><div class="k-sub">Follow-ups past due</div></div>
     <div class="card kpi" onclick="kpiGo({due:'today'})" style="cursor:pointer" title="Open leads due today"><div class="k-label">Due today (team)</div><div class="k-val">${dueAll.length}</div><div class="k-sub">Across ${fullView()?"all":"my"} salespeople</div></div>
-    <div class="card kpi k-green" onclick="setView('reports')" style="cursor:pointer" title="Open team reports"><div class="k-label">Achieved ${yr}</div><div class="k-val">${fmtMoney(wonVal)}</div><div class="k-sub">${teamTarget? teamPct.toFixed(1)+"% of "+(fullView()?"team":"my team's")+" target":"Set targets"}${extYr?` · incl. ${fmtMoney(extYr)} external`:""}</div></div>
+    <div class="card kpi k-green" onclick="goWonYear()" style="cursor:pointer" title="Open the deals closed this year"><div class="k-label">Achieved ${yr}</div><div class="k-val">${fmtMoney(wonVal)}</div><div class="k-sub">${teamTarget? teamPct.toFixed(1)+"% of "+(fullView()?"team":"my team's")+" target":"Set targets"}${extYr?` · incl. ${fmtMoney(extYr)} external`:""}</div></div>
   </div>
 
   ${teamTarget?`<div class="card card-pad" style="margin-top:14px">
@@ -3036,7 +3036,7 @@ function viewLeads(){
   ${leadSortChip()}
   <div class="card" style="overflow:auto">
     ${rows.length? `<table>
-      <thead><tr>${canSelectLeads()?`<th style="width:34px"><input type="checkbox" onclick="toggleAllSel(this.checked, ${JSON.stringify(rows.map(r=>r.id)).replace(/"/g,"&quot;")})"></th>`:""}${leadSortHead("Lead","name")}<th>Contact</th>${leadSortHead("Source","source","hide-sm")}${leadSortHead("Project","project")}${leadSortHead("Land (sqm)","land","num hide-sm")}${leadSortHead("Added","created","hide-sm")}${isMarketing()?"":leadSortHead("Status","status")}${(adm && !isMarketing())?leadSortHead("Owner","owner","hide-sm"):""}${isMarketing()?"<th>Outcome</th>":leadSortHead("Follow-up","next")}${canSeeMoney()?leadSortHead("Value","value","num"):""}</tr></thead>
+      <thead><tr>${canSelectLeads()?`<th style="width:34px"><input type="checkbox" onclick="toggleAllSel(this.checked, ${JSON.stringify(rows.map(r=>r.id)).replace(/"/g,"&quot;")})"></th>`:""}${leadSortHead("Lead","name")}<th>Contact</th>${leadSortHead("Source","source","hide-sm")}${leadSortHead("Project","project")}${leadSortHead("Land (sqm)","land","num hide-sm")}${leadSortHead("Added","created","hide-sm")}${leadFilters.dateField==="wonDate"? `<th class="hide-sm">Won on</th>`:""}${isMarketing()?"":leadSortHead("Status","status")}${(adm && !isMarketing())?leadSortHead("Owner","owner","hide-sm"):""}${isMarketing()?"<th>Outcome</th>":leadSortHead("Follow-up","next")}${canSeeMoney()?leadSortHead("Value","value","num"):""}</tr></thead>
       <tbody>${rows.map(l=>{
         const dc = dueClass(l);
         return `<tr class="row-click" onclick="openLeadModal('${l.id}')">
@@ -3051,6 +3051,7 @@ function viewLeads(){
         <td>${esc(l.project||"—")}</td>
         <td class="num hide-sm">${l.land?Number(l.land).toLocaleString():"—"}</td>
         <td class="hide-sm" style="white-space:nowrap;font-size:.8rem">${l.created? esc(fmtDate(l.created)) : "—"}</td>
+        ${leadFilters.dateField==="wonDate"? `<td class="hide-sm" style="white-space:nowrap;font-size:.8rem">${l.wonDate? esc(fmtDate(l.wonDate)) : "—"}</td>`:""}
         ${isMarketing()?"":`<td>${statusPill(l.status)}</td>`}
         ${(adm && !isMarketing())?`<td class="hide-sm">${l.owner? esc(memberName(l.owner)) : '<span class="pill" style="color:var(--amber);background:var(--amber-soft)">Unassigned</span>'}</td>`:""}
         ${isMarketing()
@@ -7533,7 +7534,29 @@ function repPool(){
     return repIn(l.created,r) || (l.status==="Won" && repIn(l.wonDate,r));
   });
 }
-function repAgg(pool){
+/* The annual target is measured over the YEAR, whatever period is on screen,
+   and only deals that actually closed this year count towards it. */
+/* open the very deals behind a year's achievement */
+function goWonYear(ownerId){
+  const yr = new Date().getFullYear();
+  kpiGo({status:"Won", from:yr+"-01-01", to:yr+"-12-31", dateField:"wonDate",
+         owner: ownerId||""}, "leads");
+}
+function wonThisYear(ownerId){
+  const yr = String(new Date().getFullYear());
+  return (typeof visibleLeads==="function"? visibleLeads() : state.leads)
+    .filter(l=>!isMergedAway(l) && l.status==="Won"
+      && (!ownerId || l.owner===ownerId)
+      && String(l.wonDate || l.created || "").startsWith(yr));
+}
+function wonThisYearValue(ownerId){
+  return wonThisYear(ownerId).reduce((s,l)=>s+(Number(l.value)||0),0);
+}
+function repWonIn(l, r){
+  if(!r || repFilters.period==="all") return true;
+  return repIn(l.wonDate || l.created, r);
+}
+function repAgg(pool, r){
   const a = { total:0, contacted:0, qualified:0, opportunity:0, negotiation:0, won:0, lost:0,
               wonValue:0, pipelineValue:0, weighted:0, cycles:[], byOwner:{}, bySource:{}, byLost:{},
               lostValue:{}, lostByOwner:{}, lostBySource:{}, open:0 };
@@ -7546,7 +7569,8 @@ function repAgg(pool){
     if(s.qualified) a.qualified++;
     if(s.opportunity) a.opportunity++;
     if(s.negotiation) a.negotiation++;
-    if(s.won){ a.won++; a.wonValue += v; const c = repCycleDays(l); if(c!==null) a.cycles.push(c); }
+    const wonNow = s.won && repWonIn(l, r);
+    if(wonNow){ a.won++; a.wonValue += v; const c = repCycleDays(l); if(c!==null) a.cycles.push(c); }
     if(s.lost) a.lost++;
     if(!s.won && !s.lost){
       a.open++;
@@ -7556,12 +7580,12 @@ function repAgg(pool){
     }
     const o = a.byOwner[own] = a.byOwner[own] || {leads:0,contacted:0,qualified:0,opportunity:0,won:0,lost:0,wonValue:0,pipeline:0,cycles:[],lost:0,lostReasons:{}};
     o.leads++; if(s.contacted) o.contacted++; if(s.qualified) o.qualified++; if(s.opportunity) o.opportunity++;
-    if(s.won){ o.won++; o.wonValue += v; const c=repCycleDays(l); if(c!==null) o.cycles.push(c); }
+    if(wonNow){ o.won++; o.wonValue += v; const c=repCycleDays(l); if(c!==null) o.cycles.push(c); }
     if(s.lost){ o.lost++; o.lostReasons[l.lostCat||"—"] = (o.lostReasons[l.lostCat||"—"]||0)+1; }
     if(!s.won && !s.lost) o.pipeline += v;
     const sc = a.bySource[src] = a.bySource[src] || {leads:0,qualified:0,opportunity:0,won:0,lost:0,wonValue:0,pipeline:0};
     sc.leads++; if(s.qualified) sc.qualified++; if(s.opportunity) sc.opportunity++;
-    if(s.won){ sc.won++; sc.wonValue += v; }
+    if(wonNow){ sc.won++; sc.wonValue += v; }
     if(s.lost) sc.lost++;
     if(!s.won && !s.lost) sc.pipeline += v;
     if(s.lost){
@@ -7582,7 +7606,7 @@ function repData(){
   const key = JSON.stringify(repFilters)+"|"+(currentUser?currentUser.id:"")+"|"+state.leads.length+"|"+dupGen;
   if(_repKey===key && _repCache) return _repCache;
   const pool = repPool();
-  const now = repAgg(pool);
+  const now = repAgg(pool, repRange());
   let prev = null;
   const pr = repPrevRange();
   if(pr){
@@ -7592,7 +7616,7 @@ function repData(){
     if(F.source) p = p.filter(l=>normSource(l.source)===F.source);
     if(F.status) p = p.filter(l=>l.status===F.status);
     if(F.lost)   p = p.filter(l=>(l.lostCat||"—")===F.lost);
-    prev = repAgg(p.filter(l=> repIn(l.created,pr) || (l.status==="Won" && repIn(l.wonDate,pr)) ));
+    prev = repAgg(p.filter(l=> repIn(l.created,pr) || (l.status==="Won" && repIn(l.wonDate,pr)) ), pr);
   }
   _repKey = key;
   return (_repCache = {pool, now, prev, range: repRange()});
@@ -7974,7 +7998,9 @@ function viewMyReports(){
   const target = Number(currentUser.target)||0;
   const yr = String(new Date().getFullYear());
   const ext = (typeof extConfirmed==="function")? extConfirmed(currentUser.id, yr) : 0;
-  const achieved = a.wonValue + ext;
+  /* the gauge is against the ANNUAL target, so it counts the year's closings —
+     not whatever period the report is filtered to */
+  const achieved = wonThisYearValue(currentUser.id) + ext;
   const pct = target? achieved/target*100 : null;
   const mine = d.pool;
   const openLeads = mine.filter(l=>{ const s=repStage(l); return !s.won && !s.lost; });
