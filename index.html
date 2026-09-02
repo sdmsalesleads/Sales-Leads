@@ -1075,7 +1075,7 @@ th.th-sort.on .th-ar{opacity:1}
         </div>
         <div class="field" id="wonDateBlock" style="display:none"><label>Deal won on</label>
           <input id="f_wonDate" type="date">
-          <div class="muted" style="font-size:.72rem;margin-top:3px">The date the deal actually closed — reports count it in that period, not the day it was entered</div></div>
+          <div class="muted" style="font-size:.72rem;margin-top:3px" id="wonDateNote">Follows the EOI or reservation form date — reports count the deal in that period, not the day it was entered</div></div>
         <div class="field" id="meetingBlock" style="display:none"><label id="meetingLabel" style="color:var(--red)">Meeting date &amp; time *</label>
           <div style="display:flex;gap:8px"><input id="f_meetingDate" type="date" style="flex:1.4"><input id="f_meetingTime" type="time" style="flex:1"></div>
         </div>
@@ -1320,7 +1320,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev EF";
+const APP_BUILD = "20 Aug 2026 · rev EG";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -3210,7 +3210,11 @@ function openLeadModal(id){
   $("f_land").value = l?l.land||"":"";
   $("f_industry").value = l?l.industry||"":"";
   $("f_nat").value = l? leadNat(l) : "";
-  $("f_wonDate").value = l? (l.wonDate||"") : "";
+  wonDateTouched = false;
+  $("f_wonDate").value = l? (dealWonDate(l, false) || l.wonDate || "") : "";
+  if($("wonDateNote")) $("wonDateNote").textContent = (l && l.wonDateSet)
+    ? "Set by hand — clear it to follow the EOI or reservation form date"
+    : "Follows the EOI or reservation form date — reports count the deal in that period, not the day it was entered";
   fillStatusSelect($("f_status"), l? l.status : "New");
   /* a rep who cannot leave leads unassigned defaults to themselves */
   $("f_owner").value = l? (l.owner||"") : "";
@@ -3276,12 +3280,24 @@ function openLeadModal(id){
 }
 $("f_status").addEventListener("change", toggleValueField);
 /* choosing Won asks when the deal actually closed, offering today as the default */
+$("f_wonDate") && $("f_wonDate").addEventListener("input", function(){ wonDateTouched = true; });
+$("f_wonDate") && $("f_wonDate").addEventListener("change", function(){
+  wonDateTouched = true;
+  if(!this.value && editingLeadId){
+    const l = state.leads.find(x=>x.id===editingLeadId);
+    if(l){ l.wonDateSet = false; this.value = dealWonDate(l, true) || ""; }
+  }
+});
 $("f_status").addEventListener("change", function(){
   const won = this.value==="Won";
   if($("wonDateBlock")) $("wonDateBlock").style.display = won? "" : "none";
   if(won && $("f_wonDate")){
     $("f_wonDate").disabled = false;
-    if(!$("f_wonDate").value) $("f_wonDate").value = today();
+    if(!$("f_wonDate").value){
+      const l = editingLeadId? state.leads.find(x=>x.id===editingLeadId) : null;
+      $("f_wonDate").value = (l? dealWonDate(l, true) : "") || today();
+      wonDateTouched = false;
+    }
   }
 });
 $("f_offer").addEventListener("change", ()=>{ if($("f_offer").checked && !$("f_offerDate").value) $("f_offerDate").value = today(); });
@@ -3766,6 +3782,15 @@ function saveLead(){
     l.eoiDate = newEoi? $("f_eoiDate").value : "";
     l.resDate = $("f_resDate").value;
     l.contractDate = $("f_contractDate").value;
+    /* a commitment date entered here is the date the deal closed */
+    const derived = dealWonDate(l, false);
+    if(derived && !l.wonDateSet && derived !== l.wonDate){
+      const was = l.wonDate;
+      l.wonDate = derived;
+      if(l.status==="Won" && was!==derived)
+        pushLog(l, "Closing date set to "+fmtDate(derived)+" (from the "+
+          ((l.eoiApplicable===true && l.eoiDate===derived)? "EOI" : l.resDate===derived? "reservation form" : "contract")+" date)");
+    }
   }
   if(!$("f_owner").disabled){ // distribution (Ops / Director / team Manager)
     const newOwner = $("f_owner").value;
@@ -3869,7 +3894,14 @@ function saveLead(){
   /* a deal closed months ago must not land in this month's figures just because
      it was entered today — the typed date wins, today is only the default */
   const typedWon = $("f_wonDate") && !$("f_wonDate").disabled? $("f_wonDate").value : "";
-  if(status==="Won" && typedWon) l.wonDate = typedWon;
+  const auto = dealWonDate(l, true);
+  if(status==="Won"){
+    if(wonDateTouched && typedWon && typedWon !== auto){ l.wonDate = typedWon; l.wonDateSet = true; }
+    else if(auto){ l.wonDate = auto; l.wonDateSet = false; }
+    else if(typedWon){ l.wonDate = typedWon; l.wonDateSet = true; }
+    /* the change itself is logged by the stage block below, which runs after
+       the dates are written — nothing to record here */
+  }
   if(status==="Won" && prevStatus!=="Won"){
     if(!l.wonDate) l.wonDate = today();
     l.cashStatus = "pending";
@@ -7541,6 +7573,21 @@ function goWonYear(ownerId){
   const yr = new Date().getFullYear();
   kpiGo({status:"Won", from:yr+"-01-01", to:yr+"-12-31", dateField:"wonDate",
          owner: ownerId||""}, "leads");
+}
+/* The closing date of a deal is the commitment date: the EOI where the path
+   uses one, otherwise the reservation form, then the contract. Only a date
+   typed by hand into "Deal won on" overrides it. */
+let wonDateTouched = false;
+function dealWonDate(l, fromForm){
+  if(!l) return "";
+  if(l.wonDateSet && l.wonDate) return l.wonDate;
+  let eoiApp = l.eoiApplicable, eoi = l.eoiDate, res = l.resDate, con = l.contractDate;
+  if(fromForm && $("f_resDate") && !$("f_resDate").disabled){
+    const ea = $("f_eoiApp").value;
+    eoiApp = ea==="yes"? true : ea==="no"? false : null;
+    eoi = $("f_eoiDate").value; res = $("f_resDate").value; con = $("f_contractDate").value;
+  }
+  return (eoiApp===true && eoi) ? eoi : res || eoi || con || l.wonDate || "";
 }
 function wonThisYear(ownerId){
   const yr = String(new Date().getFullYear());
