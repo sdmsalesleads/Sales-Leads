@@ -1320,7 +1320,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev EG";
+const APP_BUILD = "20 Aug 2026 · rev EH";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -2105,6 +2105,16 @@ function periodStart(p){
   else { d.setMonth(0,1); }
   return isoLocal(d);
 }
+/* The date a deal closed: the commitment date the client actually signed on,
+   falling back to whatever was stored and finally to the entry date. Leads
+   created before this rule carry the day they were typed in, so this is
+   computed on read rather than trusting the stored field. */
+function wonOn(l){
+  if(!l) return "";
+  if(l.wonDateSet && l.wonDate) return l.wonDate;
+  return (l.eoiApplicable===true && l.eoiDate) ? l.eoiDate
+       : l.resDate || l.eoiDate || l.contractDate || l.wonDate || l.created || "";
+}
 function inPeriod(dateStr, p){ return !!dateStr && dateStr >= periodStart(p) && dateStr <= today(); }
 function periodLabel(p){ return p==="week"?"This week":p==="quarter"?"This quarter":"This year"; }
 function setPeriod(p){ reportPeriod=p; render(); }
@@ -2557,7 +2567,7 @@ function viewMarketingDay(){
   const mine = visibleLeads().filter(l=>!isMergedAway(l) && isMktSource(l.source));
   const thisMonth = mine.filter(l=>String(l.created||"").slice(0,7)===mo);
   const won = mine.filter(l=>l.status==="Won");
-  const wonMo = won.filter(l=>String(l.wonDate||l.created||"").slice(0,7)===mo);
+  const wonMo = won.filter(l=>String(wonOn(l)||"").slice(0,7)===mo);
   const lost = mine.filter(l=>l.status==="Lost");
   const conv = mine.length? won.length/mine.length*100 : 0;
   const bySrc = {};
@@ -2601,7 +2611,7 @@ function viewMarketingDay(){
   <div class="card card-pad" style="margin-top:12px">
     <div class="eyebrow red">Latest wins from our leads</div>
     ${won.slice().sort((a,b)=>String(b.wonDate||"").localeCompare(String(a.wonDate||""))).slice(0,6).map(l=>`
-      <div class="ct-kv"><span>${esc(l.company||l.name)} · ${esc(normSource(l.source)||"—")}</span><b>${esc(fmtDate(l.wonDate||l.created))}</b></div>`).join("")
+      <div class="ct-kv"><span>${esc(l.company||l.name)} · ${esc(normSource(l.source)||"—")}</span><b>${esc(fmtDate(wonOn(l)))}</b></div>`).join("")
       || '<p class="muted" style="font-size:.85rem;margin:0">No wins recorded yet.</p>'}
   </div>
   <p class="muted" style="font-size:.78rem;margin-top:12px">Full detail is on the <b>Reports</b> page. Day-to-day sales activity is handled by the sales team.</p>`;
@@ -2611,7 +2621,7 @@ function viewDashboard(){
   const mine = state.leads.filter(l=>l.owner===currentUser.id);
   const open = mine.filter(l=>l.status!=="Won" && l.status!=="Lost");
   const yr = String(new Date().getFullYear());
-  const wonYr = mine.filter(l=>l.status==="Won" && (l.wonDate||l.created||"").startsWith(yr));
+  const wonYr = mine.filter(l=>l.status==="Won" && (wonOn(l)||"").startsWith(yr));
   const wonVal = wonYr.reduce((s,l)=>s+(Number(l.value)||0),0);
   const extD = extConfirmed(currentUser.id, yr);
   const achieved = wonVal + extD;
@@ -2795,7 +2805,7 @@ function viewAdminDashboard(){
   const dueAll = openAll.filter(l=>l.owner && l.next===t);
   const yr = String(new Date().getFullYear());
   const salesReps = sales.filter(hasTarget);
-  const wonYr = scopeLeads.filter(l=>l.status==="Won" && (l.wonDate||l.created||"").startsWith(yr));
+  const wonYr = scopeLeads.filter(l=>l.status==="Won" && (wonOn(l)||"").startsWith(yr));
   const extYr = salesReps.reduce((s,m)=>s+extConfirmed(m.id, yr),0);
   const wonVal = wonYr.reduce((s,l)=>s+(Number(l.value)||0),0) + extYr;
   const teamTarget = fullView()? (Number(state.teamTarget)||salesReps.reduce((s,m)=>s+(Number(m.target)||0),0)) : salesReps.reduce((s,m)=>s+(Number(m.target)||0),0);
@@ -2976,7 +2986,7 @@ function viewLeads(){
   if(F.from || F.to){
     const fld = F.dateField || "created";
     rows = rows.filter(l=>{
-      const d = String((fld==="wonDate"? (l.wonDate||l.created) : l[fld]) || "").slice(0,10);
+      const d = String((fld==="wonDate"? wonOn(l) : l[fld]) || "").slice(0,10);
       if(!d) return false;
       if(F.from && d < F.from) return false;
       if(F.to   && d > F.to)   return false;
@@ -3051,7 +3061,7 @@ function viewLeads(){
         <td>${esc(l.project||"—")}</td>
         <td class="num hide-sm">${l.land?Number(l.land).toLocaleString():"—"}</td>
         <td class="hide-sm" style="white-space:nowrap;font-size:.8rem">${l.created? esc(fmtDate(l.created)) : "—"}</td>
-        ${leadFilters.dateField==="wonDate"? `<td class="hide-sm" style="white-space:nowrap;font-size:.8rem">${l.wonDate? esc(fmtDate(l.wonDate)) : "—"}</td>`:""}
+        ${leadFilters.dateField==="wonDate"? `<td class="hide-sm" style="white-space:nowrap;font-size:.8rem">${wonOn(l)? esc(fmtDate(wonOn(l))) : "—"}</td>`:""}
         ${isMarketing()?"":`<td>${statusPill(l.status)}</td>`}
         ${(adm && !isMarketing())?`<td class="hide-sm">${l.owner? esc(memberName(l.owner)) : '<span class="pill" style="color:var(--amber);background:var(--amber-soft)">Unassigned</span>'}</td>`:""}
         ${isMarketing()
@@ -3559,7 +3569,7 @@ function gsSaleRow(l){
     "Contract Date": (l.stageMeta&&l.stageMeta.contractDate)||"", "Contract Status": l.contractStatus||"",
     "Approval Status": l.cashStatus==="confirmed"? "Approved":"Pending",
     "Sales Stage": l.status||"", "Notes": l.notes||"",
-    "Created By": (l.log&&l.log.length? l.log[l.log.length-1].by:"")||"", "Created Date": l.wonDate||l.created||"",
+    "Created By": (l.log&&l.log.length? l.log[l.log.length-1].by:"")||"", "Created Date": wonOn(l)||"",
     "Last Updated": new Date().toISOString().slice(0,16).replace("T"," "),
     "Last Modified By": currentUser? currentUser.name:"",
     "Deleted": gsYN(l.deleted), "Deleted Date": l.deletedDate||"", "Deleted By": l.deletedBy||""
@@ -3980,7 +3990,7 @@ function viewFinReports(){
   const soldVal = won.reduce((s,l)=>s+(Number(l.totalSold)||0),0);
   const contracts = won.filter(l=>l.contractDate).length;
   const byQ = {};
-  won.forEach(l=>{ const d=l.wonDate||l.created||""; if(!d) return;
+  won.forEach(l=>{ const d=wonOn(l)||""; if(!d) return;
     const q = d.slice(0,4)+" Q"+(Math.floor((Number(d.slice(5,7))-1)/3)+1);
     byQ[q]=byQ[q]||{n:0,cash:0,conf:0,sold:0}; byQ[q].n++; byQ[q].cash+=(Number(l.value)||0);
     byQ[q].sold+=(Number(l.totalSold)||0); if(l.cashStatus==="confirmed") byQ[q].conf+=(Number(l.value)||0); });
@@ -4102,7 +4112,7 @@ function viewFinance(){
     ${wonLeads.length? `<table>
       <thead><tr><th>Won date</th><th>Lead</th><th class="hide-sm">Project</th><th class="hide-sm">Salesperson</th><th class="num">Cash value (EGP)</th><th class="num hide-sm">Total sold</th><th class="hide-sm">Deal stages</th><th>Status</th><th class="hide-sm">Confirmed by</th>${canEditCash?"<th></th>":""}</tr></thead>
       <tbody>${wonLeads.map(l=>`<tr>
-        <td>${fmtDate(l.wonDate||l.created)}</td>
+        <td>${fmtDate(wonOn(l))}</td>
         <td><b>${esc(l.name)}</b>${l.company?`<div class="muted" style="font-size:.76rem">${esc(l.company)}</div>`:""}</td>
         <td class="hide-sm">${esc(l.project||"—")}</td>
         <td class="hide-sm">${esc(memberName(l.owner))}</td>
@@ -4147,7 +4157,7 @@ function reopenCash(id){
 /* =================== Marketing stats =================== */
 function marketingStats(leads, p){
   const inLeads = leads.filter(l=>inPeriod(l.created, p));
-  const wonP = leads.filter(l=>l.status==="Won" && inPeriod(l.wonDate||l.created, p));
+  const wonP = leads.filter(l=>l.status==="Won" && inPeriod(wonOn(l), p));
   const val = a=>a.reduce((s,l)=>s+(Number(l.value)||0),0);
   return {
     inTotal: inLeads.length,
@@ -6913,7 +6923,7 @@ function ctDetailHtml(l){
     return `<div class="ct-head">
         <div><div class="eyebrow red">Contract not started</div>
         <h3 style="margin:4px 0 0">${esc(l.company||l.name)}</h3>
-        <div class="muted" style="font-size:.82rem">${esc(l.name)} · ${esc(l.project||"—")} · won ${esc(fmtDate(l.wonDate||l.created))}</div></div>
+        <div class="muted" style="font-size:.82rem">${esc(l.name)} · ${esc(l.project||"—")} · won ${esc(fmtDate(wonOn(l)))}</div></div>
       </div>
       <p style="font-size:.88rem;line-height:1.6;margin:14px 0">This deal is Won and ready for the contract process. Starting it puts the contract with <b>Development</b> and begins recording every handover date automatically.</p>
       ${(l.stageMeta && (l.stageMeta.contractArchive||[]).length)? `<p class="muted" style="font-size:.8rem">There ${l.stageMeta.contractArchive.length===1?"was 1 earlier attempt":"were "+l.stageMeta.contractArchive.length+" earlier attempts"}, kept in the record.</p>`:""}
@@ -7055,8 +7065,8 @@ function ctFiltered(){
   const F = ctFilters;
   return ctPool().filter(l=>{
     const c = ctOf(l);
-    if(F.from && String(l.wonDate||l.created).slice(0,10) < F.from) return false;
-    if(F.to   && String(l.wonDate||l.created).slice(0,10) > F.to) return false;
+    if(F.from && String(wonOn(l)).slice(0,10) < F.from) return false;
+    if(F.to   && String(wonOn(l)).slice(0,10) > F.to) return false;
     if(F.owner && l.owner!==F.owner) return false;
     if(F.project && l.project!==F.project) return false;
     if(F.handler && (!c || c.handler!==F.handler)) return false;
@@ -7587,21 +7597,21 @@ function dealWonDate(l, fromForm){
     eoiApp = ea==="yes"? true : ea==="no"? false : null;
     eoi = $("f_eoiDate").value; res = $("f_resDate").value; con = $("f_contractDate").value;
   }
-  return (eoiApp===true && eoi) ? eoi : res || eoi || con || l.wonDate || "";
+  return (eoiApp===true && eoi) ? eoi : res || eoi || con || l.wonDate || "";  // form values first
 }
 function wonThisYear(ownerId){
   const yr = String(new Date().getFullYear());
   return (typeof visibleLeads==="function"? visibleLeads() : state.leads)
     .filter(l=>!isMergedAway(l) && l.status==="Won"
       && (!ownerId || l.owner===ownerId)
-      && String(l.wonDate || l.created || "").startsWith(yr));
+      && String(wonOn(l) || "").startsWith(yr));
 }
 function wonThisYearValue(ownerId){
   return wonThisYear(ownerId).reduce((s,l)=>s+(Number(l.value)||0),0);
 }
 function repWonIn(l, r){
   if(!r || repFilters.period==="all") return true;
-  return repIn(l.wonDate || l.created, r);
+  return repIn(wonOn(l), r);
 }
 function repAgg(pool, r){
   const a = { total:0, contacted:0, qualified:0, opportunity:0, negotiation:0, won:0, lost:0,
@@ -7897,7 +7907,7 @@ function repTrend(pool){
   pool.forEach(l=>{
     const kIn = key(l.created); if(buckets.has(kIn)) buckets.get(kIn).in++;
     if(l.status==="Won" && l.wonDate){ const k=key(l.wonDate); if(buckets.has(k)){ buckets.get(k).won++; buckets.get(k).rev += Number(l.value)||0; } }
-    if(repStage(l).lost){ const k=key(l.wonDate||l.created); if(buckets.has(k)) buckets.get(k).lost++; }
+    if(repStage(l).lost){ const k=key(wonOn(l)); if(buckets.has(k)) buckets.get(k).lost++; }
   });
   const shortLab = k => byMonth? new Date(k+"-01T00:00:00").toLocaleDateString("en-GB",{month:"short"}) : new Date(k+"T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"});
   const pts = f => labels.map(k=>({x:shortLab(k), y:buckets.get(k)[f]}));
@@ -8085,7 +8095,7 @@ function viewMyReports(){
   const wonBy = {}, inBy = {};
   mine.forEach(l=>{
     const ki = String(l.created||"").slice(0,7); if(ki) inBy[ki]=(inBy[ki]||0)+1;
-    if(l.status==="Won"){ const kw=String(l.wonDate||l.created||"").slice(0,7); if(kw) wonBy[kw]=(wonBy[kw]||0)+1; }
+    if(l.status==="Won"){ const kw=String(wonOn(l)||"").slice(0,7); if(kw) wonBy[kw]=(wonBy[kw]||0)+1; }
   });
   const mLabel = m => new Date(m+"-01T00:00:00").toLocaleDateString("en-GB",{month:"short"});
   const trendIn = months.map(m=>({x:mLabel(m), y:inBy[m]||0}));
@@ -8211,7 +8221,7 @@ function viewLegacyReports(){
   const leads = visibleLeads();
   const membersScope = teamMembers();
   const won = leads.filter(l=>l.status==="Won");
-  const wonYr = won.filter(l=>(l.wonDate||l.created||"").startsWith(yr));
+  const wonYr = won.filter(l=>(wonOn(l)||"").startsWith(yr));
   const extYr = membersScope.filter(hasTarget).reduce((s,m)=>s+extConfirmed(m.id, yr),0);
   const wonVal = wonYr.reduce((s,l)=>s+(Number(l.value)||0),0) + extYr;
   const lost = leads.filter(l=>l.status==="Lost").length;
@@ -8231,18 +8241,18 @@ function viewLegacyReports(){
   const maxFun = Math.max(1,...funnel.map(x=>x.n));
   const qWon = [1,2,3,4].map(q=>{
     const months = [["01","02","03"],["04","05","06"],["07","08","09"],["10","11","12"]][q-1];
-    return wonYr.filter(l=>{const m=(l.wonDate||l.created||"").slice(5,7);return months.includes(m);}).reduce((s,l)=>s+(Number(l.value)||0),0);
+    return wonYr.filter(l=>{const m=(wonOn(l)||"").slice(5,7);return months.includes(m);}).reduce((s,l)=>s+(Number(l.value)||0),0);
   });
   const teamRows = targetScope.map(m=>{
     const mine = leads.filter(l=>l.owner===m.id);
     const mOpen = mine.filter(l=>l.status!=="Won"&&l.status!=="Lost");
     const mOver = mOpen.filter(l=>l.next && l.next<today()).length;
     const offers = mine.filter(l=>l.offerSent).length;
-    const mWonYr = mine.filter(l=>l.status==="Won" && (l.wonDate||l.created||"").startsWith(yr));
+    const mWonYr = mine.filter(l=>l.status==="Won" && (wonOn(l)||"").startsWith(yr));
     const val = mWonYr.reduce((s,l)=>s+(Number(l.value)||0),0);
     /* THIS MONTH — what was actually completed in the current month, which is
        how monthly performance is judged, not the running year total. */
-    const mWonMo = mWonYr.filter(l=>(l.wonDate||l.created||"").slice(0,7)===thisMonth());
+    const mWonMo = mWonYr.filter(l=>(wonOn(l)||"").slice(0,7)===thisMonth());
     const monthVal = mWonMo.reduce((s,l)=>s+(Number(l.value)||0),0);
     const mktVal = mWonYr.filter(l=>isMktSource(l.source)).reduce((s,l)=>s+(Number(l.value)||0),0);
     const ext = extConfirmed(m.id, yr);
@@ -8283,7 +8293,7 @@ function viewLegacyReports(){
       return {k:g, v: leads.filter(l=>items.includes(l.status)).length, color:c};
     }).filter(x=>x.v>0 || true);
     const byRep = teamMembers().filter(hasTarget).map(m=>({k:m.name,
-      v: canSeeMoney()? leads.filter(l=>l.owner===m.id && l.status==="Won" && (l.wonDate||l.created||"").startsWith(yr)).reduce((s,l)=>s+(Number(l.value)||0),0)
+      v: canSeeMoney()? leads.filter(l=>l.owner===m.id && l.status==="Won" && (wonOn(l)||"").startsWith(yr)).reduce((s,l)=>s+(Number(l.value)||0),0)
                       : leads.filter(l=>l.owner===m.id && l.status==="Won").length })).filter(x=>x.v>0).sort((a,b)=>b.v-a.v).slice(0,12);
     return `
     ${funnelCard(visibleLeads(), 'Team conversion funnel')}
@@ -8424,7 +8434,7 @@ function viewMyReport(){
   const yr = String(new Date().getFullYear());
   const mine = state.leads.filter(l=>l.owner===currentUser.id);
   const won = mine.filter(l=>l.status==="Won");
-  const wonYr = won.filter(l=>(l.wonDate||l.created||"").startsWith(yr));
+  const wonYr = won.filter(l=>(wonOn(l)||"").startsWith(yr));
   const wonVal = wonYr.reduce((s,l)=>s+(Number(l.value)||0),0);
   const ext = extConfirmed(currentUser.id, yr);
   const totalAch = wonVal + ext;
@@ -8624,7 +8634,7 @@ function greetingCard(){
 /* ---- Achievements: unlocked from real data; celebrated once ---- */
 const BADGES_SALES = [
   {id:"firstwin",  ic:"🏆", name:"First Win",       hint:"Win your first deal",              prog:m=>[m.filter(l=>l.status==="Won").length,1],                        test:(m)=>m.filter(l=>l.status==="Won").length>=1},
-  {id:"hattrick",  ic:"🎩", name:"Hat-Trick",       hint:"3 wins in one month",              prog:m=>{ const c={}; m.filter(l=>l.status==="Won").forEach(l=>{ const k=(l.wonDate||l.created||"").slice(0,7); c[k]=(c[k]||0)+1; }); return [Math.max(0,...Object.values(c),0),3]; }, test:(m)=>{ const c={}; let ok=false; m.filter(l=>l.status==="Won").forEach(l=>{ const k=(l.wonDate||l.created||"").slice(0,7); c[k]=(c[k]||0)+1; if(c[k]>=3) ok=true; }); return ok; }},
+  {id:"hattrick",  ic:"🎩", name:"Hat-Trick",       hint:"3 wins in one month",              prog:m=>{ const c={}; m.filter(l=>l.status==="Won").forEach(l=>{ const k=(wonOn(l)||"").slice(0,7); c[k]=(c[k]||0)+1; }); return [Math.max(0,...Object.values(c),0),3]; }, test:(m)=>{ const c={}; let ok=false; m.filter(l=>l.status==="Won").forEach(l=>{ const k=(wonOn(l)||"").slice(0,7); c[k]=(c[k]||0)+1; if(c[k]>=3) ok=true; }); return ok; }},
   {id:"closer10",  ic:"💎", name:"Ten Closer",      hint:"Win 10 deals",                     prog:m=>[m.filter(l=>l.status==="Won").length,10],                        test:(m)=>m.filter(l=>l.status==="Won").length>=10},
   {id:"rainmaker", ic:"🌧️", name:"Rainmaker",       hint:"Win 25M+ EGP total",               prog:m=>[Math.round(m.filter(l=>l.status==="Won").reduce((s,l)=>s+(Number(l.value)||0),0)/1e6),25], unit:"M EGP", test:(m)=>m.filter(l=>l.status==="Won").reduce((s,l)=>s+(Number(l.value)||0),0)>=25e6},
   {id:"speedster", ic:"⚡", name:"Speedster",       hint:"Avg first response under 2h (5+ leads)", prog:m=>[m.filter(l=>l.assignedAt&&l.firstContactAt).length,5], unit:" leads timed", test:(m)=>{ const c=m.filter(l=>l.assignedAt&&l.firstContactAt); if(c.length<5) return false; return c.reduce((s,l)=>s+(new Date(l.firstContactAt)-new Date(l.assignedAt))/36e5,0)/c.length < 2; }},
@@ -9009,7 +9019,7 @@ function viewAchievements(){
     const rows = teamMembers().filter(hasTarget).map(m=>{
       const ml = state.leads.filter(l=>l.owner===m.id);
       const w = ml.filter(l=>l.status==="Won");
-      const wm = w.filter(l=>(l.wonDate||l.created||"").slice(0,7)===ym).length;
+      const wm = w.filter(l=>(wonOn(l)||"").slice(0,7)===ym).length;
       const xp = w.length*100 + ml.filter(l=>l.meetingDate||l.status==="Scheduled Meeting"||l.status==="Site Visit Scheduled").length*15
                + ml.filter(l=>l.qualStatus==="Qualified").length*10 + ml.reduce((s,l)=>s+((l.log||[]).length),0)*2;
       const LV = GAM.sales.levels;                       // leaderboard ranks salespeople on the sales ladder
@@ -9567,7 +9577,7 @@ function streakChip(){
 function topPerformers(){
   const ym = today().slice(0,7);
   const rows = teamMembers().filter(hasTarget).map(m=>{
-    const w = state.leads.filter(l=>l.owner===m.id && l.status==="Won" && (l.wonDate||l.created||"").slice(0,7)===ym);
+    const w = state.leads.filter(l=>l.owner===m.id && l.status==="Won" && (wonOn(l)||"").slice(0,7)===ym);
     return {m, n:w.length, v:w.reduce((s,l)=>s+(Number(l.value)||0),0)};
   }).filter(r=>r.n>0).sort((a,b)=> canSeeMoney()? b.v-a.v : b.n-a.n).slice(0,3);
   if(!rows.length) return "";
@@ -9792,7 +9802,7 @@ function monthsBack(n){
 }
 function monthlyWonSeries(leads){
   const ms = monthsBack(12);
-  const w = key => leads.filter(l=>l.status==="Won" && (l.wonDate||l.created||"").slice(0,7)===key);
+  const w = key => leads.filter(l=>l.status==="Won" && (wonOn(l)||"").slice(0,7)===key);
   return {
     labels: ms.map(m=>m.lb),
     total: ms.map(m=>({x:m.lb, y:w(m.key).reduce((s,l)=>s+(Number(l.value)||0),0)})),
@@ -10169,7 +10179,7 @@ function outstandingContracts(){
   return visibleLeads().filter(l=> !l.contractDate && (l.resDate || l.status==="Won"));
 }
 function contractAgeDays(l){
-  const base = l.resDate || l.wonDate || l.created;
+  const base = l.resDate || wonOn(l);
   return base? Math.floor((Date.now()-new Date(base+"T00:00:00").getTime())/864e5) : 0;
 }
 function contractReminderDueList(){
@@ -11966,7 +11976,7 @@ function exportReportExcel(){
     const mOpen = mine.filter(l=>l.status!=="Won"&&l.status!=="Lost");
     const over = mOpen.filter(l=>l.next&&l.next<today()).length;
     const offers = mine.filter(l=>l.offerSent).length;
-    const wonYr = mine.filter(l=>l.status==="Won"&&(l.wonDate||l.created||"").startsWith(yr));
+    const wonYr = mine.filter(l=>l.status==="Won"&&(wonOn(l)||"").startsWith(yr));
     const val = wonYr.reduce((s,l)=>s+(Number(l.value)||0),0);
     const mktVal = wonYr.filter(l=>isMktSource(l.source)).reduce((s,l)=>s+(Number(l.value)||0),0);
     const ext = extConfirmed(m.id, yr);
