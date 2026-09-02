@@ -716,40 +716,119 @@ th.th-sort.on .th-ar{opacity:1}
 .of-saved-m{flex:1;min-width:0;font-size:.8rem}
 .of-sent{background:#e6f4ea;color:#1a7f4b;border-radius:4px;padding:1px 6px;font-size:.66rem;font-weight:700}
 .ai-mount{position:relative;z-index:170}
-.ai-fab{position:fixed;inset-inline-end:20px;bottom:20px;width:52px;height:52px;border-radius:26px;
-  border:0;background:var(--red);color:#fff;font-size:1.3rem;cursor:pointer;z-index:171;
-  box-shadow:0 6px 20px rgba(0,0,0,.22)}
-.ai-panel{position:fixed;inset-inline-end:20px;bottom:84px;width:min(430px,calc(100vw - 40px));
-  height:min(620px,calc(100vh - 130px));background:#fff;border:1px solid var(--line);border-radius:14px;
-  box-shadow:0 18px 50px rgba(0,0,0,.20);display:none;flex-direction:column;overflow:hidden;z-index:171}
-.ai-wrap.open .ai-panel{display:flex}
-.ai-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--line)}
-.ai-body{flex:1;overflow:auto;padding:12px;font-size:.86rem;line-height:1.55}
-.ai-u{background:var(--red-soft);color:var(--ink);border-radius:12px 12px 2px 12px;padding:8px 11px;
-  margin:0 0 10px auto;max-width:85%;width:fit-content}
-.ai-a{background:#f7f8fa;border-radius:12px 12px 12px 2px;padding:9px 11px;margin-bottom:10px;max-width:95%}
-.ai-think{color:#8a8f98;font-style:italic}
-.ai-empty{text-align:center;padding:14px 6px}
-.ai-sug{display:flex;flex-direction:column;gap:6px;margin-top:10px}
-.ai-sug button{border:1px solid var(--line);background:#fff;border-radius:18px;padding:7px 12px;
-  font-family:inherit;font-size:.8rem;cursor:pointer;text-align:start}
-.ai-sug button:hover{border-color:var(--red);color:var(--red)}
-.ai-say{font-size:.68rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--red);margin-bottom:5px}
-.ai-tbl{overflow:auto;margin:6px 0}
+
+/* the button: quiet until you go near it, then it says what it is */
+.ai-fab{position:fixed;inset-inline-end:22px;bottom:22px;height:54px;min-width:54px;padding:0 15px;
+  display:flex;align-items:center;gap:9px;border:0;border-radius:27px;cursor:pointer;z-index:171;
+  background:var(--red);color:#fff;font-family:inherit;font-size:.86rem;font-weight:700;
+  box-shadow:0 6px 22px rgba(224,30,37,.28);transition:transform .18s ease, box-shadow .18s ease, padding .18s ease}
+.ai-fab:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(224,30,37,.34)}
+.ai-fab:active{transform:translateY(0)}
+.ai-fab-t{max-width:0;overflow:hidden;white-space:nowrap;opacity:0;transition:max-width .22s ease,opacity .18s ease}
+.ai-fab:hover .ai-fab-t{max-width:120px;opacity:1}
+.ai-wrap.open .ai-fab{opacity:0;pointer-events:none}
+.ai-badge{position:absolute;top:-3px;inset-inline-end:-3px;min-width:20px;height:20px;border-radius:10px;
+  background:var(--ink);color:#fff;font-size:.66rem;font-weight:800;font-style:normal;
+  display:flex;align-items:center;justify-content:center;padding:0 5px;border:2px solid #fff}
+
+/* the panel: the CRM's own card, given room */
+.ai-panel{position:fixed;inset-inline-end:22px;bottom:22px;width:min(460px,calc(100vw - 44px));
+  height:min(700px,calc(100vh - 44px));background:var(--card);border:1px solid var(--line);
+  border-radius:16px;box-shadow:0 24px 60px rgba(27,29,34,.18);display:none;flex-direction:column;
+  overflow:hidden;z-index:171;opacity:0;transform:translateY(10px) scale(.99);
+  transition:opacity .18s ease, transform .18s ease}
+.ai-wrap.open .ai-panel{display:flex;opacity:1;transform:none}
+.ai-wrap.big .ai-panel{inset-inline-end:22px;bottom:22px;width:min(1000px,calc(100vw - 44px));height:calc(100vh - 44px)}
+.ai-head{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:13px 15px;border-bottom:1px solid var(--line);background:var(--card)}
+.ai-head-l{display:flex;align-items:center;gap:10px;color:var(--red)}
+.ai-head-l b{font-size:.95rem;color:var(--ink);letter-spacing:-.01em}
+.ai-sub{display:flex;align-items:center;gap:6px;font-size:.72rem;color:var(--steel);font-weight:500}
+.ai-dot{width:6px;height:6px;border-radius:3px;background:var(--green);display:inline-block}
+.ai-head-r{display:flex;gap:2px}
+.ai-ic{border:0;background:none;color:var(--steel);font-size:1rem;line-height:1;cursor:pointer;
+  padding:6px 8px;border-radius:8px;font-family:inherit}
+.ai-ic:hover{background:var(--line-soft);color:var(--ink)}
+
+.ai-body{flex:1;overflow:auto;padding:16px;font-size:.86rem;line-height:1.6;background:var(--paper)}
+.ai-u{background:var(--ink);color:#fff;border-radius:14px 14px 4px 14px;padding:9px 13px;
+  margin:0 0 12px auto;max-width:82%;width:fit-content;font-size:.84rem}
+.ai-a{background:var(--card);border:1px solid var(--line);border-radius:14px 14px 14px 4px;
+  padding:12px 14px;margin-bottom:12px;box-shadow:var(--shadow);animation:aiIn .18s ease both}
+@keyframes aiIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.ai-a p{margin:0 0 8px}
+.ai-a p:last-child{margin-bottom:0}
+.ai-say{font-size:.64rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--red);margin-bottom:7px}
+.ai-think{color:var(--steel);display:flex;align-items:center;gap:9px;font-size:.82rem}
+.ai-dots{display:inline-flex;gap:3px}
+.ai-dots i{width:5px;height:5px;border-radius:3px;background:var(--red);opacity:.35;
+  animation:aiPulse 1s infinite}
+.ai-dots i:nth-child(2){animation-delay:.15s}.ai-dots i:nth-child(3){animation-delay:.3s}
+@keyframes aiPulse{0%,100%{opacity:.25}50%{opacity:1}}
+
+/* first screen */
+.ai-hero{text-align:center;padding:10px 4px 16px}
+.ai-hero-i{width:52px;height:52px;border-radius:26px;background:var(--red-soft);color:var(--red);
+  display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
+.ai-hero h3{font-size:1.05rem;letter-spacing:-.01em;margin-bottom:5px}
+.ai-hero p{font-size:.8rem;line-height:1.55;max-width:330px;margin:0 auto}
+.ai-prio{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:14px;box-shadow:var(--shadow)}
+.ai-prio-h{font-size:.78rem;font-weight:700;margin-bottom:7px}
+.ai-prio-r{display:flex;align-items:center;gap:9px;width:100%;border:0;background:none;cursor:pointer;
+  font-family:inherit;font-size:.82rem;text-align:start;padding:6px 2px;color:var(--ink);
+  border-top:1px solid var(--line-soft)}
+.ai-prio-r:first-of-type{border-top:0}
+.ai-prio-r:hover{color:var(--red)}
+.ai-prio-r i{width:7px;height:7px;border-radius:4px;flex:none}
+.ai-prio-r.crit i{background:var(--red)}
+.ai-prio-r.high i{background:var(--amber)}
+.ai-prio-r.warn i{background:var(--blue)}
+.ai-grp{margin-bottom:14px}
+.ai-grp-h{font-size:.64rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--steel);margin-bottom:7px}
+.ai-qs{display:flex;flex-direction:column;gap:6px}
+.ai-q{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:9px 12px;
+  font-family:inherit;font-size:.82rem;color:var(--ink);cursor:pointer;text-align:start;
+  transition:border-color .15s ease,color .15s ease,transform .15s ease}
+.ai-q:hover{border-color:var(--red);color:var(--red);transform:translateX(-2px)}
+.ai-q.sm{font-size:.76rem;padding:6px 10px}
+.ai-cats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.ai-cat{border:1px solid var(--line);background:var(--card);border-radius:20px;padding:5px 12px;
+  font-family:inherit;font-size:.75rem;cursor:pointer;color:var(--ink-2)}
+.ai-cat:hover,.ai-cat.on{border-color:var(--red);color:var(--red)}
+.ai-next{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line-soft)}
+
+/* results */
+.ai-tbl{overflow:auto;margin:8px -4px}
 .ai-tbl table{width:100%;border-collapse:collapse;font-size:.76rem}
-.ai-tbl th{text-align:start;font-size:.64rem;text-transform:uppercase;letter-spacing:.04em;color:var(--steel);
-  padding:3px 6px;border-bottom:1px solid var(--line)}
-.ai-tbl td{padding:4px 6px;border-bottom:1px solid #f0f1f3;vertical-align:top}
-.ai-tbl a{color:var(--red);text-decoration:none}
-.ai-a p{margin:0 0 7px}
-.ai-help{margin:6px 0 0;padding-inline-start:18px;font-size:.8rem;line-height:1.7}
-.ai-src{margin-top:7px;font-size:.72rem}
-.ai-src summary{cursor:pointer;color:#8a8f98}
-.ai-src-r{border-top:1px solid var(--line);padding:5px 0;word-break:break-word}
-.ai-foot{display:flex;gap:6px;padding:10px;border-top:1px solid var(--line)}
-.ai-foot input{flex:1;min-width:0}
-.ai-key{padding:0 10px 10px;font-size:.72rem}
-@media(max-width:600px){ .ai-panel{inset-inline:10px;width:auto;height:min(70vh,560px)} }
+.ai-tbl th{text-align:start;font-size:.62rem;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--steel);font-weight:800;padding:4px 6px;border-bottom:1px solid var(--line)}
+.ai-tbl td{padding:6px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+.ai-tbl tr:last-child td{border-bottom:0}
+.ai-tbl a{color:var(--red);text-decoration:none;font-weight:600}
+.ai-tbl a:hover{text-decoration:underline}
+.ai-src{margin-top:9px;font-size:.72rem}
+.ai-src summary{cursor:pointer;color:var(--steel);list-style:none}
+.ai-src summary::-webkit-details-marker{display:none}
+.ai-src summary:before{content:"▸ ";color:var(--steel)}
+.ai-src[open] summary:before{content:"▾ "}
+.ai-src-r{border-top:1px solid var(--line-soft);padding:5px 0;word-break:break-word;color:var(--steel)}
+.ai-help{margin:8px 0 0;padding-inline-start:18px;font-size:.8rem;line-height:1.8}
+
+.ai-foot{display:flex;gap:7px;align-items:center;padding:11px 12px;border-top:1px solid var(--line);background:var(--card)}
+.ai-foot input{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:10px 12px;
+  font-family:inherit;font-size:.85rem}
+.ai-foot input:focus{outline:none;border-color:var(--red)}
+.ai-send{border:0;background:var(--red);color:#fff;width:38px;height:38px;border-radius:10px;
+  cursor:pointer;font-size:1rem;flex:none}
+.ai-send:hover{background:var(--red-dark)}
+.ai-key{padding:0 14px 11px;font-size:.7rem;background:var(--card)}
+
+@media(max-width:620px){
+  .ai-panel,.ai-wrap.big .ai-panel{inset:0;width:100%;height:100%;border-radius:0;border:0}
+  .ai-fab{inset-inline-end:16px;bottom:16px}
+}
 .cx-sp{display:flex;gap:18px;flex-wrap:wrap;font-size:.84rem}
 .cx-sp .k-label{font-size:.66rem}
 .cx-blocked{border-color:#c9cdf0;background:#fbfbff}
@@ -1131,6 +1210,7 @@ th.th-sort.on .th-ar{opacity:1}
           <div class="doc-btns">
             <button class="btn btn-red" onclick="openOffer(editingLeadId)" type="button" id="offerBtn">📄 Generate offer</button>
             <button class="btn btn-red" onclick="openResForm(editingLeadId)" type="button" id="resBtn" title="استمارة حجز — New Sadat">📝 Reservation form</button>
+            <button class="btn btn-ghost" onclick="aiAboutThis(editingLeadId,'summarise this customer')" type="button" title="Ask the Copilot about this customer">✦ Ask AI about this</button>
             <span class="muted doc-note" id="docNote"></span>
           </div>
         </div>
@@ -1381,7 +1461,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev EO";
+const APP_BUILD = "20 Aug 2026 · rev EP";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -8462,7 +8542,9 @@ function aiAsk(question){
   const q = String(question||"").trim();
   if(!q || aiBusy) return;
   aiChat.push({role:"user", html:esc(q)});
-  aiBusy = true; aiPaint();
+  aiRemember(q);
+  aiBusy = true; aiThinkStep = 0; aiPaint();
+  const tick = setInterval(()=>{ aiThinkStep++; if(aiBusy) aiPaint(); }, 420);
   setTimeout(()=>{
     try{
       const plan = aiPlan(q);
@@ -8490,6 +8572,7 @@ function aiAsk(question){
                  aiBusy=false; aiPaint(); return; }
         }
         aiChat.push({role:"assistant", html:aiWrite(plan, result), say:plan.say,
+                     next:aiNext(plan, result),
                      tools:[{name:plan.tool, args:plan.args, result}]});
       } else {
         const g = aiGlobal(q);
@@ -8507,58 +8590,240 @@ function aiAsk(question){
     }catch(e){
       aiChat.push({role:"assistant", html:"<p>Something went wrong working that out — "+esc(e.message)+"</p>"});
     }
+    clearInterval(tick);
     aiBusy = false; aiPaint();
-  }, 20);
+  }, 25);
 }
-/* ---- the panel ---- */
-const AI_SUGGEST = ["What needs my attention today?", "Show overdue contracts",
-  "Which contracts are blocked by construction?", "Analyse my pipeline",
-  "What changed this week?", "Which leads have I not contacted in 7 days?",
-  "Where are the bottlenecks?", "What data is missing or wrong?"];
-function aiToggle(){ aiOpen = !aiOpen; aiPaint(); if(aiOpen){ const b=$("aiInput"); if(b) b.focus(); } }
-function aiSend(){ const b = $("aiInput"); if(!b) return; const q = b.value; b.value=""; aiAsk(q); }
-function aiSuggest(q){ aiAsk(q); }
-function aiClear(){ aiChat = []; aiPaint(); }
+
+/* ================= CRM COPILOT — the interface =================
+   Built on the CRM's own tokens: --red, --ink, --line, --radius, the Plus
+   Jakarta type and the existing button classes. It should read as part of the
+   product, not as a chat widget bolted onto it. */
+
+/* The mark: a speech bubble with a four-point spark inside it. One path set,
+   drawn in currentColor, so it works at 16px and at 48px, on red or on white. */
+function aiIcon(size){
+  const s = size||22;
+  return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M12 3.2c-4.7 0-8.5 3.1-8.5 6.9 0 2.2 1.3 4.2 3.3 5.5v3.3c0 .5.6.8 1 .5l2.7-2a10 10 0 0 0 1.5.1c4.7 0 8.5-3.1 8.5-6.9S16.7 3.2 12 3.2Z"
+      stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M12 6.6c.35 1.63.86 2.51 2.5 2.9-1.64.39-2.15 1.27-2.5 2.9-.35-1.63-.86-2.51-2.5-2.9 1.64-.39 2.15-1.27 2.5-2.9Z"
+      fill="currentColor"/>
+  </svg>`;
+}
+/* ---- what to suggest: the page you're on, then your role ---- */
+const AI_PROMPTS = {
+  today:    {label:"Today", q:["What needs my attention today?","What changed this week?","Which leads need a follow-up?"]},
+  sales:    {label:"Sales", q:["How is my pipeline this month?","Which deals are at risk?","Show me deals above 20 million","Who has the best conversion?"]},
+  customers:{label:"Customers", q:["Which customers have gone quiet?","Show me won customers","Which leads have no next action?"]},
+  contracts:{label:"Contracts", q:["Show me overdue contracts","Where is each contract now?","Which contracts are due soon?","Which contracts are with Legal?"]},
+  projects: {label:"Projects", q:["Which contracts are blocked by construction?","Which projects have the most blockers?","Show me contracts in Industria Sadat"]},
+  ops:      {label:"Operations", q:["Where are the bottlenecks?","Which department is slowest?","What data is missing?"]},
+  mgmt:     {label:"Management", q:["Give me the contract position","How is the team performing?","What changed this week?"]}
+};
+function aiRoleGroups(){
+  if(isMarketing())            return ["today","customers","sales"];
+  if(typeof isFinance==="function" && isFinance()) return ["contracts","customers","today"];
+  if(canManage())              return ["today","mgmt","contracts","sales","projects","ops"];
+  return ["today","sales","customers","contracts"];
+}
+/* the record on screen decides the first group */
+function aiHere(){
+  const l = editingLeadId? state.leads.find(x=>x.id===editingLeadId)
+          : (typeof ctOpenId!=="undefined" && ctOpenId)? state.leads.find(x=>x.id===ctOpenId) : null;
+  if(l){
+    const name = l.company || l.name;
+    const c = ctOf(l);
+    return { title:"About "+name, q: c
+      ? ["Summarise this customer","Where is this contract now?","Why is it delayed?","Is anything blocking it?"]
+      : ["Summarise this customer","What is the next action?","Show their offers"] };
+  }
+  if(currentView==="contracts"||currentView==="ctcontrol")
+    return {title:"About contracts", q:AI_PROMPTS.contracts.q};
+  if(currentView==="ctblockers")
+    return {title:"About construction", q:AI_PROMPTS.projects.q};
+  if(currentView==="leads")
+    return {title:"About your leads", q:AI_PROMPTS.customers.q};
+  if(currentView==="reports"||currentView==="myreport")
+    return {title:"About performance", q:AI_PROMPTS.sales.q};
+  return null;
+}
+/* ---- what the CRM itself says is urgent, computed live ---- */
+function aiPriorities(){
+  const out = [];
+  try{
+    const b = ctBoard();
+    const bad = b.overdue.filter(l=>ctDaysOverdue(ctOf(l)) >= 14);
+    if(bad.length) out.push({level:"crit", text:bad.length+" contract"+(bad.length===1?"":"s")+" more than 14 days overdue", q:"show me overdue contracts"});
+    else if(b.overdue.length) out.push({level:"crit", text:b.overdue.length+" contract"+(b.overdue.length===1?"":"s")+" overdue", q:"show me overdue contracts"});
+    if(b.blocked.length) out.push({level:"high", text:b.blocked.length+" blocked by construction", q:"which contracts are blocked by construction?"});
+    if(b.today.length)   out.push({level:"high", text:b.today.length+" contract"+(b.today.length===1?"":"s")+" due today", q:"which contracts are due today?"});
+    if(b.soon.length)    out.push({level:"warn", text:b.soon.length+" due within 3 days", q:"which contracts are due soon?"});
+    if(b.update.length)  out.push({level:"warn", text:b.update.length+" missing information", q:"what data is missing?"});
+  }catch(e){}
+  try{
+    const t = today();
+    const mine = aiScope().filter(l=>!currentUser || fullView() || l.owner===currentUser.id);
+    const late = mine.filter(l=>l.status!=="Won" && l.status!=="Lost" && l.next && l.next < t);
+    if(late.length) out.push({level:"high", text:late.length+" follow-up"+(late.length===1?"":"s")+" overdue", q:"what needs my attention today?"});
+    const cold = mine.filter(l=>l.status!=="Won" && l.status!=="Lost" && (Number(l.value)||0) >= 20000000
+      && l.lastContact && ctDays(l.lastContact) >= 10);
+    if(cold.length) out.push({level:"high", text:cold.length+" high-value deal"+(cold.length===1?"":"s")+" gone quiet", q:"which leads have not been contacted in 10 days?"});
+  }catch(e){}
+  return out;
+}
+function aiPriorityCount(){ return aiPriorities().filter(p=>p.level==="crit"||p.level==="high").length; }
+/* suggestions follow the situation, not a fixed list */
+function aiSmartQs(){
+  const p = aiPriorities();
+  const q = [];
+  p.slice(0,3).forEach(x=>{ if(!q.includes(x.q)) q.push(x.q); });
+  return q;
+}
+
+/* ---- the panel itself ---- */
+let aiBig = false, aiCat = "", aiHist = [];
+function aiGreet(){
+  const h = new Date().getHours();
+  return h<12? "Good morning" : h<17? "Good afternoon" : "Good evening";
+}
+function aiToggle(){
+  aiOpen = !aiOpen; aiPaint();
+  if(aiOpen){ const b=$("aiInput"); if(b) setTimeout(()=>b.focus(),60); }
+}
+function aiBigToggle(){ aiBig = !aiBig; aiPaint(); }
+function aiCatOpen(k){ aiCat = (aiCat===k)? "" : k; aiPaint(); }
+/* every answer is kept, so an earlier analysis can be reopened */
+function aiRemember(q){
+  aiHist = aiHist.filter(x=>x.q!==q);
+  aiHist.unshift({q, at:new Date().toISOString()});
+  aiHist = aiHist.slice(0,12);
+}
+function aiAskFrom(el){ const q = el.getAttribute("data-q"); if(q) aiAsk(q); }
+
+function aiEmpty(){
+  const here = aiHere(), smart = aiSmartQs(), prio = aiPriorities();
+  const groups = aiRoleGroups();
+  const chip = q=>`<button class="ai-q" data-q="${esc(q)}" onclick="aiAskFrom(this)">${esc(q)}</button>`;
+  return `
+  <div class="ai-hero">
+    <div class="ai-hero-i">${aiIcon(30)}</div>
+    <h3>${aiGreet()}${currentUser? ", "+esc(String(currentUser.name).split(" ")[0]) : ""}</h3>
+    <p class="muted">Ask me about your leads, customers, contracts, projects or performance. Everything I answer is counted from your own records.</p>
+  </div>
+  ${prio.length? `<div class="ai-prio">
+    <div class="ai-prio-h">I found ${prio.length} thing${prio.length===1?"":"s"} worth a look</div>
+    ${prio.slice(0,5).map(p=>`<button class="ai-prio-r ${p.level}" data-q="${esc(p.q)}" onclick="aiAskFrom(this)">
+      <i></i><span>${esc(p.text)}</span></button>`).join("")}
+  </div>`:""}
+  ${here? `<div class="ai-grp"><div class="ai-grp-h">${esc(here.title)}</div>
+    <div class="ai-qs">${here.q.map(chip).join("")}</div></div>`:""}
+  ${smart.length && !here? `<div class="ai-grp"><div class="ai-grp-h">Suggested now</div>
+    <div class="ai-qs">${smart.map(chip).join("")}</div></div>`:""}
+  <div class="ai-grp"><div class="ai-grp-h">${esc(AI_PROMPTS[groups[0]].label)}</div>
+    <div class="ai-qs">${AI_PROMPTS[groups[0]].q.slice(0,3).map(chip).join("")}</div></div>
+  <div class="ai-cats">
+    ${groups.slice(1).map(k=>`<button class="ai-cat ${aiCat===k?"on":""}" onclick="aiCatOpen('${k}')">${esc(AI_PROMPTS[k].label)}</button>`).join("")}
+  </div>
+  ${aiCat? `<div class="ai-grp"><div class="ai-qs">${AI_PROMPTS[aiCat].q.map(chip).join("")}</div></div>`:""}
+  ${aiHist.length? `<div class="ai-grp"><div class="ai-grp-h">Recent</div>
+    <div class="ai-qs">${aiHist.slice(0,4).map(x=>chip(x.q)).join("")}</div></div>`:""}`;
+}
+/* follow-ups offered after an answer, so the conversation can keep going */
+function aiNext(plan, r){
+  const n = [];
+  if(!plan) return n;
+  if(plan.tool==="contract_board"){
+    n.push("show me overdue contracts");
+    if(r && r.blockedByConstruction && r.blockedByConstruction.count) n.push("which contracts are blocked by construction?");
+    if(r && r.updateRequired && r.updateRequired.count) n.push("what data is missing?");
+  }
+  if(plan.tool==="search_contracts"){ n.push("where are the bottlenecks?", "which contracts are blocked by construction?"); }
+  if(plan.tool==="construction_blockers"){ n.push("show me overdue contracts", "where are the bottlenecks?"); }
+  if(plan.tool==="my_day"){ n.push("show me overdue contracts", "which leads have not been contacted in 10 days?"); }
+  if(plan.tool==="search_leads"){ n.push("how is my pipeline this month?", "what data is missing?"); }
+  if(plan.tool==="pipeline_metrics"){ n.push("who has the best conversion?", "which deals are at risk?"); }
+  if(plan.tool==="get_lead"){ n.push("what needs my attention today?"); }
+  return n.slice(0,3);
+}
 function aiBubble(m){
   if(m.role==="user") return `<div class="ai-u">${m.html}</div>`;
-  const tools = (m.tools||[]).length? `<details class="ai-src"><summary>Where this came from — ${m.tools.length} lookup${m.tools.length===1?"":"s"}</summary>
-      ${m.tools.map(t=>`<div class="ai-src-r"><b>${esc(t.name)}</b> ${esc(JSON.stringify(t.args||{}))}
-        <div class="muted">${esc(JSON.stringify(t.result).slice(0,300))}${JSON.stringify(t.result).length>300?"…":""}</div></div>`).join("")}
+  const used = (m.tools||[]).reduce((s,t)=>{
+    const r = t.result||{};
+    return s + (typeof r.found==="number"? r.found : (r.total||r.rows&&r.rows.length||0));
+  },0);
+  const src = (m.tools||[]).length? `<details class="ai-src">
+      <summary>Based on ${used||"your"} record${used===1?"":"s"} · how I worked this out</summary>
+      ${m.tools.map(t=>`<div class="ai-src-r"><b>${esc(t.name)}</b>
+        ${Object.keys(t.args||{}).length? esc(JSON.stringify(t.args)) : "<span class='muted'>no filters</span>"}</div>`).join("")}
     </details>`:"";
-  return `<div class="ai-a">${m.say? `<div class="ai-say">${esc(m.say)}</div>`:""}${m.html}${tools}</div>`;
+  const next = (m.next||[]).length? `<div class="ai-next">${m.next.map(q=>
+      `<button class="ai-q sm" data-q="${esc(q)}" onclick="aiAskFrom(this)">${esc(q)}</button>`).join("")}</div>`:"";
+  return `<div class="ai-a">${m.say? `<div class="ai-say">${esc(m.say)}</div>`:""}${m.html}${src}${next}</div>`;
 }
+const AI_THINK = ["Reading your question…","Looking through the records…","Preparing your answer…"];
 function aiPaint(){
   const w = $("aiWrap"); if(!w) return;
-  w.className = "ai-wrap" + (aiOpen? " open":"");
+  w.className = "ai-wrap" + (aiOpen? " open":"") + (aiBig? " big":"");
+  const n = aiPriorityCount();
+  const fab = $("aiFabBadge");
+  if(fab) fab.outerHTML = n? `<i class="ai-badge" id="aiFabBadge">${n>9?"9+":n}</i>` : `<i id="aiFabBadge" hidden></i>`;
   const body = $("aiBody");
   if(body){
-    body.innerHTML = aiChat.length? aiChat.map(aiBubble).join("")
-      : `<div class="ai-empty"><b>Ask anything about your CRM.</b>
-         <p class="muted">Every answer is counted from your own records, and only the ones you're allowed to see.</p>
-         <div class="ai-sug">${AI_SUGGEST.map(s=>`<button onclick="aiSuggest('${esc(s).replace(/'/g,"\\'")}')">${esc(s)}</button>`).join("")}</div></div>`;
-    if(aiBusy) body.innerHTML += `<div class="ai-a ai-think">Working it out…</div>`;
+    body.innerHTML = aiChat.length? aiChat.map(aiBubble).join("") : aiEmpty();
+    if(aiBusy) body.innerHTML += `<div class="ai-a ai-think"><span class="ai-dots"><i></i><i></i><i></i></span>${AI_THINK[aiThinkStep%AI_THINK.length]}</div>`;
     body.scrollTop = body.scrollHeight;
   }
-  const k = $("aiKeyRow");
-  if(k) k.innerHTML = `<span class="muted">Answers are counted from your own records — nothing leaves this browser.</span>`;
 }
+let aiThinkStep = 0;
 function aiShell(){
   return `<div class="ai-wrap" id="aiWrap">
-    <button class="ai-fab" onclick="aiToggle()" title="CRM Copilot">✦</button>
-    <div class="ai-panel">
-      <div class="ai-head"><b>CRM Copilot</b>
-        <span><button class="btn btn-ghost btn-sm" onclick="aiClear()">Clear</button>
-        <button class="btn btn-ghost btn-sm" onclick="aiToggle()">×</button></span></div>
+    <button class="ai-fab" onclick="aiToggle()" aria-label="Ask CRM AI">
+      ${aiIcon(24)}<span class="ai-fab-t">Ask CRM AI</span><i id="aiFabBadge" hidden></i>
+    </button>
+    <div class="ai-panel" role="dialog" aria-label="CRM Copilot">
+      <div class="ai-head">
+        <div class="ai-head-l">${aiIcon(20)}
+          <div><b>CRM Copilot</b><div class="ai-sub"><i class="ai-dot"></i>Your intelligent CRM assistant</div></div></div>
+        <div class="ai-head-r">
+          ${aiChat.length? `<button class="ai-ic" onclick="aiClear()" title="New conversation">＋</button>`:""}
+          <button class="ai-ic" onclick="aiBigToggle()" title="Expand">⤢</button>
+          <button class="ai-ic" onclick="aiToggle()" title="Close">×</button>
+        </div>
+      </div>
       <div class="ai-body" id="aiBody"></div>
       <div class="ai-foot">
-        <input id="aiInput" placeholder="Ask anything about your CRM…"
+        <input id="aiInput" placeholder="Ask anything about your CRM…" autocomplete="off"
           onkeydown="if(event.key==='Enter'){aiSend();}">
-        <button class="btn btn-red btn-sm" onclick="aiSend()">Ask</button>
+        ${(typeof window!=="undefined" && (window.SpeechRecognition||window.webkitSpeechRecognition))?
+          `<button class="ai-ic" onclick="aiVoice()" title="Speak">🎙</button>`:""}
+        <button class="ai-send" onclick="aiSend()" aria-label="Ask">↑</button>
       </div>
       <div class="ai-key" id="aiKeyRow"></div>
     </div>
   </div>`;
 }
+/* dictation where the browser offers it — typing stays the main way in */
+function aiVoice(){
+  const R = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!R){ toast("This browser can't do voice input"); return; }
+  const r = new R();
+  r.lang = "en-GB"; r.interimResults = false;
+  r.onresult = e=>{ const t = e.results[0][0].transcript; const b=$("aiInput"); if(b){ b.value=t; aiSend(); } };
+  r.onerror = ()=> toast("Didn't catch that");
+  try{ r.start(); toast("Listening…"); }catch(e){}
+}
+/* opening the Copilot already pointed at a record */
+function aiAboutThis(id, question){
+  editingLeadId = editingLeadId || id;
+  aiOpen = true; aiPaint();
+  if(question) aiAsk(question);
+  else { const b=$("aiInput"); if(b) setTimeout(()=>b.focus(),60); }
+}
+
+function aiSend(){ const b = $("aiInput"); if(!b) return; const q = b.value; b.value=""; aiAsk(q); }
+function aiSuggest(q){ aiAsk(q); }
+function aiClear(){ aiChat = []; aiCat = ""; aiPaint(); }
 
 function viewContractsOps(){
   const s = ctStats();
