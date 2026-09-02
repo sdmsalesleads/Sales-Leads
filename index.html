@@ -715,6 +715,66 @@ th.th-sort.on .th-ar{opacity:1}
 .of-saved-r.on{border-color:var(--red);background:#fff7f7}
 .of-saved-m{flex:1;min-width:0;font-size:.8rem}
 .of-sent{background:#e6f4ea;color:#1a7f4b;border-radius:4px;padding:1px 6px;font-size:.66rem;font-weight:700}
+.ai-mount{position:relative;z-index:170}
+.ai-fab{position:fixed;inset-inline-end:20px;bottom:20px;width:52px;height:52px;border-radius:26px;
+  border:0;background:var(--red);color:#fff;font-size:1.3rem;cursor:pointer;z-index:171;
+  box-shadow:0 6px 20px rgba(0,0,0,.22)}
+.ai-panel{position:fixed;inset-inline-end:20px;bottom:84px;width:min(430px,calc(100vw - 40px));
+  height:min(620px,calc(100vh - 130px));background:#fff;border:1px solid var(--line);border-radius:14px;
+  box-shadow:0 18px 50px rgba(0,0,0,.20);display:none;flex-direction:column;overflow:hidden;z-index:171}
+.ai-wrap.open .ai-panel{display:flex}
+.ai-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--line)}
+.ai-body{flex:1;overflow:auto;padding:12px;font-size:.86rem;line-height:1.55}
+.ai-u{background:var(--red-soft);color:var(--ink);border-radius:12px 12px 2px 12px;padding:8px 11px;
+  margin:0 0 10px auto;max-width:85%;width:fit-content}
+.ai-a{background:#f7f8fa;border-radius:12px 12px 12px 2px;padding:9px 11px;margin-bottom:10px;max-width:95%}
+.ai-think{color:#8a8f98;font-style:italic}
+.ai-empty{text-align:center;padding:14px 6px}
+.ai-sug{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.ai-sug button{border:1px solid var(--line);background:#fff;border-radius:18px;padding:7px 12px;
+  font-family:inherit;font-size:.8rem;cursor:pointer;text-align:start}
+.ai-sug button:hover{border-color:var(--red);color:var(--red)}
+.ai-say{font-size:.68rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--red);margin-bottom:5px}
+.ai-tbl{overflow:auto;margin:6px 0}
+.ai-tbl table{width:100%;border-collapse:collapse;font-size:.76rem}
+.ai-tbl th{text-align:start;font-size:.64rem;text-transform:uppercase;letter-spacing:.04em;color:var(--steel);
+  padding:3px 6px;border-bottom:1px solid var(--line)}
+.ai-tbl td{padding:4px 6px;border-bottom:1px solid #f0f1f3;vertical-align:top}
+.ai-tbl a{color:var(--red);text-decoration:none}
+.ai-a p{margin:0 0 7px}
+.ai-help{margin:6px 0 0;padding-inline-start:18px;font-size:.8rem;line-height:1.7}
+.ai-src{margin-top:7px;font-size:.72rem}
+.ai-src summary{cursor:pointer;color:#8a8f98}
+.ai-src-r{border-top:1px solid var(--line);padding:5px 0;word-break:break-word}
+.ai-foot{display:flex;gap:6px;padding:10px;border-top:1px solid var(--line)}
+.ai-foot input{flex:1;min-width:0}
+.ai-key{padding:0 10px 10px;font-size:.72rem}
+@media(max-width:600px){ .ai-panel{inset-inline:10px;width:auto;height:min(70vh,560px)} }
+.cx-sp{display:flex;gap:18px;flex-wrap:wrap;font-size:.84rem}
+.cx-sp .k-label{font-size:.66rem}
+.cx-blocked{border-color:#c9cdf0;background:#fbfbff}
+.cx-pill{display:inline-block;border-radius:12px;padding:2px 9px;font-size:.7rem;font-weight:700}
+.cx-pill.bad{background:#fdecec;color:#b3261e}
+.cx-pill.warn{background:#fff4e5;color:#a35b00}
+.cx-pill.ok{background:#eaf6ee;color:#1a7f4b}
+.cx-pill.blk{background:#eef0fb;color:#3b46a8}
+.cx-pill.mut{background:#f2f3f5;color:#6b7280}
+.cx-red{color:#b3261e;font-weight:700}
+.cx-att{margin-bottom:12px}
+.cx-att-r{display:block;width:100%;text-align:right;border:0;background:none;font-family:inherit;
+  font-size:.86rem;padding:6px 2px;cursor:pointer;border-bottom:1px solid var(--line)}
+.cx-att-r:last-child{border-bottom:0}
+.cx-att-r.bad{color:#b3261e;font-weight:700}
+.cx-att-r.warn{color:#a35b00}
+.cx-att-r.blk{color:#3b46a8}
+.cx-att-r:hover{background:#fafbfc}
+.cx-bar{display:flex;align-items:center;gap:8px;font-size:.8rem;margin-bottom:6px}
+.cx-bar span{min-width:150px}
+.cx-bar-t{flex:1;height:8px;background:#eef0f2;border-radius:4px;overflow:hidden}
+.cx-bar-t i{display:block;height:100%;background:var(--red)}
+.cx-diff{font-size:.76rem;margin-bottom:2px}
+.cx-diff i{color:#1a7f4b;font-style:normal;font-weight:700}
+.kpi.on{outline:2px solid var(--red)}
 .rf-bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;
   gap:10px;flex-wrap:wrap;background:#fff;border-bottom:1px solid var(--line);padding:10px 2px;margin-bottom:10px}
 .rf-bar-t b{font-size:.9rem}
@@ -1009,6 +1069,7 @@ th.th-sort.on .th-ar{opacity:1}
     <div style="padding:18px 22px 22px;max-height:82vh;overflow:auto" id="offerBody"></div>
   </div>
 </div>
+<div class="ai-mount" id="aiMount"></div>
 <div class="overlay" id="resOverlay" style="z-index:161">
   <div class="modal" style="width:min(1320px,100%)">
     <div class="modal-head"><h3 id="resTitle">استمارة حجز</h3><button class="x-btn" onclick="closeResForm()">×</button></div>
@@ -1320,7 +1381,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev EI";
+const APP_BUILD = "20 Aug 2026 · rev EO";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -2278,6 +2339,9 @@ const NAV_ITEMS = [
   {v:"offers", ic:"📄", label:()=>{ const n = visibleLeads().filter(offerOverdue).length; return "Offers"+(n? " ("+n+")":""); },
    show:()=>!!currentUser && !currentUser.mkt && !currentUser.fin},
   {v:"contracts", ic:"📜", label:()=>isOps()? "Contracts":"Contracts & Ops", show:()=>canSeeContracts()},
+  {v:"ctcontrol", ic:"🎛", label:()=>"Control Centre", show:()=>canSeeContracts()},
+  {v:"ctblockers", ic:"🚧", label:()=>"Construction", show:()=>canSeeContracts()},
+  {v:"ctimport",  ic:"⬆", label:()=>"Contract Excel", show:()=>canSeeContracts()},
   {v:"ctreports", ic:"📈", label:()=>"Contract Reports", show:()=>canSeeContracts()},
   {v:"bdtrack", ic:"📋", label:()=>"BD Tracker", show:()=>(currentUser&&currentUser.bd)||isOps()||isAdmin()||(currentUser&&currentUser.director)||(currentUser&&currentUser.exec)},
   {v:"hierarchy", ic:"◬", label:()=>"Hierarchy", show:()=>canManage()},
@@ -2306,7 +2370,13 @@ function setView(v){
   $("sidebar").classList.remove("open");
   render();
 }
+/* the Copilot sits outside the view so it survives every re-render */
+function aiMount(){
+  const m = $("aiMount");
+  if(m && !$("aiWrap")){ m.innerHTML = aiShell(); aiPaint(); }
+}
 function render(){
+  if(currentUser) aiMount();
   const c = $("content");
   c.classList.remove("view-anim"); void c.offsetWidth; c.classList.add("view-anim");
   renderStreakBar();
@@ -2322,6 +2392,9 @@ function render(){
   else if(currentView==="guide") c.innerHTML = viewGuide();
   else if(currentView==="offers") c.innerHTML = viewOffers();
   else if(currentView==="contracts") c.innerHTML = viewContracts();
+  else if(currentView==="ctcontrol")  c.innerHTML = viewCtControl();
+  else if(currentView==="ctblockers") c.innerHTML = viewCtBlockers();
+  else if(currentView==="ctimport")   c.innerHTML = viewCtImport();
   else if(currentView==="ctreports") c.innerHTML = viewContractReports();
   else if(currentView==="hierarchy" && canManage()) c.innerHTML = viewHierarchy();
   else if(currentView==="extsales" && !isFinance()) c.innerHTML = viewExtSales();
@@ -6743,6 +6816,7 @@ function ctStart(l, handler){
     handlers:[{ id:(handler||(currentUser?currentUser.id:"")), from:t, by:(currentUser?currentUser.name:"") }]
   };
   l.stageMeta.contract = c;
+  ctNumber(l);                       // give it its own number straight away
   return c;
 }
 /* one movement does everything: close this step, keep the record, open the next */
@@ -6922,6 +6996,79 @@ function ctIda(id, field, val){
                   comment:(field==="idaSent"?"IDA sent ":"IDA approved ")+(val||""), by:(currentUser?currentUser.name:""), at:nowStamp()});
   persist(); ctInvalidate(); ctRefresh();
 }
+/* what this contract owes, and what is stopping it */
+function ctPriorityAuto(l){
+  const c = ctOf(l); if(!c) return "low";
+  const saved = c.priority; c.priority = "";
+  const p = ctPriority(l); c.priority = saved; return p;
+}
+function ctSetPriority(id, v){
+  const l = state.leads.find(x=>x.id===id), c = ctOf(l); if(!c) return;
+  c.priority = v||"";
+  ctLog(l, v? ("Priority set to "+CT_PRIO[v].l) : "Priority back to automatic");
+  persist(); ctRefresh();
+}
+function ctSetDelay(id, v){
+  const l = state.leads.find(x=>x.id===id), c = ctOf(l); if(!c) return;
+  const was = c.delayReason||"";
+  c.delayReason = String(v||"").trim();
+  if(was !== c.delayReason) ctLog(l, "Delay reason: "+(was||"—")+" → "+(c.delayReason||"—"));
+  persist(); ctRefresh();
+}
+function ctBlockFromForm(id){
+  const r = $("ctbR_"+id), s = $("ctbS_"+id), e = $("ctbE_"+id), nt = $("ctbN_"+id);
+  if(!r || !r.value){ toast("Choose what is blocking it"); return; }
+  ctBlockAdd(id, r.value, nt? nt.value : "", e? e.value : "", s? s.value : "Medium");
+}
+function ctStatusPanel(l){
+  const c = ctOf(l); if(!c) return "";
+  const st = ctSlaState(c), od = ctDaysOverdue(c), left = ctDaysLeft(c), p = ctPriority(l), b = c.blocker;
+  return `
+  <div class="card" style="margin-bottom:12px">
+    <div class="cx-sp">
+      <div><div class="k-label">Contract no.</div><b>${esc(ctNumber(l))}</b></div>
+      <div><div class="k-label">State</div><span class="cx-pill ${CT_STATE_CLASS[st]}">${CT_STATE_LABEL[st]}</span></div>
+      <div><div class="k-label">Due</div><b>${esc(fmtDate(ctDue(c)))}</b>
+        <div class="muted">${od? od+" days over" : left!==null? (left===0? "today" : left+" days left") : "—"}</div></div>
+      <div><div class="k-label">SLA here</div><b>${ctSla(c.step)} days</b></div>
+      <div><div class="k-label">Priority</div><b>${CT_PRIO[p].d} ${CT_PRIO[p].l}</b></div>
+    </div>
+    <div class="of-two" style="margin-top:10px">
+      <div class="of-f"><label>Priority</label>
+        <select onchange="ctSetPriority('${l.id}', this.value)">
+          <option value="">Automatic (${CT_PRIO[ctPriorityAuto(l)].l})</option>
+          ${Object.keys(CT_PRIO).map(k=>`<option value="${k}" ${c.priority===k?"selected":""}>${CT_PRIO[k].l}</option>`).join("")}
+        </select></div>
+      <div class="of-f"><label>Delay reason</label>
+        <input type="text" value="${esc(c.delayReason||"")}" placeholder="Why is it sitting here?"
+          onchange="ctSetDelay('${l.id}', this.value)"></div>
+    </div>
+  </div>
+  <div class="card ${b?"cx-blocked":""}" style="margin-bottom:12px">
+    <div class="eyebrow red">Construction</div>
+    ${b? `
+      <p style="margin:6px 0"><b>Blocked — ${esc(b.reason)}</b>${b.note? " · "+esc(b.note):""}</p>
+      <div class="muted" style="font-size:.78rem">Since ${esc(fmtDate(b.startedAt))} · ${ctBlockDays(b)} days${
+        b.expectedAt? " · expected "+esc(fmtDate(b.expectedAt))+(ctBlockOverdue(b)?" (past due)":"") : ""}${
+        b.severity? " · "+esc(b.severity):""}</div>
+      <p class="muted" style="font-size:.78rem">While it is blocked the contract is not counted as overdue — the department cannot act.</p>
+      <button class="btn btn-red btn-sm" onclick="ctBlockResolve('${l.id}','')">Blocker cleared</button>
+    ` : `
+      <div class="of-two">
+        <div class="of-f"><label>Blocked by construction?</label>
+          <select id="ctbR_${l.id}"><option value="">— not blocked —</option>
+            ${CT_BLOCK_REASONS.map(r=>`<option>${esc(r)}</option>`).join("")}</select></div>
+        <div class="of-f"><label>Severity</label>
+          <select id="ctbS_${l.id}">${CT_SEVERITY.map(s=>`<option ${s==="Medium"?"selected":""}>${s}</option>`).join("")}</select></div>
+      </div>
+      <div class="of-two">
+        <div class="of-f"><label>Expected resolution</label><input type="date" id="ctbE_${l.id}"></div>
+        <div class="of-f"><label>Detail</label><input type="text" id="ctbN_${l.id}" placeholder="What exactly is holding it up?"></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="ctBlockFromForm('${l.id}')">Record construction blocker</button>
+    `}
+  </div>`;
+}
 function ctDetailHtml(l){
   const c = ctOf(l);
   const opsPeople = state.members.filter(m=>!m.pending && (m.ops || m.dmgr && deptOf.call? true : m.ops));
@@ -6955,6 +7102,7 @@ function ctDetailHtml(l){
   };
   const hist = c.history.slice().reverse();
   return `
+  ${ctStatusPanel(l)}
   <div class="ct-head">
     <div>
       <div class="eyebrow red">${esc(c.status)}</div>
@@ -7175,6 +7323,1243 @@ function ctTable(rows, title){
       </tr>`; }).join("")}</tbody></table></div>`;
 }
 /* ---------- SALES OPERATIONS: operational and action-focused ---------- */
+
+/* ================= CONTRACT LIFECYCLE — departments, SLA, blockers =================
+   Built on top of the existing contract record (l.stageMeta.contract). Nothing
+   already stored is discarded: the six approval steps stay exactly as they are
+   and the new departments continue AFTER signature, which is where Registration,
+   Construction and Handover belong. */
+
+/* Departments are configuration, not code — they can be renamed, reordered,
+   switched off or given a different SLA without a new build. */
+const CT_DEPT_DEFAULTS = [
+  {k:"development", label:"Development",         sla:2, phase:"Revision",     core:true},
+  {k:"finance_rev", label:"Finance — Revision",  sla:2, phase:"Revision",     core:true},
+  {k:"legal",       label:"Legal",               sla:2, phase:"Revision",     core:true},
+  {k:"finance_sig", label:"Finance — Signature", sla:2, phase:"Signatures",   core:true},
+  {k:"cfo",         label:"CFO",                 sla:2, phase:"Signatures",   core:true},
+  {k:"ceo",         label:"CEO",                 sla:2, phase:"Signatures",   core:true},
+  {k:"registration",label:"Registration",        sla:2, phase:"After signing", core:false},
+  {k:"construction",label:"Construction",        sla:2, phase:"After signing", core:false},
+  {k:"handover",    label:"Handover",            sla:2, phase:"After signing", core:false}
+];
+function ctDepts(){
+  const saved = state.settings && state.settings.ctDepts;
+  const list = Array.isArray(saved) && saved.length? saved : CT_DEPT_DEFAULTS;
+  return list.filter(d=>d.off!==true);
+}
+function ctDept(k){ return ctDepts().find(d=>d.k===k) || CT_DEPT_DEFAULTS.find(d=>d.k===k) || null; }
+function ctSla(k){ const d = ctDept(k); return d && Number(d.sla)>0? Number(d.sla) : CT_SLA_DEFAULT; }
+const CT_SLA_DEFAULT = 2;
+
+/* A contract needs a number of its own — the lead id is an internal handle and
+   an imported sheet has nothing to match on. */
+function ctNumber(l){
+  const c = ctOf(l); if(!c) return "";
+  if(c.no) return c.no;
+  const yr = new Date(c.startedAt || nowStamp()).getFullYear();
+  const used = new Set(state.leads.map(x=>(ctOf(x)||{}).no).filter(Boolean));
+  let n = 1, no;
+  do { no = "CT-" + yr + "-" + String(n++).padStart(4,"0"); } while(used.has(no));
+  c.no = no;
+  return no;
+}
+function ctByNumber(no){
+  const key = String(no||"").trim().toUpperCase();
+  if(!key) return null;
+  return state.leads.find(l=>{ const c=ctOf(l); return c && String(c.no||"").toUpperCase()===key; }) || null;
+}
+
+/* ---- where a contract stands against its own deadline ---- */
+function ctDue(c){
+  if(c && c.dueOverride) return c.dueOverride;
+  if(!c || !c.receivedAt) return "";
+  const d = new Date(c.receivedAt);
+  d.setDate(d.getDate() + ctSla(c.step));
+  return d.toISOString().slice(0,10);
+}
+function ctDaysLeft(c){
+  const due = ctDue(c); if(!due) return null;
+  return Math.round((new Date(due+"T00:00:00") - new Date(today()+"T00:00:00")) / 86400000);
+}
+/* A construction blocker is NOT a department delay: the department cannot act,
+   so the contract is Blocked and never counted as overdue. */
+function ctBlocked(c){ return !!(c && c.blocker && !c.blocker.resolvedAt); }
+function ctSlaState(c){
+  if(!c) return "none";
+  if(c.process==="Completed" || c.status==="Signed") return "completed";
+  if(ctBlocked(c)) return "blocked";
+  const left = ctDaysLeft(c);
+  if(left===null) return "none";
+  if(left < 0) return "overdue";
+  if(left === 0) return "today";
+  if(left <= 3) return "soon";
+  return "ontrack";
+}
+const CT_STATE_LABEL = {overdue:"Overdue", today:"Due today", soon:"Due soon",
+  ontrack:"On track", blocked:"Blocked", completed:"Completed", none:"Not started"};
+const CT_STATE_CLASS = {overdue:"bad", today:"bad", soon:"warn", ontrack:"ok",
+  blocked:"blk", completed:"ok", none:"mut"};
+function ctDaysOverdue(c){ const l = ctDaysLeft(c); return (l!==null && l<0)? -l : 0; }
+
+/* ---- priority: computed, with a manual override ---- */
+function ctPriority(l){
+  const c = ctOf(l); if(!c) return "low";
+  if(c.priority) return c.priority;                 // set by hand
+  const v = Number(l.value)||0, od = ctDaysOverdue(c);
+  if(ctBlocked(c) && v >= 20000000) return "critical";
+  if(od >= 7 || v >= 50000000) return "critical";
+  if(od >= 1 || v >= 20000000) return "high";
+  if(ctSlaState(c)==="soon" || ctSlaState(c)==="today") return "medium";
+  return "low";
+}
+const CT_PRIO = {critical:{l:"Critical",d:"🔴"}, high:{l:"High",d:"🟠"},
+                 medium:{l:"Medium",d:"🟡"}, low:{l:"Low",d:"🟢"}};
+
+/* ---- construction blockers ---- */
+const CT_BLOCK_REASONS = ["Construction delay","Infrastructure not ready","Utilities not available",
+  "Road / access issue","Site not ready","Building not ready","Technical issue","Design issue",
+  "Permit issue","Contractor issue","Handover issue","Other"];
+const CT_SEVERITY = ["Low","Medium","High","Critical"];
+function ctBlockAdd(id, reason, note, expected, severity){
+  const l = state.leads.find(x=>x.id===id); const c = ctOf(l);
+  if(!l || !c || !reason) return;
+  c.blocker = { reason, note: note||"", severity: severity||"Medium",
+    startedAt: today(), expectedAt: expected||"", resolvedAt:"",
+    by: currentUser? currentUser.name : "" };
+  ctLog(l, "Blocked by construction — " + reason + (expected? " (expected " + fmtDate(expected) + ")" : ""));
+  persist(); ctRefresh();
+}
+function ctBlockResolve(id, note){
+  const l = state.leads.find(x=>x.id===id); const c = ctOf(l);
+  if(!l || !c || !c.blocker) return;
+  c.blocker.resolvedAt = today();
+  c.blocker.resolveNote = note||"";
+  c.blockers = (c.blockers||[]).concat([Object.assign({}, c.blocker)]);   // keep the history
+  ctLog(l, "Construction blocker cleared — " + c.blocker.reason +
+    " (" + ctBlockDays(c.blocker) + " days blocked)");
+  c.blocker = null;
+  persist(); ctRefresh();
+}
+function ctBlockDays(b){
+  if(!b || !b.startedAt) return 0;
+  const to = b.resolvedAt || today();
+  return Math.max(0, Math.round((new Date(to+"T00:00:00") - new Date(b.startedAt+"T00:00:00"))/86400000));
+}
+function ctBlockOverdue(b){ return !!(b && !b.resolvedAt && b.expectedAt && b.expectedAt < today()); }
+function ctLog(l, text){
+  const c = ctOf(l); if(!c) return;
+  c.history = c.history || [];
+  c.history.unshift({ step:c.step, label:ctLabel(c.step), process:c.process,
+    handler:c.handler, at:nowStamp(), status:"Note", comment:text,
+    by: currentUser? currentUser.name : "" });
+  pushLog(l, "Contract — " + text);
+}
+/* ---- a contract nobody has touched, or one missing what it needs ---- */
+const CT_STALE_DAYS = 10;
+function ctIssues(l){
+  const c = ctOf(l); if(!c) return [];
+  const out = [];
+  if(!c.no) out.push("No contract number");
+  if(!c.handler) out.push("Nobody responsible");
+  if(!l.project) out.push("No project");
+  if(!l.plotNo) out.push("No plot");
+  if(!(Number(l.value)>0)) out.push("No contract value");
+  if(c.process!=="Completed" && c.status!=="Signed"){
+    const idle = c.receivedAt? ctDays(c.receivedAt) : null;
+    if(idle!==null && idle >= CT_STALE_DAYS && !ctBlocked(c)) out.push("No movement for "+idle+" days");
+  }
+  if(ctBlocked(c) && ctBlockOverdue(c.blocker)) out.push("Construction blocker past its resolution date");
+  return out;
+}
+function ctNeedsUpdate(l){ return ctIssues(l).length>0; }
+
+/* ---- the counts the control centre is built from ---- */
+function ctBoard(){
+  const pool = ctPool().filter(l=>ctOf(l));
+  const b = { all:pool, active:[], soon:[], today:[], overdue:[], blocked:[],
+              update:[], completed:[], byDept:{}, byProject:{} };
+  ctDepts().forEach(d=> b.byDept[d.k] = {dept:d, active:[], soon:[], overdue:[], blocked:[], days:[]});
+  pool.forEach(l=>{
+    const c = ctOf(l), st = ctSlaState(c);
+    if(st==="completed"){ b.completed.push(l); return; }
+    b.active.push(l);
+    if(st==="overdue") b.overdue.push(l);
+    if(st==="today")   b.today.push(l);
+    if(st==="soon")    b.soon.push(l);
+    if(st==="blocked"){ b.blocked.push(l);
+      const p = l.project||"—"; (b.byProject[p] = b.byProject[p]||[]).push(l); }
+    if(ctNeedsUpdate(l)) b.update.push(l);
+    const d = b.byDept[c.step];
+    if(d){ d.active.push(l);
+      if(st==="overdue") d.overdue.push(l);
+      if(st==="soon"||st==="today") d.soon.push(l);
+      if(st==="blocked") d.blocked.push(l);
+      const days = ctCurrentAging(c); if(days!==null) d.days.push(days); }
+  });
+  return b;
+}
+
+/* ================= CONTRACT CONTROL CENTRE ================= */
+let ctcFilter = "";                       // which card was clicked
+function ctcGo(k){ ctcFilter = (ctcFilter===k)? "" : k; render(); }
+function ctCard(k, label, list, cls){
+  return `<div class="card kpi ${cls||""} ${ctcFilter===k?"on":""}" onclick="ctcGo('${k}')" style="cursor:pointer">
+    <div class="k-label">${label}</div><div class="k-num">${list.length}</div>
+    ${list.length? `<div class="k-sub">${canSeeMoney()? fmtMoney(list.reduce((s,l)=>s+(Number(l.value)||0),0)) : "&nbsp;"}</div>`:""}
+  </div>`;
+}
+function ctRow(l){
+  const c = ctOf(l), st = ctSlaState(c), p = ctPriority(l), od = ctDaysOverdue(c);
+  return `<tr onclick="ctOpen('${l.id}')" style="cursor:pointer">
+    <td><b>${esc(ctNumber(l))}</b><div class="muted">${esc(l.company||l.name)}</div></td>
+    <td>${esc(l.project||"—")}<div class="muted">${esc(l.plotNo||"—")}</div></td>
+    <td>${esc(ctLabel(c.step))}<div class="muted">${esc(c.handler? memberName(c.handler):"—")}</div></td>
+    <td><span class="cx-pill ${CT_STATE_CLASS[st]}">${CT_STATE_LABEL[st]}</span>
+      ${od? `<div class="muted">${od} day${od===1?"":"s"} over</div>`:""}
+      ${ctBlocked(c)? `<div class="muted">${esc(c.blocker.reason)}</div>`:""}</td>
+    <td>${esc(fmtDate(ctDue(c)))}</td>
+    <td>${CT_PRIO[p].d} ${CT_PRIO[p].l}</td>
+    <td class="num">${canSeeMoney()? fmtMoney(l.value||0) : "—"}</td>
+  </tr>`;
+}
+function ctList(list, title){
+  if(!list.length) return `<div class="empty">Nothing here.</div>`;
+  const sorted = list.slice().sort((a,b)=>{
+    const oa = ctDaysOverdue(ctOf(a)), ob = ctDaysOverdue(ctOf(b));
+    if(oa!==ob) return ob-oa;
+    return (Number(b.value)||0) - (Number(a.value)||0);
+  });
+  return `<div class="card" style="overflow:auto"><table>
+    <thead><tr><th>Contract</th><th>Project / plot</th><th>Department</th>
+      <th>State</th><th>Due</th><th>Priority</th><th class="num">Value</th></tr></thead>
+    <tbody>${sorted.map(ctRow).join("")}</tbody></table></div>`;
+}
+function viewCtControl(){
+  const b = ctBoard();
+  const lists = {overdue:b.overdue, today:b.today, soon:b.soon, blocked:b.blocked,
+                 update:b.update, active:b.active, completed:b.completed};
+  const attention = [
+    b.overdue.length? {c:"bad",  t:`${b.overdue.length} contract${b.overdue.length===1?" is":"s are"} overdue`, k:"overdue"}:null,
+    b.today.length?   {c:"bad",  t:`${b.today.length} due today`, k:"today"}:null,
+    b.soon.length?    {c:"warn", t:`${b.soon.length} due within 3 days`, k:"soon"}:null,
+    b.blocked.length? {c:"blk",  t:`${b.blocked.length} blocked by construction`, k:"blocked"}:null,
+    b.update.length?  {c:"warn", t:`${b.update.length} need updating`, k:"update"}:null
+  ].filter(Boolean);
+  const depts = ctDepts().map(d=>b.byDept[d.k]).filter(Boolean);
+  const worst = depts.slice().sort((a,b2)=> b2.overdue.length - a.overdue.length)[0];
+  const avg = x => x.days.length? Math.round(x.days.reduce((s,v)=>s+v,0)/x.days.length) : 0;
+  const slow = depts.slice().sort((a,b2)=> avg(b2) - avg(a))[0];
+
+  return `
+  <div class="section-head"><h2>Contract Control Centre</h2>
+    <div class="no-print" style="display:flex;gap:6px">
+      <button class="btn btn-ghost btn-sm" onclick="ctExport()">⬇ Export to Excel</button>
+      <button class="btn btn-ghost btn-sm" onclick="setView('ctimport')">⬆ Import from Excel</button>
+      <button class="btn btn-ghost btn-sm" onclick="setView('ctblockers')">🚧 Construction</button>
+    </div>
+  </div>
+
+  ${attention.length? `<div class="card ct-att">
+    <div class="eyebrow red">What needs attention</div>
+    ${attention.map(a=>`<button class="cx-att-r ${a.c}" onclick="ctcGo('${a.k}')">${esc(a.t)}</button>`).join("")}
+  </div>`:""}
+
+  <div class="kpis">
+    ${ctCard("active","Active", b.active)}
+    ${ctCard("soon","Due soon", b.soon, "k-amber")}
+    ${ctCard("today","Due today", b.today, "k-red")}
+    ${ctCard("overdue","Overdue", b.overdue, "k-red")}
+    ${ctCard("update","Update required", b.update, "k-amber")}
+    ${ctCard("blocked","Construction blockers", b.blocked, "k-amber")}
+    ${ctCard("completed","Completed", b.completed, "k-green")}
+  </div>
+
+  ${ctcFilter? `<div class="section-head"><h2>${esc(({overdue:"Overdue contracts",today:"Due today",
+      soon:"Due soon",blocked:"Blocked by construction",update:"Needing an update",
+      active:"Active contracts",completed:"Completed"})[ctcFilter]||"Contracts")}</h2>
+      <button class="btn btn-ghost btn-sm" onclick="ctcGo('')">Close</button></div>
+    ${ctList(lists[ctcFilter]||[])}`:""}
+
+  <div class="section-head"><h2>By department</h2></div>
+  <div class="card" style="overflow:auto"><table>
+    <thead><tr><th>Department</th><th class="num">Active</th><th class="num">Due soon</th>
+      <th class="num">Overdue</th><th class="num">Blocked</th><th class="num">Avg days</th><th>SLA</th></tr></thead>
+    <tbody>${depts.map(d=>`<tr>
+      <td><b>${esc(d.dept.label)}</b><div class="muted">${esc(d.dept.phase)}</div></td>
+      <td class="num">${d.active.length}</td>
+      <td class="num">${d.soon.length}</td>
+      <td class="num ${d.overdue.length?"cx-red":""}">${d.overdue.length}</td>
+      <td class="num">${d.blocked.length}</td>
+      <td class="num ${avg(d) > d.dept.sla? "cx-red":""}">${avg(d)}</td>
+      <td>${d.dept.sla} day${d.dept.sla===1?"":"s"}</td></tr>`).join("")}
+    </tbody></table>
+    ${worst && worst.overdue.length? `<p class="muted" style="margin:8px 12px 4px">
+      Biggest hold-up: <b>${esc(worst.dept.label)}</b> with ${worst.overdue.length} overdue${
+      slow && avg(slow) > slow.dept.sla? ` · ${esc(slow.dept.label)} is averaging ${avg(slow)} days against a ${slow.dept.sla}-day target`:""}.</p>`:""}
+  </div>`;
+}
+
+/* ---- construction blockers, kept apart from department delay ---- */
+function viewCtBlockers(){
+  const b = ctBoard();
+  const open = b.blocked;
+  const byReason = {}, byProject = {};
+  open.forEach(l=>{ const c=ctOf(l);
+    (byReason[c.blocker.reason] = byReason[c.blocker.reason]||[]).push(l);
+    (byProject[l.project||"—"] = byProject[l.project||"—"]||[]).push(l); });
+  const totalDays = open.reduce((s,l)=>s+ctBlockDays(ctOf(l).blocker),0);
+  const overdueB = open.filter(l=>ctBlockOverdue(ctOf(l).blocker));
+  const bars = (obj) => Object.entries(obj).sort((a,c)=>c[1].length-a[1].length).map(([k,v])=>{
+    const max = Math.max(...Object.values(obj).map(x=>x.length));
+    return `<div class="cx-bar"><span>${esc(k)}</span>
+      <div class="cx-bar-t"><i style="width:${Math.round(v.length/max*100)}%"></i></div>
+      <b>${v.length}</b></div>`;
+  }).join("") || `<div class="empty">Nothing blocked.</div>`;
+
+  return `
+  <div class="section-head"><h2>Construction blockers</h2>
+    <button class="btn btn-ghost btn-sm no-print" onclick="setView('ctcontrol')">← Control centre</button></div>
+  <p class="muted" style="margin:-4px 0 12px">A blocked contract is waiting on site work, not on a department — it is never counted as overdue.</p>
+  <div class="kpis">
+    <div class="card kpi k-amber"><div class="k-label">Contracts blocked</div><div class="k-num">${open.length}</div>
+      <div class="k-sub">${canSeeMoney()? fmtMoney(open.reduce((s,l)=>s+(Number(l.value)||0),0)) : "&nbsp;"}</div></div>
+    <div class="card kpi"><div class="k-label">Total days blocked</div><div class="k-num">${totalDays}</div></div>
+    <div class="card kpi k-red"><div class="k-label">Past resolution date</div><div class="k-num">${overdueB.length}</div></div>
+    <div class="card kpi"><div class="k-label">Projects affected</div><div class="k-num">${Object.keys(byProject).length}</div></div>
+  </div>
+  <div class="two-col">
+    <div class="card"><div class="eyebrow red">By project</div>${bars(byProject)}</div>
+    <div class="card"><div class="eyebrow red">By reason</div>${bars(byReason)}</div>
+  </div>
+  <div class="section-head"><h2>Blocked contracts</h2></div>
+  ${open.length? `<div class="card" style="overflow:auto"><table>
+    <thead><tr><th>Contract</th><th>Project / plot</th><th>Reason</th><th>Severity</th>
+      <th class="num">Days blocked</th><th>Expected</th><th class="num">Value</th></tr></thead>
+    <tbody>${open.slice().sort((a,c)=>ctBlockDays(ctOf(c).blocker)-ctBlockDays(ctOf(a).blocker)).map(l=>{
+      const bl = ctOf(l).blocker;
+      return `<tr onclick="ctOpen('${l.id}')" style="cursor:pointer">
+        <td><b>${esc(ctNumber(l))}</b><div class="muted">${esc(l.company||l.name)}</div></td>
+        <td>${esc(l.project||"—")}<div class="muted">${esc(l.plotNo||"—")}</div></td>
+        <td>${esc(bl.reason)}${bl.note? `<div class="muted">${esc(bl.note)}</div>`:""}</td>
+        <td>${esc(bl.severity||"—")}</td>
+        <td class="num">${ctBlockDays(bl)}</td>
+        <td class="${ctBlockOverdue(bl)?"cx-red":""}">${bl.expectedAt? esc(fmtDate(bl.expectedAt)) : "—"}</td>
+        <td class="num">${canSeeMoney()? fmtMoney(l.value||0):"—"}</td></tr>`;}).join("")}
+    </tbody></table></div>` : `<div class="empty">No contract is blocked by construction.</div>`}`;
+}
+
+/* ================= EXCEL: OUT AND BACK IN =================
+   Export gives a sheet in the shape the import expects, so the round trip is
+   the same file. Import never touches a record until the preview is confirmed. */
+const CT_XL_COLS = [
+  {h:"Contract No.",        get:l=>ctNumber(l)},
+  {h:"Lead ID",             get:l=>l.id},
+  {h:"Customer",            get:l=>l.company||l.name||""},
+  {h:"Contact",             get:l=>l.name||""},
+  {h:"Project",             get:l=>l.project||""},
+  {h:"Plot",                get:l=>l.plotNo||""},
+  {h:"Contract Value",      get:l=>Number(l.value)||""},
+  {h:"Department",          get:l=>ctLabel((ctOf(l)||{}).step)},
+  {h:"Responsible",         get:l=>{const c=ctOf(l); return c&&c.handler? memberName(c.handler):"";}},
+  {h:"Status",              get:l=>(ctOf(l)||{}).status||""},
+  {h:"Entered Department",  get:l=>((ctOf(l)||{}).receivedAt||"").slice(0,10)},
+  {h:"Due Date",            get:l=>ctDue(ctOf(l))},
+  {h:"Days In Department",  get:l=>{const d=ctCurrentAging(ctOf(l)); return d===null?"":d;}},
+  {h:"SLA State",           get:l=>CT_STATE_LABEL[ctSlaState(ctOf(l))]},
+  {h:"Priority",            get:l=>CT_PRIO[ctPriority(l)].l},
+  {h:"Delay Reason",        get:l=>(ctOf(l)||{}).delayReason||""},
+  {h:"Construction Status", get:l=>{const c=ctOf(l); return ctBlocked(c)? "Blocked":"Clear";}},
+  {h:"Blocker Reason",      get:l=>{const c=ctOf(l); return ctBlocked(c)? c.blocker.reason:"";}},
+  {h:"Blocker Expected",    get:l=>{const c=ctOf(l); return ctBlocked(c)? c.blocker.expectedAt||"":"";}},
+  {h:"Notes",               get:l=>(ctOf(l)||{}).note||""}
+];
+function ctExport(){
+  if(typeof XLSX==="undefined"){ toast("Excel library not loaded"); return; }
+  const rows = ctPool().filter(l=>ctOf(l));
+  if(!rows.length){ toast("No contracts to export yet"); return; }
+  const aoa = [CT_XL_COLS.map(c=>c.h)].concat(rows.map(l=>CT_XL_COLS.map(c=>{
+    try{ return c.get(l); }catch(e){ return ""; }
+  })));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), "Contracts");
+  XLSX.writeFile(wb, "Contracts_"+today()+".xlsx");
+  toast("Exported "+rows.length+" contracts");
+}
+
+/* the fields a sheet may write back, and how each is applied */
+const CT_IMPORT_FIELDS = {
+  "Department":          {label:"Department",          cur:l=>ctLabel((ctOf(l)||{}).step),
+                          set:(l,v)=>{ const d = ctDepts().find(x=>x.label.toLowerCase()===String(v).trim().toLowerCase());
+                                       if(d){ const c=ctOf(l); c.step=d.k; c.receivedAt=nowStamp(); } }},
+  "Responsible":         {label:"Responsible",         cur:l=>{const c=ctOf(l); return c&&c.handler? memberName(c.handler):"";},
+                          set:(l,v)=>{ const m = matchMemberByName(String(v).trim(), state.members.filter(x=>!x.pending));
+                                       if(m.id) ctOf(l).handler = m.id; }},
+  "Status":              {label:"Status",              cur:l=>(ctOf(l)||{}).status||"",
+                          set:(l,v)=>{ ctOf(l).status = String(v).trim(); }},
+  "Due Date":            {label:"Due date",            cur:l=>ctDue(ctOf(l)),
+                          set:(l,v)=>{ ctOf(l).dueOverride = normDate(v); }},
+  "Priority":            {label:"Priority",            cur:l=>CT_PRIO[ctPriority(l)].l,
+                          set:(l,v)=>{ const k = Object.keys(CT_PRIO).find(x=>CT_PRIO[x].l.toLowerCase()===String(v).trim().toLowerCase());
+                                       if(k) ctOf(l).priority = k; }},
+  "Delay Reason":        {label:"Delay reason",        cur:l=>(ctOf(l)||{}).delayReason||"",
+                          set:(l,v)=>{ ctOf(l).delayReason = String(v).trim(); }},
+  "Blocker Reason":      {label:"Construction blocker",cur:l=>{const c=ctOf(l); return ctBlocked(c)? c.blocker.reason:"";},
+                          set:(l,v)=>{ const c=ctOf(l); const r=String(v).trim();
+                                       if(!r){ if(c.blocker) c.blocker.resolvedAt = today(), c.blocker=null; }
+                                       else c.blocker = Object.assign({reason:r, severity:"Medium", startedAt:today(),
+                                             expectedAt:"", resolvedAt:"", by:"Excel import"}, c.blocker||{}, {reason:r}); }},
+  "Blocker Expected":    {label:"Blocker resolution",  cur:l=>{const c=ctOf(l); return ctBlocked(c)? c.blocker.expectedAt||"":"";},
+                          set:(l,v)=>{ const c=ctOf(l); if(c.blocker) c.blocker.expectedAt = normDate(v); }},
+  "Plot":                {label:"Plot",                cur:l=>l.plotNo||"", set:(l,v)=>{ l.plotNo = String(v).trim(); }},
+  "Project":             {label:"Project",             cur:l=>l.project||"", set:(l,v)=>{ l.project = String(v).trim(); }},
+  "Contract Value":      {label:"Contract value",      cur:l=>String(Number(l.value)||""),
+                          set:(l,v)=>{ const n = Number(String(v).replace(/[^\d.]/g,"")); if(n) l.value = n; }},
+  "Notes":               {label:"Notes",               cur:l=>(ctOf(l)||{}).note||"",
+                          set:(l,v)=>{ ctOf(l).note = String(v).trim(); }}
+};
+
+let ctImp = null;                       // the pending preview, never applied until confirmed
+function ctImportRead(file){
+  if(!file) return;
+  if(typeof XLSX==="undefined"){ toast("Excel library not loaded"); return; }
+  const r = new FileReader();
+  r.onload = e=>{
+    try{
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type:"array"});
+      const sh = wb.SheetNames.includes("Contracts")? "Contracts" : wb.SheetNames[0];
+      const aoa = XLSX.utils.sheet_to_json(wb.Sheets[sh], {header:1, defval:""});
+      if(aoa.length < 2){ toast("That sheet has no rows"); return; }
+      ctImp = ctImportPlan(aoa);
+      render();
+    }catch(err){ toast("Could not read the file — "+err.message); }
+  };
+  r.readAsArrayBuffer(file);
+}
+/* match, then work out what would change — nothing is written here */
+function ctImportPlan(aoa){
+  const head = aoa[0].map(h=>String(h).trim());
+  const idx = {}; head.forEach((h,i)=> idx[h.toLowerCase()] = i);
+  const at = name => { const i = idx[name.toLowerCase()]; return i===undefined? -1 : i; };
+  const plan = { head, rows:[], counts:{updated:0,created:0,same:0,conflict:0,dup:0,bad:0} };
+  const seen = {};
+  aoa.slice(1).forEach((r, n)=>{
+    const val = name => { const i = at(name); return i<0? "" : String(r[i]==null?"":r[i]).trim(); };
+    const no = val("Contract No."), leadId = val("Lead ID");
+    if(!no && !leadId && !val("Customer")){ return; }             // blank line
+    /* the contract number is the key; the lead id, then project + plot, back it up */
+    let l = no? ctByNumber(no) : null;
+    if(!l && leadId) l = state.leads.find(x=>x.id===leadId) || null;
+    if(!l && val("Project") && val("Plot"))
+      l = state.leads.find(x=>ctOf(x) && x.project===val("Project") && x.plotNo===val("Plot")) || null;
+    const key = (no||leadId||val("Customer")).toLowerCase();
+    const dup = !!seen[key]; seen[key] = true;
+    const row = { n:n+2, no, leadId, customer:val("Customer"), lead:l, changes:[], kind:"", why:"" };
+    if(dup){ row.kind="dup"; plan.counts.dup++; plan.rows.push(row); return; }
+    if(!l){
+      /* a contract can only be created for a won lead that has one */
+      row.kind = "bad";
+      row.why = no? "No contract matches "+no : "No matching contract — a contract is started from a won lead";
+      plan.counts.bad++; plan.rows.push(row); return;
+    }
+    Object.keys(CT_IMPORT_FIELDS).forEach(col=>{
+      if(at(col) < 0) return;
+      const nv = val(col); if(nv==="") return;
+      const f = CT_IMPORT_FIELDS[col];
+      const cv = String(f.cur(l)==null? "": f.cur(l)).trim();
+      if(String(nv) !== cv) row.changes.push({col, label:f.label, from:cv||"—", to:nv});
+    });
+    if(!row.changes.length){ row.kind="same"; plan.counts.same++; }
+    else { row.kind="update"; plan.counts.updated++; }
+    plan.rows.push(row);
+  });
+  return plan;
+}
+function ctImportApply(){
+  if(!ctImp) return;
+  let done = 0;
+  ctImp.rows.filter(r=>r.kind==="update" && r.lead).forEach(r=>{
+    r.changes.forEach(ch=>{
+      const f = CT_IMPORT_FIELDS[ch.col];
+      try{ f.set(r.lead, ch.to); }catch(e){}
+      ctLog(r.lead, ch.label+": "+ch.from+" → "+ch.to+" (Excel import)");
+    });
+    done++;
+  });
+  persist();
+  ctImp = null;
+  toast(done? ("Updated "+done+" contract"+(done===1?"":"s")) : "Nothing to apply");
+  setView("ctcontrol");
+}
+function viewCtImport(){
+  const p = ctImp;
+  return `
+  <div class="section-head"><h2>Import contracts from Excel</h2>
+    <button class="btn btn-ghost btn-sm no-print" onclick="ctImp=null;setView('ctcontrol')">← Control centre</button></div>
+  <div class="card">
+    <p class="muted" style="margin-top:0">Export first, edit the sheet, then upload it back — the columns are already in the right shape.
+      Rows are matched on <b>Contract No.</b>, then Lead ID, then project + plot. Nothing is written until you confirm.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="ctExport()">⬇ Download the current sheet</button>
+      <label class="btn btn-red btn-sm" style="cursor:pointer">⬆ Choose Excel file
+        <input type="file" accept=".xlsx,.xls" style="display:none" onchange="ctImportRead(this.files[0])"></label>
+    </div>
+  </div>
+  ${!p? "" : `
+  <div class="section-head"><h2>Preview — ${p.rows.length} row${p.rows.length===1?"":"s"} read</h2></div>
+  <div class="kpis">
+    <div class="card kpi k-amber"><div class="k-label">To update</div><div class="k-num">${p.counts.updated}</div></div>
+    <div class="card kpi"><div class="k-label">Unchanged</div><div class="k-num">${p.counts.same}</div></div>
+    <div class="card kpi k-red"><div class="k-label">No match</div><div class="k-num">${p.counts.bad}</div></div>
+    <div class="card kpi k-amber"><div class="k-label">Duplicate rows</div><div class="k-num">${p.counts.dup}</div></div>
+  </div>
+  <div class="card" style="overflow:auto"><table>
+    <thead><tr><th>Row</th><th>Contract</th><th>Result</th><th>What would change</th></tr></thead>
+    <tbody>${p.rows.map(r=>`<tr>
+      <td>${r.n}</td>
+      <td><b>${esc(r.no||"—")}</b><div class="muted">${esc(r.customer||"")}</div></td>
+      <td>${r.kind==="update"? `<span class="cx-pill warn">${r.changes.length} change${r.changes.length===1?"":"s"}</span>`
+          : r.kind==="same"? `<span class="cx-pill mut">Unchanged</span>`
+          : r.kind==="dup"? `<span class="cx-pill warn">Duplicate row</span>`
+          : `<span class="cx-pill bad">No match</span>`}</td>
+      <td>${r.changes.map(c=>`<div class="cx-diff"><b>${esc(c.label)}</b> ${esc(c.from)} → <i>${esc(c.to)}</i></div>`).join("")
+           || `<span class="muted">${esc(r.why||"—")}</span>`}</td></tr>`).join("")}
+    </tbody></table></div>
+  <div style="display:flex;gap:8px;margin-top:10px">
+    <button class="btn btn-red" onclick="ctImportApply()" ${p.counts.updated?"":"disabled"}>Confirm and apply ${p.counts.updated} update${p.counts.updated===1?"":"s"}</button>
+    <button class="btn btn-ghost" onclick="ctImp=null;render()">Discard</button>
+  </div>`}`;
+}
+
+
+/* ================= CRM COPILOT — the tool layer =================
+   The model never sees the database. It asks for a named tool with arguments;
+   the tool runs here, inside the browser, against the data this user is already
+   allowed to see; the result is handed back and the model answers from it. That
+   is what keeps it from inventing customers, contracts and numbers. */
+
+function aiScope(){ return visibleLeads().filter(l=>!isMergedAway(l)); }
+function aiMoney(v){ return canSeeMoney()? (Number(v)||0) : null; }
+function aiLead(l){
+  const c = ctOf(l);
+  return {
+    id:l.id, name:l.name||"", company:l.company||"", status:l.status||"",
+    source:normSource(l.source)||"", project:l.project||"", plot:l.plotNo||"",
+    area:l.soldArea||l.land||null, value:aiMoney(l.value),
+    owner:l.owner? memberName(l.owner):"", created:l.created||"",
+    nextFollowUp:l.next||"", lastContact:l.lastContact||"",
+    wonOn: l.status==="Won"? wonOn(l) : "",
+    daysSinceContact: l.lastContact? ctDays(l.lastContact) : null,
+    contract: c? { no:ctNumber(l), department:ctLabel(c.step),
+      responsible:c.handler? memberName(c.handler):"", state:CT_STATE_LABEL[ctSlaState(c)],
+      due:ctDue(c), daysInDepartment:ctCurrentAging(c), daysOverdue:ctDaysOverdue(c),
+      blocked: ctBlocked(c)? c.blocker.reason : "", delayReason:c.delayReason||"" } : null
+  };
+}
+/* every tool states what it needs, so the model can choose properly */
+const AI_TOOLS = {
+  search_leads: {
+    what:"Find leads or customers. Filter by any of: text (name/company/phone/email), status, source, project, owner name, minValue, notContactedDays, limit.",
+    run:(a)=>{
+      let rows = aiScope();
+      const q = String(a.text||"").toLowerCase();
+      if(q) rows = rows.filter(l=>[l.name,l.company,l.phone,l.email,l.project]
+        .some(v=>String(v||"").toLowerCase().includes(q)));
+      if(a.status)  rows = rows.filter(l=>String(l.status||"").toLowerCase()===String(a.status).toLowerCase());
+      if(a.source)  rows = rows.filter(l=>String(normSource(l.source)||"").toLowerCase()===String(a.source).toLowerCase());
+      if(a.project) rows = rows.filter(l=>String(l.project||"").toLowerCase().includes(String(a.project).toLowerCase()));
+      if(a.owner){ const m = matchMemberByName(String(a.owner), state.members.filter(x=>!x.pending));
+                   if(m.id) rows = rows.filter(l=>l.owner===m.id); else return {found:0, rows:[], note:"No team member called "+a.owner}; }
+      if(a.minValue) rows = rows.filter(l=>(Number(l.value)||0) >= Number(a.minValue));
+      if(a.notContactedDays) rows = rows.filter(l=>{
+        const d = l.lastContact? ctDays(l.lastContact) : (l.created? ctDays(l.created) : null);
+        return d!==null && d >= Number(a.notContactedDays); });
+      const lim = Math.min(Number(a.limit)||25, 60);
+      return { found: rows.length, showing: Math.min(rows.length, lim), rows: rows.slice(0,lim).map(aiLead) };
+    }
+  },
+  get_lead: {
+    what:"Everything on one lead, including its activity history. Needs id or text.",
+    run:(a)=>{
+      const rows = aiScope();
+      const key = String(a.text||"").trim().toLowerCase();
+      if(!a.id && !key) return {found:false, note:"Name the customer or company you mean."};
+      const l = a.id? rows.find(x=>x.id===a.id)
+        : rows.find(x=>[x.name,x.company].some(v=>String(v||"").toLowerCase().includes(key)));
+      if(!l) return {found:false, note:"No lead you can see matches that."};
+      const c = ctOf(l);
+      return { found:true, lead:aiLead(l),
+        notes: l.notes||"",
+        activity:(l.log||[]).slice(0,15).map(e=>({at:e.at||e.d||"", by:e.by||"", what:e.t||""})),
+        offers:((l.stageMeta&&l.stageMeta.offers)||[]).map(o=>({project:o.project, area:o.area, total:aiMoney(o.total), savedAt:o.savedAt})),
+        reservations:((l.stageMeta&&l.stageMeta.reservations)||[]).map(r=>({form:(RES_FORMS[r.form]||{}).en||r.form, savedAt:r.savedAt})),
+        contractHistory: c? (c.history||[]).slice(0,12).map(h=>({at:h.at, step:h.label, by:h.by, what:h.comment||h.status})) : []
+      };
+    }
+  },
+  search_contracts: {
+    what:"Find contracts. Filter by: department, state (Overdue/Due soon/Due today/Blocked/On track/Completed), project, responsible, minValue, minDaysOverdue, blockedOnly, limit.",
+    run:(a)=>{
+      let rows = aiScope().filter(l=>ctOf(l));
+      if(a.department) rows = rows.filter(l=>ctLabel(ctOf(l).step).toLowerCase().includes(String(a.department).toLowerCase()));
+      if(a.state) rows = rows.filter(l=>CT_STATE_LABEL[ctSlaState(ctOf(l))].toLowerCase()===String(a.state).toLowerCase());
+      if(a.project) rows = rows.filter(l=>String(l.project||"").toLowerCase().includes(String(a.project).toLowerCase()));
+      if(a.responsible){ const m = matchMemberByName(String(a.responsible), state.members.filter(x=>!x.pending));
+                         if(m.id) rows = rows.filter(l=>ctOf(l).handler===m.id); }
+      if(a.blockedOnly) rows = rows.filter(l=>ctBlocked(ctOf(l)));
+      if(a.minDaysOverdue) rows = rows.filter(l=>ctDaysOverdue(ctOf(l)) >= Number(a.minDaysOverdue));
+      if(a.minValue) rows = rows.filter(l=>(Number(l.value)||0) >= Number(a.minValue));
+      const lim = Math.min(Number(a.limit)||25, 60);
+      return { found:rows.length, showing:Math.min(rows.length,lim),
+               rows: rows.slice(0,lim).map(l=>Object.assign({id:l.id, customer:l.company||l.name, value:aiMoney(l.value)}, aiLead(l).contract)) };
+    }
+  },
+  contract_board: {
+    what:"The contract control-centre counts: active, due soon, due today, overdue, blocked, needing an update, plus a per-department breakdown with average days and SLA.",
+    run:()=>{
+      const b = ctBoard();
+      const n = x=>({count:x.length, value:aiMoney(x.reduce((s,l)=>s+(Number(l.value)||0),0))});
+      return { active:n(b.active), dueSoon:n(b.soon), dueToday:n(b.today), overdue:n(b.overdue),
+        blockedByConstruction:n(b.blocked), updateRequired:n(b.update), completed:n(b.completed),
+        byDepartment: ctDepts().map(d=>{ const x=b.byDept[d.k]||{active:[],soon:[],overdue:[],blocked:[],days:[]};
+          return { department:d.label, slaDays:d.sla, active:x.active.length, dueSoon:x.soon.length,
+                   overdue:x.overdue.length, blocked:x.blocked.length,
+                   avgDaysInDepartment: x.days.length? Math.round(x.days.reduce((s,v)=>s+v,0)/x.days.length) : 0 }; })
+      };
+    }
+  },
+  construction_blockers: {
+    what:"Contracts held up by site work — by project, by reason, days blocked, and which are past their expected resolution.",
+    run:()=>{
+      const open = ctBoard().blocked;
+      const by = (f)=>{ const o={}; open.forEach(l=>{ const k=f(l)||"—"; (o[k]=o[k]||[]).push(l); });
+        return Object.entries(o).map(([k,v])=>({key:k, contracts:v.length, value:aiMoney(v.reduce((s,x)=>s+(Number(x.value)||0),0))}))
+          .sort((x,y)=>y.contracts-x.contracts); };
+      return { blocked:open.length, totalDaysBlocked: open.reduce((s,l)=>s+ctBlockDays(ctOf(l).blocker),0),
+        pastResolutionDate: open.filter(l=>ctBlockOverdue(ctOf(l).blocker)).length,
+        byProject: by(l=>l.project), byReason: by(l=>ctOf(l).blocker.reason),
+        rows: open.map(l=>({ contract:ctNumber(l), customer:l.company||l.name, project:l.project||"",
+          plot:l.plotNo||"", reason:ctOf(l).blocker.reason, severity:ctOf(l).blocker.severity,
+          daysBlocked:ctBlockDays(ctOf(l).blocker), expected:ctOf(l).blocker.expectedAt||"",
+          value:aiMoney(l.value) })) };
+    }
+  },
+  pipeline_metrics: {
+    what:"Live sales figures for a period ('week','month','quarter','year','all'): leads, won, lost, conversion, pipeline value, average deal, and the per-salesperson table where the user may see it.",
+    run:(a)=>{
+      const period = a.period||"all";
+      const saved = repFilters.period; repFilters.period = period;
+      let d; try{ d = repData(); } finally { repFilters.period = saved; }
+      const A = d.now;
+      return { period, leads:A.total, won:A.won, lost:A.lost,
+        conversionPct: A.total? Math.round(A.won/A.total*1000)/10 : 0,
+        wonValue:aiMoney(A.wonValue), pipelineValue:aiMoney(A.pipeline),
+        averageDeal: A.won? aiMoney(Math.round(A.wonValue/A.won)) : null,
+        note:"Won deals are counted by their closing date, not the day the lead was entered." };
+    }
+  },
+  team_performance: {
+    what:"Per-salesperson figures for a period — leads, won, conversion, value. Managers and above only.",
+    run:(a)=>{
+      if(!canManage()) return {allowed:false, note:"Only managers and above can see other people's figures."};
+      const saved = repFilters.period; repFilters.period = a.period||"all";
+      let d; try{ d = repData(); } finally { repFilters.period = saved; }
+      const by = (d.now && d.now.byOwner) || {};
+      const rows = Object.entries(by).filter(([id])=>id).map(([id,o])=>({
+        person: memberName(id) || "—",
+        leads: o.leads||0, won: o.won||0,
+        conversionPct: o.leads? Math.round((o.won||0)/o.leads*1000)/10 : 0,
+        wonValue: aiMoney(o.wonValue||0) })).sort((a2,b2)=>(b2.won-a2.won));
+      return { period:a.period||"all", rows };
+    }
+  },
+  data_quality: {
+    what:"Records with something missing or contradictory — contracts without a responsible person, missing plots or values, stalled contracts, leads with no next action.",
+    run:()=>{
+      const rows = aiScope(), out = [];
+      const push = (issue, l, why)=> out.push({issue, id:l.id, customer:l.company||l.name,
+        contract:ctOf(l)? ctNumber(l):"", detail:why});
+      rows.forEach(l=>{
+        ctIssues(l).forEach(i=>push(i, l, i));
+        if(l.status!=="Won" && l.status!=="Lost" && !l.next) push("No next follow-up date", l, "");
+        if(!l.owner) push("Nobody owns this lead", l, "");
+      });
+      const grouped = {};
+      out.forEach(r=>{ (grouped[r.issue] = grouped[r.issue]||[]).push(r); });
+      return { total:out.length,
+        groups: Object.entries(grouped).map(([k,v])=>({issue:k, count:v.length, examples:v.slice(0,5)}))
+          .sort((a2,b2)=>b2.count-a2.count) };
+    }
+  },
+  whats_changed: {
+    what:"What moved in the CRM over the last N days (default 7): activity logged, leads added, deals won, contracts moved.",
+    run:(a)=>{
+      const days = Number(a.days)||7, since = new Date(); since.setDate(since.getDate()-days);
+      const iso = since.toISOString().slice(0,10);
+      const rows = aiScope();
+      const added = rows.filter(l=>(l.created||"") >= iso);
+      const won = rows.filter(l=>l.status==="Won" && wonOn(l) >= iso);
+      const acts = [];
+      rows.forEach(l=>(l.log||[]).forEach(e=>{ const at=String(e.at||e.d||"").slice(0,10);
+        if(at >= iso) acts.push({at, by:e.by||"", customer:l.company||l.name, what:e.t||""}); }));
+      return { sinceDate:iso, leadsAdded:added.length, dealsWon:won.length,
+        wonValue:aiMoney(won.reduce((s,l)=>s+(Number(l.value)||0),0)),
+        activitiesLogged:acts.length,
+        recent: acts.sort((x,y)=>y.at.localeCompare(x.at)).slice(0,20) };
+    }
+  },
+  my_day: {
+    what:"What this user should deal with today: overdue follow-ups, today's follow-ups, meetings, and their own overdue or blocked contracts.",
+    run:()=>{
+      const rows = aiScope().filter(l=>!currentUser || fullView() || l.owner===currentUser.id);
+      const t = today();
+      const open = l=>l.status!=="Won" && l.status!=="Lost";
+      return {
+        overdueFollowUps: rows.filter(l=>open(l) && l.next && l.next < t).map(aiLead).slice(0,20),
+        dueToday:         rows.filter(l=>open(l) && l.next===t).map(aiLead).slice(0,20),
+        meetingsToday:    rows.filter(l=>l.meetingDate===t).map(aiLead).slice(0,10),
+        myOverdueContracts: rows.filter(l=>{const c=ctOf(l); return c && ctSlaState(c)==="overdue";})
+                              .map(l=>Object.assign({customer:l.company||l.name}, aiLead(l).contract)).slice(0,20),
+        myBlockedContracts: rows.filter(l=>ctBlocked(ctOf(l)))
+                              .map(l=>Object.assign({customer:l.company||l.name}, aiLead(l).contract)).slice(0,20)
+      };
+    }
+  }
+};
+function aiToolCatalogue(){
+  return Object.keys(AI_TOOLS).map(k=>"- "+k+": "+AI_TOOLS[k].what).join("\n");
+}
+function aiRunTool(name, args){
+  const t = AI_TOOLS[name];
+  if(!t) return {error:"No such tool: "+name};
+  try{ return t.run(args||{}); }
+  catch(e){ return {error:"The tool failed: "+e.message}; }
+}
+
+
+/* ================= CRM COPILOT — understanding, done locally =================
+   No model, no API, no key. The question is read here: entities are pulled out
+   of it (a department, a project, a person, a period, an amount, a number of
+   days) and matched to one of the CRM tools. Because every answer is computed
+   from the records by code, there is nothing that can be invented — and it
+   works offline, instantly, at no cost. */
+
+
+/* ---- reading a question the way people actually type it ----
+   Spelling drifts, words get shortened, and the same thing has five names.
+   Everything is normalised and stemmed before matching, and nothing is ever a
+   dead end: if no rule fits, the words are searched across the whole book. */
+const AI_SYN = [
+  [/\boverdue|late|past due|behind|delayed|متأخر/g, " overdue "],
+  [/\bblock\w*|construction|site ?work|on site|infrastructure|utilit\w*|بناء|إنشاء/g, " blocked "],
+  [/\bcontracts?|agreements?|عقد|عقود/g, " contract "],
+  [/\bcustomers?|clients?|accounts?|companies|company|عميل|عملاء|شركة/g, " customer "],
+  [/\bleads?|prospects?|enquir\w*|inquir\w*/g, " lead "],
+  [/\bdeals?|opportunit\w*|صفق\w*/g, " deal "],
+  [/\bsalespe\w*|reps?|agents?|team members?|مندوب/g, " salesperson "],
+  [/\bfollow ?ups?|call(?:ed|ing)?|phoned?|spoke|contacted?|reach(?:ed)?|touch|متابعة|اتصال/g, " followup "],
+  [/\bmeetings?|visits?|site visits?|اجتماع|زيارة/g, " meeting "],
+  [/\boffers?|quot\w*|عرض|عروض/g, " offer "],
+  [/\bprojects?|parks?|zones?|مشروع/g, " project " ],
+  [/\bsources?|channels?|مصدر/g, " source "],
+  [/\blost|losing|lose|خسر\w*/g, " lost "],
+  [/\bwon|win|wins|closed won|فاز|مكتمل/g, " won "],
+  [/\brevenue|sales value|turnover|إيراد/g, " value "],
+  [/\bhow much|how many|total|count|كم/g, " howmany "],
+  [/\bcompare|versus|vs\b|مقارنة/g, " compare "],
+  [/\brisk\w*|at risk|in danger|خطر/g, " risk "],
+  [/\bstuck|stalled|no movement|idle|راكد/g, " stuck "],
+  [/\bmissing|incomplete|wrong|bad data|ناقص/g, " missing "],
+  [/\bages?\b|\baging\b|\bageing\b|\bold\b|how long|عمر/g, " aging "],
+  [/\btoday'?s?|اليوم/g, " today "],
+  [/\bthis week|هذا الأسبوع/g, " thisweek "],
+  [/\bpriorit\w*|attention|urgent|important|أولو\w*/g, " attention "]
+];
+function aiNorm(q){
+  let s = " " + String(q||"").toLowerCase()
+    .replace(/[؟?!,.؛;:"'()]/g," ")
+    .replace(/[\u064B-\u0652]/g,"")
+    .replace(/\s+/g," ").trim() + " ";
+  AI_SYN.forEach(([re,to])=>{ s = s.replace(re, to); });
+  return s.replace(/\s+/g," ").trim();
+}
+/* a loose match, so "greenpower", "green powr" and "GREEN POWER" all land */
+function aiLoose(s){ return String(s||"").toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]/g,""); }
+function aiSimilar(a, b){
+  a = aiLoose(a); b = aiLoose(b);
+  if(!a || !b) return 0;
+  if(b.includes(a) || a.includes(b)) return 1;
+  /* character overlap — enough to survive a typo or a missing letter */
+  let hit = 0; const pool = b.split("");
+  a.split("").forEach(c=>{ const i = pool.indexOf(c); if(i>=0){ hit++; pool.splice(i,1); } });
+  return hit / Math.max(a.length, b.length);
+}
+/* the words that are left once the question words are gone */
+function aiWords(raw){
+  return aiNorm(raw).split(" ").filter(w=>w.length>2 && !AI_STOP.has(w));
+}
+/* search everything for whatever the person typed — the last resort that still
+   answers instead of shrugging */
+function aiGlobal(raw){
+  const words = aiWords(raw);
+  if(!words.length) return null;
+  const rows = aiScope();
+  const scored = rows.map(l=>{
+    const hay = [l.name,l.company,l.project,l.plotNo,l.status,normSource(l.source),
+                 l.owner? memberName(l.owner):"", (ctOf(l)? ctNumber(l):"")].join(" ");
+    let s = 0;
+    words.forEach(w=>{
+      if(aiLoose(hay).includes(aiLoose(w))) s += 2;
+      else if(hay.split(/\s+/).some(t=>aiSimilar(w,t) > 0.8)) s += 1;
+    });
+    return {l, s};
+  }).filter(x=>x.s>0).sort((a,b)=>b.s-a.s);
+  if(!scored.length) return null;
+  return { found:scored.length, showing:Math.min(scored.length,20),
+           rows:scored.slice(0,20).map(x=>aiLead(x.l)), matchedOn:words.join(" ") };
+}
+
+/* ---- pulling the details out of a question ---- */
+function aiNum(q){
+  /* "above 20 million", "50m", "20,000,000", "over 5 sqm" */
+  const m = q.match(/(\d[\d,.]*)\s*(m\b|million|mn|k\b|thousand)?/);
+  if(!m) return null;
+  let n = Number(String(m[1]).replace(/,/g,""));
+  if(!isFinite(n)) return null;
+  const unit = m[2]||"";
+  if(/^m|million|mn/.test(unit)) n *= 1000000;
+  else if(/^k|thousand/.test(unit)) n *= 1000;
+  return n;
+}
+function aiDays(q){
+  const m = q.match(/(\d+)\s*(day|days|يوم)/);
+  if(m) return Number(m[1]);
+  if(/\btoday\b|اليوم/.test(q)) return 1;
+  if(/\bweek\b|أسبوع/.test(q)) return 7;
+  if(/\bmonth\b|شهر/.test(q)) return 30;
+  return null;
+}
+function aiPeriod(q){
+  if(/this week|هذا الأسبوع/.test(q)) return "week";
+  if(/this month|هذا الشهر/.test(q)) return "month";
+  if(/quarter|ربع/.test(q)) return "quarter";
+  if(/this year|السنة|العام/.test(q)) return "year";
+  return "all";
+}
+function aiFind(q, list, get){
+  /* the longest name mentioned in the question wins, so "Industria Sadat"
+     beats "Sadat" and a two-word person beats a first name */
+  let best = null;
+  (list||[]).forEach(x=>{
+    const name = String(get? get(x) : x||"").toLowerCase().trim();
+    if(name.length < 3) return;
+    if(q.includes(name) && (!best || name.length > best.n.length)) best = {x, n:name};
+  });
+  return best? best.x : null;
+}
+function aiDept(q){ const d = aiFind(q, ctDepts(), x=>x.label); return d? d.label : null; }
+function aiProject(q){
+  const p = aiFind(q, (typeof PROJECTS!=="undefined")? PROJECTS : []);
+  if(p) return p;
+  const fromLead = aiFind(q, [...new Set(aiScope().map(l=>l.project).filter(Boolean))]);
+  return fromLead || null;
+}
+function aiPerson(q){
+  const m = aiFind(q, state.members.filter(x=>!x.pending), x=>x.name);
+  return m? m.name : null;
+}
+function aiStatus(q){
+  const s = aiFind(q, (typeof STATUSES!=="undefined")? STATUSES : []);
+  return s || null;
+}
+
+/* ---- what the question is asking for ---- */
+const AI_INTENTS = [
+  { id:"attention", say:"Today's priorities",
+    when:q=>/attention|today|my day/.test(q) && !/contract/.test(q),
+    plan:()=>({tool:"my_day", args:{}}) },
+
+  { id:"blocked", say:"Contracts blocked by construction",
+    when:q=>/blocked/.test(q),
+    plan:()=>({tool:"construction_blockers", args:{}}) },
+
+  { id:"overdue_ct", say:"Overdue contracts",
+    when:q=>/overdue/.test(q) && /contract/.test(q),
+    plan:q=>({tool:"search_contracts", args:{state:"Overdue",
+      minDaysOverdue:(/more than|over|أكثر/.test(q)? aiDays(q):null)||null,
+      project:aiProject(q), responsible:aiPerson(q),
+      minValue:(/value|above|over|worth/.test(q)? aiNum(q):null)||null}}) },
+
+  { id:"dept_ct", say:"Contracts by department",
+    when:q=>/contract/.test(q) && !!aiDept(q),
+    plan:q=>({tool:"search_contracts", args:{department:aiDept(q), project:aiProject(q)}}) },
+
+  { id:"bottleneck", say:"Where the hold-ups are",
+    when:q=>/bottleneck|hold ?up|slowest|stuck|department|which team/.test(q),
+    plan:()=>({tool:"contract_board", args:{}}) },
+
+  { id:"board", say:"Contract position",
+    when:q=>/contract/.test(q) && /howmany|status|position|board|summary|overview|where|aging/.test(q),
+    plan:()=>({tool:"contract_board", args:{}}) },
+
+  { id:"contracts_any", say:"Contracts",
+    when:q=>/contract/.test(q),
+    plan:q=>({tool:"search_contracts", args:{project:aiProject(q), responsible:aiPerson(q),
+      state:(/due soon|due this|soon/.test(q)?"Due soon":(/today/.test(q)?"Due today":null)),
+      minValue:(/above|over|worth|value/.test(q)? aiNum(q):null)||null}}) },
+
+  { id:"meetings", say:"Meetings",
+    when:q=>/meeting/.test(q),
+    plan:()=>({tool:"my_day", args:{}}) },
+
+  { id:"neglected", say:"Leads going cold",
+    when:q=>/(not|havent|haven t|no|without)\s+\w*\s*followup|neglect|cold|stuck|risk|going quiet/.test(q),
+    plan:q=>({tool:"search_leads", args:{notContactedDays: aiDays(q) || 7}}) },
+
+  { id:"changed", say:"What has changed",
+    when:q=>/chang|new|happen|since|thisweek|latest|update/.test(q) && !/missing/.test(q),
+    plan:q=>({tool:"whats_changed", args:{days: aiDays(q) || 7}}) },
+
+  { id:"quality", say:"Data problems",
+    when:q=>/missing|quality|duplicat|conflict/.test(q),
+    plan:()=>({tool:"data_quality", args:{}}) },
+
+  { id:"team", say:"Team performance",
+    when:q=>/salesperson|team|best|highest|top|conversion|performance|compare/.test(q)
+            && !/customer|lead|deal/.test(q),
+    plan:q=>({tool:"team_performance", args:{period:aiPeriod(q)}}) },
+
+  { id:"pipeline", say:"Pipeline and conversion",
+    when:q=>/pipeline|conversion|forecast|target|value|won|lost|howmany/.test(q)
+            && !/customer|lead|deal|contract/.test(q),
+    plan:q=>({tool:"pipeline_metrics", args:{period:aiPeriod(q)}}) },
+
+  { id:"one_lead", say:"One customer",
+    when:(q,raw)=>/everything|summar|about|profile|tell me|who is|history/.test(q) && !!aiSubject(raw),
+    plan:(q,raw)=>({tool:"get_lead", args:{text: aiSubject(raw)}}) },
+
+  { id:"leads", say:"Leads and customers",
+    /* anything that still reads like a CRM question, with whatever filters were
+       mentioned; if nothing was, the global search below picks it up */
+    when:(q,raw)=>/lead|customer|deal|show|list|find|who|which|howmany/.test(q)
+            || !!aiStatus(q) || !!aiProject(q) || !!aiPerson(q) || !!aiSubject(raw),
+    plan:(q,raw)=>({tool:"search_leads", args:{ text: aiSubject(raw)||"",
+      status:aiStatus(q), project:aiProject(q), owner:aiPerson(q),
+      notContactedDays:(/cold|neglect/.test(q)? (aiDays(q)||7):null)||null,
+      minValue:(/above|over|more than|worth|value/.test(q)? aiNum(q):null)||null }}) }
+];
+/* the words left once the question words are stripped — usually the name */
+const AI_STOP = new Set(("show me all give tell about find search which what who where when list of the a an is are was were "
+ +"for with and or in on at to from my our their this that these those please can you do does i want need "
+ +"havent haven have has had not no any some more than over above under between days day week month year ago last next "
+ +"customer customers client clients lead leads company companies deal deals opportunity opportunities "
+ +"contract contracts project projects everything summary summarise summarize profile info information").split(" "));
+function aiSubject(raw){
+  const words = aiNorm(raw).split(" ").filter(w=>w && !AI_STOP.has(w) && !/^\d+$/.test(w));
+  if(!words.length) return "";
+  /* try the longest run of remaining words that actually matches a record */
+  for(let len=Math.min(words.length,4); len>=1; len--){
+    for(let i=0; i+len<=words.length; i++){
+      const cand = words.slice(i,i+len).join(" ");
+      if(cand.length < 3) continue;
+      const hit = aiScope().some(l=>[l.name,l.company].some(v=>{
+        const s = String(v||"").toLowerCase();
+        return s.includes(cand) || aiSimilar(cand, s) > 0.82;
+      }));
+      if(hit) return cand;
+    }
+  }
+  return "";
+}
+function aiPlan(raw){
+  const q = aiNorm(raw);
+  /* an open record answers "this customer" without naming it */
+  const open = editingLeadId? state.leads.find(x=>x.id===editingLeadId) : null;
+  if(open && /\bthis\b|هذا|هذه/.test(q) && !/contract|عقد/.test(q))
+    return {tool:"get_lead", args:{id:open.id}, say:"This customer"};
+  for(const it of AI_INTENTS){
+    if(it.when(q, raw)){
+      const p = it.plan(q, raw);
+      Object.keys(p.args||{}).forEach(k=>{ if(p.args[k]===null||p.args[k]==="") delete p.args[k]; });
+      return {tool:p.tool, args:p.args, say:it.say, intent:it.id};
+    }
+  }
+  return null;
+}
+
+/* ================= CRM COPILOT — writing the answer =================
+   The reply is composed here from the tool's own output. Every number on the
+   screen was counted from the records a moment earlier, and every record named
+   is a link to itself. */
+function aiM(v){ return v===null? "—" : fmtMoney(v); }
+function aiOpenLead(id){ if(typeof openLeadModal==="function") openLeadModal(id); }
+function aiLink(id, label){ return `<a href="#" onclick="aiOpenLead('${id}');return false">${esc(label)}</a>`; }
+function aiTable(head, rows){
+  if(!rows.length) return "";
+  return `<div class="ai-tbl"><table><thead><tr>${head.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead>
+    <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
+function aiNone(what){ return `<p>I don't have ${esc(what)} in the CRM.</p>`; }
+
+function aiWrite(plan, r){
+  if(r && r.error) return `<p>${esc(r.error)}</p>`;
+  const t = plan.tool;
+
+  if(t==="my_day"){
+    const n = (r.overdueFollowUps||[]).length + (r.dueToday||[]).length
+            + (r.myOverdueContracts||[]).length + (r.myBlockedContracts||[]).length;
+    if(!n) return `<p>Nothing is overdue and nothing is due today. ${
+      (r.meetingsToday||[]).length? "You have "+r.meetingsToday.length+" meeting(s) today." : "Your follow-ups are all ahead of you."}</p>`;
+    let h = `<p><b>${n}</b> thing${n===1?"":"s"} need you today.</p>`;
+    if(r.overdueFollowUps.length) h += `<p><b>${r.overdueFollowUps.length} follow-up${r.overdueFollowUps.length===1?"":"s"} overdue</b></p>`
+      + aiTable(["Customer","Was due","Status","Value"], r.overdueFollowUps.slice(0,8).map(l=>
+        [aiLink(l.id, l.company||l.name), esc(fmtDate(l.nextFollowUp)), esc(l.status), aiM(l.value)]));
+    if(r.dueToday.length) h += `<p><b>${r.dueToday.length} due today</b></p>`
+      + aiTable(["Customer","Status","Value"], r.dueToday.slice(0,8).map(l=>
+        [aiLink(l.id, l.company||l.name), esc(l.status), aiM(l.value)]));
+    if(r.meetingsToday.length) h += `<p><b>Meetings today:</b> ${r.meetingsToday.map(l=>aiLink(l.id,l.company||l.name)).join(", ")}</p>`;
+    if(r.myOverdueContracts.length) h += `<p><b>${r.myOverdueContracts.length} contract${r.myOverdueContracts.length===1?"":"s"} overdue</b></p>`
+      + aiTable(["Contract","Department","Days over"], r.myOverdueContracts.slice(0,8).map(c=>
+        [esc(c.no), esc(c.department), String(c.daysOverdue)]));
+    if(r.myBlockedContracts.length) h += `<p><b>${r.myBlockedContracts.length} blocked by construction</b> — waiting on site work, not on a department.</p>`;
+    return h;
+  }
+
+  if(t==="construction_blockers"){
+    if(!r.blocked) return `<p>No contract is blocked by construction right now.</p>`;
+    let h = `<p><b>${r.blocked} contract${r.blocked===1?"":"s"}</b> blocked by construction, ${r.totalDaysBlocked} days lost between them`
+      + (r.pastResolutionDate? `, and <b>${r.pastResolutionDate}</b> ${r.pastResolutionDate===1?"is":"are"} past the date it was meant to be cleared` : "")
+      + `.</p>`;
+    h += aiTable(["Project","Contracts","Value"], r.byProject.map(p=>[esc(p.key), String(p.contracts), aiM(p.value)]));
+    h += `<p><b>Why they are blocked</b></p>`
+      + aiTable(["Reason","Contracts"], r.byReason.map(p=>[esc(p.key), String(p.contracts)]));
+    h += aiTable(["Contract","Customer","Reason","Days","Expected"], r.rows.slice(0,10).map(x=>
+      [esc(x.contract), esc(x.customer), esc(x.reason), String(x.daysBlocked), x.expected? esc(fmtDate(x.expected)):"—"]));
+    return h;
+  }
+
+  if(t==="contract_board"){
+    const b = r;
+    let h = `<p><b>${b.active.count}</b> active contracts — ${b.overdue.count} overdue, ${b.dueToday.count} due today, `
+      + `${b.dueSoon.count} due soon, ${b.blockedByConstruction.count} blocked by construction`
+      + (b.updateRequired.count? `, ${b.updateRequired.count} missing information` : "") + `.</p>`;
+    const worst = b.byDepartment.slice().sort((x,y)=>y.overdue-x.overdue)[0];
+    const slow  = b.byDepartment.slice().filter(d=>d.avgDaysInDepartment>d.slaDays)
+                    .sort((x,y)=>(y.avgDaysInDepartment-y.slaDays)-(x.avgDaysInDepartment-x.slaDays))[0];
+    if(worst && worst.overdue) h += `<p>The hold-up is <b>${esc(worst.department)}</b> with ${worst.overdue} overdue.`
+      + (slow? ` ${esc(slow.department)} is averaging ${slow.avgDaysInDepartment} days against a ${slow.slaDays}-day target.`:"") + `</p>`;
+    h += aiTable(["Department","Active","Due soon","Overdue","Blocked","Avg days","SLA"],
+      b.byDepartment.map(d=>[esc(d.department), String(d.active), String(d.dueSoon),
+        d.overdue? `<b>${d.overdue}</b>`:"0", String(d.blocked),
+        d.avgDaysInDepartment>d.slaDays? `<b>${d.avgDaysInDepartment}</b>`:String(d.avgDaysInDepartment), String(d.slaDays)]));
+    return h;
+  }
+
+  if(t==="search_contracts"){
+    if(!r.found) return aiNone("any contract matching that");
+    let h = `<p>Found <b>${r.found}</b> contract${r.found===1?"":"s"}${r.showing<r.found? `, showing the first ${r.showing}`:""}.</p>`;
+    h += aiTable(["Contract","Customer","Department","State","Due","Value"], r.rows.map(c=>
+      [esc(c.no||"—"), aiLink(c.id, c.customer||"—"), esc(c.department||"—"),
+       c.daysOverdue? `<b>${esc(c.state)} · ${c.daysOverdue}d</b>` : esc(c.state||"—"),
+       c.due? esc(fmtDate(c.due)):"—", aiM(c.value)]));
+    return h;
+  }
+
+  if(t==="search_leads"){
+    if(!r.found) return aiNone("any lead matching that");
+    const total = r.rows.reduce((s,l)=>s+(l.value||0),0);
+    let h = `<p>Found <b>${r.found}</b>${r.showing<r.found? `, showing ${r.showing}`:""}`
+      + (r.rows[0] && r.rows[0].value!==null? ` — ${fmtMoney(total)} between them` : "") + `.</p>`;
+    h += aiTable(["Customer","Status","Project","Owner","Last contact","Value"], r.rows.map(l=>
+      [aiLink(l.id, l.company||l.name), esc(l.status||"—"), esc(l.project||"—"), esc(l.owner||"—"),
+       l.daysSinceContact===null? "—" : l.daysSinceContact+"d ago", aiM(l.value)]));
+    return h;
+  }
+
+  if(t==="get_lead"){
+    if(!r.found) return aiNone("that customer");
+    const l = r.lead;
+    let h = `<p><b>${esc(l.company||l.name)}</b> — ${esc(l.status)}${l.project? " · "+esc(l.project):""}`
+      + `${l.plot? " · plot "+esc(l.plot):""}${l.value!==null? " · "+fmtMoney(l.value):""}.</p>`;
+    h += `<p>Owned by ${esc(l.owner||"nobody")}. `
+      + (l.daysSinceContact===null? "No contact recorded yet." : `Last contact ${l.daysSinceContact} days ago.`)
+      + (l.nextFollowUp? ` Next follow-up ${esc(fmtDate(l.nextFollowUp))}.` : " No next follow-up set.") + `</p>`;
+    if(l.contract){
+      const c = l.contract;
+      h += `<p><b>Contract ${esc(c.no)}</b> is with ${esc(c.department)}${c.responsible? " ("+esc(c.responsible)+")":""}, `
+        + `${c.daysInDepartment} day${c.daysInDepartment===1?"":"s"} so far — ${esc(c.state)}`
+        + (c.daysOverdue? `, ${c.daysOverdue} days over` : "")
+        + (c.blocked? `. Blocked by construction: ${esc(c.blocked)}` : "") + `.</p>`;
+    }
+    if((r.offers||[]).length) h += `<p><b>Offers:</b> ${r.offers.map(o=>esc(o.project)+" "+aiM(o.total)).join(" · ")}</p>`;
+    if((r.reservations||[]).length) h += `<p><b>Reservation forms:</b> ${r.reservations.map(x=>esc(x.form)).join(" · ")}</p>`;
+    if((r.activity||[]).length) h += `<p><b>Recent activity</b></p>`
+      + aiTable(["When","Who","What"], r.activity.slice(0,6).map(a=>
+        [esc(String(a.at).slice(0,10)), esc(a.by||"—"), esc(a.what)]));
+    return h;
+  }
+
+  if(t==="pipeline_metrics"){
+    let h = `<p>Over <b>${esc(r.period==="all"? "the whole book" : "this "+r.period)}</b>: `
+      + `${r.leads} leads, ${r.won} won, ${r.lost} lost — a ${r.conversionPct}% conversion.</p>`;
+    if(r.wonValue!==null) h += `<p>Won ${fmtMoney(r.wonValue)}${r.averageDeal? `, averaging ${fmtMoney(r.averageDeal)} a deal`:""}`
+      + `${r.pipelineValue? `, with ${fmtMoney(r.pipelineValue)} still open`:""}.</p>`;
+    h += `<p class="muted">${esc(r.note)}</p>`;
+    return h;
+  }
+
+  if(t==="team_performance"){
+    if(r.allowed===false) return `<p>${esc(r.note)}</p>`;
+    if(!r.rows.length) return aiNone("any figures for that period");
+    const top = r.rows[0];
+    return `<p><b>${esc(top.person)}</b> leads on deals won for ${esc(r.period==="all"?"the whole book":"this "+r.period)}.</p>`
+      + aiTable(["Salesperson","Leads","Won","Conversion","Value"], r.rows.map(x=>
+        [esc(x.person), String(x.leads), String(x.won), x.conversionPct+"%", aiM(x.wonValue)]));
+  }
+
+  if(t==="data_quality"){
+    if(!r.total) return `<p>Nothing is missing — every record you can see has what it needs.</p>`;
+    let h = `<p><b>${r.total}</b> problem${r.total===1?"":"s"} across your records.</p>`;
+    h += aiTable(["Problem","Records","Examples"], r.groups.map(g=>
+      [esc(g.issue), String(g.count), g.examples.map(e=>aiLink(e.id, e.customer)).join(", ")]));
+    return h;
+  }
+
+  if(t==="whats_changed"){
+    let h = `<p>Since <b>${esc(fmtDate(r.sinceDate))}</b>: ${r.leadsAdded} lead${r.leadsAdded===1?"":"s"} added, `
+      + `${r.dealsWon} deal${r.dealsWon===1?"":"s"} won${r.wonValue? " worth "+fmtMoney(r.wonValue):""}, `
+      + `${r.activitiesLogged} activit${r.activitiesLogged===1?"y":"ies"} logged.</p>`;
+    if((r.recent||[]).length) h += aiTable(["When","Who","Customer","What"], r.recent.slice(0,10).map(a=>
+      [esc(a.at), esc(a.by||"—"), esc(a.customer), esc(a.what)]));
+    return h;
+  }
+  return `<p>I found the data but don't know how to lay it out. Tell me what you expected to see.</p>`;
+}
+/* when the question doesn't match anything */
+function aiHelp(){
+  return `<p>I couldn't tell what you're after. I can answer things like:</p>
+    <ul class="ai-help">
+      <li>What needs my attention today?</li>
+      <li>Show overdue contracts / contracts with Legal / contracts above 20 million</li>
+      <li>Which contracts are blocked by construction?</li>
+      <li>Which leads haven't been contacted in 10 days?</li>
+      <li>How is the pipeline this month? · Who has the best conversion?</li>
+      <li>What changed this week? · What data is missing?</li>
+      <li>Tell me everything about &lt;a customer or company&gt;</li>
+    </ul>`;
+}
+
+/* ================= CRM COPILOT — the answer loop and the chat =================
+   Ask → the model picks tools → we run them here → the model answers from what
+   came back. It never answers from memory: the rule is that any figure, name or
+   date must have come from a tool result in this conversation. */
+let aiChat = [];          // {role, html, tools:[…], say}
+let aiBusy = false, aiOpen = false;
+
+/* Ask → understand → run the tool → lay the answer out. All of it here: there
+   is no model and no network call, so an answer can only ever be the records. */
+function aiAsk(question){
+  const q = String(question||"").trim();
+  if(!q || aiBusy) return;
+  aiChat.push({role:"user", html:esc(q)});
+  aiBusy = true; aiPaint();
+  setTimeout(()=>{
+    try{
+      const plan = aiPlan(q);
+      /* the question named something we can't find: say so, rather than falling
+         back to "here is everything" — that reads as an answer and isn't one */
+      if(plan && plan.tool==="search_leads" && !Object.keys(plan.args||{}).length){
+        const words = aiWords(q);
+        if(words.length && !aiGlobal(q)){
+          aiChat.push({role:"assistant",
+            html:`<p>I don't have anything matching “${esc(words.join(" "))}” in the records you can see.</p>`});
+          aiBusy=false; aiPaint(); return;
+        }
+      }
+      if(plan){
+        const result = aiRunTool(plan.tool, plan.args);
+        /* a rule that matched but found nothing still gets a second chance at
+           the words themselves, so a name we didn't recognise isn't a dead end */
+        const empty = result && (result.found===0 || result.found===false);
+        if(empty){
+          const g = aiGlobal(q);
+          if(g){ aiChat.push({role:"assistant", say:"Anything matching that",
+                   html:`<p class="muted">Nothing matched that exactly, so I searched your records for “${esc(g.matchedOn)}”.</p>`
+                        + aiWrite({tool:"search_leads"}, g),
+                   tools:[{name:"search (everything)", args:{words:g.matchedOn}, result:g}]});
+                 aiBusy=false; aiPaint(); return; }
+        }
+        aiChat.push({role:"assistant", html:aiWrite(plan, result), say:plan.say,
+                     tools:[{name:plan.tool, args:plan.args, result}]});
+      } else {
+        const g = aiGlobal(q);
+        const words = aiWords(q);
+        if(g) aiChat.push({role:"assistant", say:"Anything matching that",
+                html:`<p class="muted">I wasn't sure what you meant, so I searched your records for “${esc(g.matchedOn)}”.</p>`
+                     + aiWrite({tool:"search_leads"}, g),
+                tools:[{name:"search (everything)", args:{words:g.matchedOn}, result:g}]});
+        /* named something we simply don't hold — say that, rather than a menu */
+        else if(words.length) aiChat.push({role:"assistant",
+                html:`<p>I don't have anything matching “${esc(words.join(" "))}” in the records you can see.</p>`
+                     + `<p class="muted">If you meant something else, try one of these.</p>` + aiHelp()});
+        else aiChat.push({role:"assistant", html:aiHelp()});
+      }
+    }catch(e){
+      aiChat.push({role:"assistant", html:"<p>Something went wrong working that out — "+esc(e.message)+"</p>"});
+    }
+    aiBusy = false; aiPaint();
+  }, 20);
+}
+/* ---- the panel ---- */
+const AI_SUGGEST = ["What needs my attention today?", "Show overdue contracts",
+  "Which contracts are blocked by construction?", "Analyse my pipeline",
+  "What changed this week?", "Which leads have I not contacted in 7 days?",
+  "Where are the bottlenecks?", "What data is missing or wrong?"];
+function aiToggle(){ aiOpen = !aiOpen; aiPaint(); if(aiOpen){ const b=$("aiInput"); if(b) b.focus(); } }
+function aiSend(){ const b = $("aiInput"); if(!b) return; const q = b.value; b.value=""; aiAsk(q); }
+function aiSuggest(q){ aiAsk(q); }
+function aiClear(){ aiChat = []; aiPaint(); }
+function aiBubble(m){
+  if(m.role==="user") return `<div class="ai-u">${m.html}</div>`;
+  const tools = (m.tools||[]).length? `<details class="ai-src"><summary>Where this came from — ${m.tools.length} lookup${m.tools.length===1?"":"s"}</summary>
+      ${m.tools.map(t=>`<div class="ai-src-r"><b>${esc(t.name)}</b> ${esc(JSON.stringify(t.args||{}))}
+        <div class="muted">${esc(JSON.stringify(t.result).slice(0,300))}${JSON.stringify(t.result).length>300?"…":""}</div></div>`).join("")}
+    </details>`:"";
+  return `<div class="ai-a">${m.say? `<div class="ai-say">${esc(m.say)}</div>`:""}${m.html}${tools}</div>`;
+}
+function aiPaint(){
+  const w = $("aiWrap"); if(!w) return;
+  w.className = "ai-wrap" + (aiOpen? " open":"");
+  const body = $("aiBody");
+  if(body){
+    body.innerHTML = aiChat.length? aiChat.map(aiBubble).join("")
+      : `<div class="ai-empty"><b>Ask anything about your CRM.</b>
+         <p class="muted">Every answer is counted from your own records, and only the ones you're allowed to see.</p>
+         <div class="ai-sug">${AI_SUGGEST.map(s=>`<button onclick="aiSuggest('${esc(s).replace(/'/g,"\\'")}')">${esc(s)}</button>`).join("")}</div></div>`;
+    if(aiBusy) body.innerHTML += `<div class="ai-a ai-think">Working it out…</div>`;
+    body.scrollTop = body.scrollHeight;
+  }
+  const k = $("aiKeyRow");
+  if(k) k.innerHTML = `<span class="muted">Answers are counted from your own records — nothing leaves this browser.</span>`;
+}
+function aiShell(){
+  return `<div class="ai-wrap" id="aiWrap">
+    <button class="ai-fab" onclick="aiToggle()" title="CRM Copilot">✦</button>
+    <div class="ai-panel">
+      <div class="ai-head"><b>CRM Copilot</b>
+        <span><button class="btn btn-ghost btn-sm" onclick="aiClear()">Clear</button>
+        <button class="btn btn-ghost btn-sm" onclick="aiToggle()">×</button></span></div>
+      <div class="ai-body" id="aiBody"></div>
+      <div class="ai-foot">
+        <input id="aiInput" placeholder="Ask anything about your CRM…"
+          onkeydown="if(event.key==='Enter'){aiSend();}">
+        <button class="btn btn-red btn-sm" onclick="aiSend()">Ask</button>
+      </div>
+      <div class="ai-key" id="aiKeyRow"></div>
+    </div>
+  </div>`;
+}
+
 function viewContractsOps(){
   const s = ctStats();
   const mine = s.pool.filter(l=>{ const c=ctOf(l); return c && c.handler===(currentUser&&currentUser.id) && c.process!=="Completed"; });
