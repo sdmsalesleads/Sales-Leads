@@ -1320,7 +1320,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev EH";
+const APP_BUILD = "20 Aug 2026 · rev EI";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1750,7 +1750,7 @@ function toggleSource(s, on){
   srcPickerOpen = true;                    // stay open so several can be ticked in a row
   render();
 }
-function setAllSources(on){ leadFilters.sources = on? SOURCES.slice() : []; leadFilters.source=""; srcPickerOpen = true; render(); }
+function setAllSources(on){ leadScopeClear(); leadFilters.sources = on? SOURCES.slice() : []; leadFilters.source=""; srcPickerOpen = true; render(); }
 function closeSrcPicker(){ srcPickerOpen = false; render(); }
 function sourceFilterUI(){
   const sel = srcSelected();
@@ -1776,7 +1776,13 @@ function stSelected(){
   /* a single-status deep link (e.g. the Won KPI) shows as that one ticked */
   return a.length? a : (leadFilters.status? [leadFilters.status] : []);
 }
+/* a report drill-through narrows the list to one period; touching the filters
+   yourself means you want everything again */
+function leadScopeClear(){
+  leadFilters.from = ""; leadFilters.to = ""; leadFilters.dateField = "";
+}
 function toggleStatusF(s, on){
+  leadScopeClear();
   const cur = new Set(stSelected());
   if(on) cur.add(s); else cur.delete(s);
   leadFilters.statuses = [...cur];
@@ -1784,7 +1790,7 @@ function toggleStatusF(s, on){
   stPickerOpen = true;                     // stay open so several can be ticked in a row
   render();
 }
-function setAllStatuses(on){ leadFilters.statuses = on? STATUSES.slice() : []; leadFilters.status=""; stPickerOpen = true; render(); }
+function setAllStatuses(on){ leadScopeClear(); leadFilters.statuses = on? STATUSES.slice() : []; leadFilters.status=""; stPickerOpen = true; render(); }
 function closeStPicker(){ stPickerOpen = false; render(); }
 function statusFilterUI(){
   const sel = stSelected();
@@ -3038,10 +3044,11 @@ function viewLeads(){
     <button class="btn btn-ghost btn-sm" onclick="selectedLeads.clear();render()">Clear selection</button>
   </div>`:""}
   ${(leadFilters.from||leadFilters.to)? `<div class="sort-chip">
-    <span>يعرض ${leadFilters.dateField==="wonDate"? "الصفقات المكتملة" : "الليدز"}
+    <span>${leadFilters.dateField==="wonDate"? "الصفقات المكتملة" : "الليدز"}
       ${leadFilters.from? "من "+esc(fmtDate(leadFilters.from)):""}
-      ${leadFilters.to? "إلى "+esc(fmtDate(leadFilters.to)):""}</span>
-    <button class="btn btn-ghost btn-sm" onclick="kpiGo({})">عرض الكل</button>
+      ${leadFilters.to? "إلى "+esc(fmtDate(leadFilters.to)):""}
+      <span class="muted">— هذه فترة محددة من التقارير فقط</span></span>
+    <button class="btn btn-ghost btn-sm" onclick="leadScopeClear();render()">عرض كل الفترات</button>
   </div>`:""}
   ${leadSortChip()}
   <div class="card" style="overflow:auto">
@@ -3137,7 +3144,7 @@ function bindLeadFilters(){
   const map = {fl_q:"q", fl_owner:"owner", fl_status:"status", fl_project:"project", fl_due:"due", fl_dup:"dup", fl_sort:"sort"};
   Object.entries(map).forEach(([id,key])=>{
     const el=$(id); if(!el) return;
-    el.addEventListener(id==="fl_q"?"input":"change", ()=>{ leadFilters[key]=el.value; render(); const el2=$(id); if(el2 && id==="fl_q"){ el2.focus(); el2.setSelectionRange(el2.value.length, el2.value.length);} });
+    el.addEventListener(id==="fl_q"?"input":"change", ()=>{ leadScopeClear(); leadFilters[key]=el.value; render(); const el2=$(id); if(el2 && id==="fl_q"){ el2.focus(); el2.setSelectionRange(el2.value.length, el2.value.length);} });
   });
 }
 
