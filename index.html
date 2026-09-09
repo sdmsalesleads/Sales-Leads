@@ -1461,7 +1461,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev ET";
+const APP_BUILD = "20 Aug 2026 · rev EV";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -6758,6 +6758,23 @@ function offerPrintDoc(forPrint){
     /* the offer sheet in particular must stay whole */
     .pk-sheet,.offer-doc,.offer-doc table,.offer-doc .nl{
       page-break-inside:avoid !important; break-inside:avoid !important; }
+    /* ---- fill the page ----
+       Each sheet is exactly the printable height and lays its blocks out in a
+       column, spreading whatever space is left between them. The letterhead
+       stays at the top, the signatures settle at the bottom, and the sections
+       breathe in between — the same shape as the offers they issue today.
+       Nothing is scaled and no font is touched; only the gaps change. */
+    .pk-page{ min-height:283mm !important; display:flex !important;
+              flex-direction:column !important; justify-content:space-between !important; }
+    .pk-page > *{ flex:0 0 auto; }
+    .pk-sheet .offer-doc{ min-height:283mm !important; display:flex !important;
+              flex-direction:column !important; justify-content:space-between !important; }
+    .pk-sheet .offer-doc > *{ flex:0 0 auto; }
+    /* the two tallest stretches — the notes under the payment table and the run
+       up to the signatures — take a little more of the slack than the rest */
+    .pk-sheet .offer-doc .nl{ margin-block:4mm !important; }
+    .pk-cover .pk-cover-mid{ flex:1 1 auto !important; display:flex !important;
+              flex-direction:column !important; justify-content:center !important; }
     /* THE LETTERHEAD. On screen it bleeds over the document's 22px padding with
        width:calc(100% + 44px) and margin:-18px -22px — but here the padding is 0,
        so those negatives pushed it above the page top and off both sides, slicing
