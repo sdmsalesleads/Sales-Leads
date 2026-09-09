@@ -1461,7 +1461,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev EV";
+const APP_BUILD = "20 Aug 2026 · rev EY";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -6749,10 +6749,10 @@ function offerPrintDoc(forPrint){
        width (which was clipping the offer sheet) and no viewport heights
        (which were producing blank pages) */
     /* one printed sheet per page, exactly A4 minus the margins, and never split */
-    .pk-page{ width:192mm !important; height:auto !important; max-width:192mm !important;
+    .pk-page{ width:180mm !important; height:auto !important; max-width:180mm !important;
               min-height:0 !important; overflow:visible !important;
               box-shadow:none !important; border:0 !important; padding:0 !important;
-              margin:0 !important; display:block !important;
+              margin:0 auto !important; display:block !important;
               page-break-after:always; break-after:page;
               page-break-inside:avoid !important; break-inside:avoid !important; }
     /* the offer sheet in particular must stay whole */
@@ -6764,10 +6764,10 @@ function offerPrintDoc(forPrint){
        stays at the top, the signatures settle at the bottom, and the sections
        breathe in between — the same shape as the offers they issue today.
        Nothing is scaled and no font is touched; only the gaps change. */
-    .pk-page{ min-height:283mm !important; display:flex !important;
+    .pk-page{ min-height:279mm !important; display:flex !important;
               flex-direction:column !important; justify-content:space-between !important; }
     .pk-page > *{ flex:0 0 auto; }
-    .pk-sheet .offer-doc{ min-height:283mm !important; display:flex !important;
+    .pk-sheet .offer-doc{ min-height:279mm !important; display:flex !important;
               flex-direction:column !important; justify-content:space-between !important; }
     .pk-sheet .offer-doc > *{ flex:0 0 auto; }
     /* the two tallest stretches — the notes under the payment table and the run
@@ -6835,8 +6835,8 @@ function offerPrintDoc(forPrint){
          page is shrunk to fit rather than being allowed to spill onto the next,
          which is what split the offer sheet in two. */
       (function(){
-        var MAX_H = 283 / 25.4 * 96;          // A4 height less a 7mm margin, in CSS pixels
-        var MAX_W = 196 / 25.4 * 96;
+        var MAX_H = 279 / 25.4 * 96;          // A4 less the 9mm top and bottom, in CSS pixels
+        var MAX_W = 180 / 25.4 * 96;          // A4 less the 15mm down each side
         function fitPages(){
           var pages = document.querySelectorAll('.pk-page');
           for(var i=0;i<pages.length;i++){
@@ -6887,10 +6887,6 @@ function offerPrint(){
   w.document.close();
 }
 
-function offerDateStr(d){
-  const dt = new Date((d||today())+"T00:00:00");
-  return dt.toLocaleDateString("en-GB",{day:"2-digit",month:"2-digit",year:"numeric"});
-}
 const oNum = (n, dp) => Number(n||0).toLocaleString("en-US",{minimumFractionDigits:dp||0, maximumFractionDigits:dp||0});
 
 
