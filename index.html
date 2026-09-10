@@ -1461,7 +1461,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev EY";
+const APP_BUILD = "20 Aug 2026 · rev FA";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -3165,6 +3165,7 @@ function viewLeads(){
     <h2>${adm?(fullView()?"All leads":"My team's leads"):"My leads"} <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0">— ${rows.length} of ${visibleLeads().length}</span></h2>
     <div style="display:flex;gap:8px">
       <button class="btn btn-ghost btn-sm" onclick="exportFiltered()">\u2b07 ${adm? "Export to Excel" : "Download my leads"}${rows.length!==visibleLeads().length? " ("+rows.length+")":""}</button>
+      <button class="btn btn-ghost btn-sm ${bulkOpen?"on":""}" onclick="bulkToggle()" title="Take the leads to a spreadsheet and bring the answers back">\u21c5 Bulk update</button>
       ${isMarketing()?`<button class="btn btn-ghost btn-sm" onclick="setView('data')">Import from Excel</button>`:""}
       ${canAddLead()?`<button class="btn btn-red btn-sm" onclick="openLeadModal()">+ Add lead</button>`:""}
     </div>
@@ -3196,6 +3197,7 @@ function viewLeads(){
       <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="bulkDelete()">\uD83D\uDDD1 Delete</button>`:""}
     <button class="btn btn-ghost btn-sm" onclick="selectedLeads.clear();render()">Clear selection</button>
   </div>`:""}
+  ${bulkOpen? bulkPanel() : ""}
   ${(leadFilters.from||leadFilters.to)? `<div class="sort-chip">
     <span>${leadFilters.dateField==="wonDate"? "الصفقات المكتملة" : "الليدز"}
       ${leadFilters.from? "من "+esc(fmtDate(leadFilters.from)):""}
@@ -13457,6 +13459,225 @@ function downloadTemplate(){
 }
 
 let lastFilteredIds = null;                       // what the Leads page is showing right now
+
+/* ================= BULK UPDATE SHEET =================
+   Take the leads out to a spreadsheet, message them from there, then bring the
+   sheet back: the status and the comment you typed are matched to each lead and
+   written in. The status column is a real Excel dropdown of the CRM's own
+   statuses, so what comes back is always a value the system recognises. */
+const BULK_COLS = [
+  {h:"Lead ID",        w:14, get:l=>l.id},
+  {h:"Lead",           w:22, get:l=>l.name||""},
+  {h:"Company",        w:24, get:l=>l.company||""},
+  {h:"Phone",          w:16, get:l=>l.phone||""},
+  {h:"Project",        w:20, get:l=>l.project||""},
+  {h:"Owner",          w:16, get:l=>l.owner? memberName(l.owner):""},
+  {h:"Current status", w:26, get:l=>l.status||""},
+  {h:"New status",     w:26, get:()=>"", pick:true},
+  {h:"Comment",        w:46, get:()=>""}
+];
+/* the statuses a sheet may set — Won and Lost need a value, a date and a reason,
+   so they are made on the lead itself, not in bulk */
+function bulkStatuses(){ return STATUSES.filter(s=>s!=="Won" && s!=="Lost"); }
+
+const xmlEsc = s => String(s==null?"":s)
+  .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+function colName(i){ let s=""; i++; while(i>0){ const m=(i-1)%26; s=String.fromCharCode(65+m)+s; i=(i-m-1)/26; } return s; }
+
+function bulkSheetXml(rows){
+  const N = rows.length + 1;
+  const head = `<row r="1">` + BULK_COLS.map((c,i)=>
+      `<c r="${colName(i)}1" t="inlineStr" s="1"><is><t>${xmlEsc(c.h)}</t></is></c>`).join("") + `</row>`;
+  const body = rows.map((l, n)=>{
+    const r = n + 2;
+    return `<row r="${r}">` + BULK_COLS.map((c,i)=>
+      `<c r="${colName(i)}${r}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(c.get(l))}</t></is></c>`
+    ).join("") + `</row>`;
+  }).join("");
+  const pickCol = colName(BULK_COLS.findIndex(c=>c.pick));
+  const cols = `<cols>${BULK_COLS.map((c,i)=>`<col min="${i+1}" max="${i+1}" width="${c.w}" customWidth="1"/>`).join("")}</cols>`;
+  /* the dropdown: Excel caps a typed-in list at 255 characters, so the values
+     live on their own sheet and the column points at that range */
+  const dv = `<dataValidations count="1"><dataValidation type="list" allowBlank="1" showInputMessage="1" showErrorMessage="1" errorTitle="Not a CRM status" error="Choose one of the statuses in the list." promptTitle="New status" prompt="Leave blank to keep the current status." sqref="${pickCol}2:${pickCol}${Math.max(N,2000)}"><formula1>Lists!$A$1:$A$${bulkStatuses().length}</formula1></dataValidation></dataValidations>`;
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>${cols}<sheetData>${head}${body}</sheetData>${dv}</worksheet>`;
+}
+function bulkListsXml(){
+  const v = bulkStatuses();
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${
+    v.map((s,i)=>`<row r="${i+1}"><c r="A${i+1}" t="inlineStr"><is><t>${xmlEsc(s)}</t></is></c></row>`).join("")
+  }</sheetData></worksheet>`;
+}
+const BULK_PARTS = {
+  "[Content_Types].xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`,
+  "_rels/.rels": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
+  "xl/workbook.xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Bulk update" sheetId="1" r:id="rId1"/><sheet name="Lists" sheetId="2" state="hidden" r:id="rId2"/></sheets></workbook>`,
+  "xl/_rels/workbook.xml.rels": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`,
+  "xl/styles.xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf/></cellStyleXfs><cellXfs count="2"><xf xfId="0"/><xf xfId="0" fontId="1" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`
+};
+async function bulkBuild(scope){
+  const enc = new TextEncoder();
+  const files = Object.assign({}, BULK_PARTS, {
+    "xl/worksheets/sheet1.xml": bulkSheetXml(scope),
+    "xl/worksheets/sheet2.xml": bulkListsXml()
+  });
+  const entries = [];
+  for(const name of Object.keys(files)){
+    const bytes = enc.encode(files[name]);
+    const packed = await resDeflate(bytes);
+    entries.push({name, comp: packed || bytes, size: bytes.length, crc: resCrc32(bytes), method: packed? 8 : 0});
+  }
+  return resZipBuild(entries);
+}
+async function bulkExport(){
+  const ids = lastFilteredIds;
+  const scope = (ids && ids.length)? ids.map(id=>state.leads.find(l=>l.id===id)).filter(Boolean) : visibleLeads();
+  if(!scope.length){ toast("No leads to export yet"); return; }
+  const zip = await bulkBuild(scope);
+  const blob = new Blob([zip], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "Bulk_update_" + today() + ".xlsx";
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  toast("Downloaded "+scope.length+" lead"+(scope.length===1?"":"s")+" — fill in New status and Comment, then upload it back");
+}
+
+/* ---- the sheet coming back ---- */
+let bulkPlan = null, bulkOpen = false;
+function bulkToggle(){ bulkOpen = !bulkOpen; if(!bulkOpen) bulkPlan = null; render(); }
+function bulkRead(input){
+  const file = input && input.files && input.files[0];
+  if(input) input.value = "";
+  if(!file) return;
+  if(typeof XLSX==="undefined"){ toast("Excel library not loaded"); return; }
+  const r = new FileReader();
+  r.onload = e=>{
+    try{
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type:"array"});
+      const sh = wb.SheetNames.includes("Bulk update")? "Bulk update" : wb.SheetNames[0];
+      const aoa = XLSX.utils.sheet_to_json(wb.Sheets[sh], {header:1, defval:""});
+      if(aoa.length < 2){ toast("That sheet has no rows"); return; }
+      bulkPlan = bulkMakePlan(aoa);
+      render();
+    }catch(err){ toast("Could not read the file — "+err.message); }
+  };
+  r.readAsArrayBuffer(file);
+}
+/* match each row to a lead, then work out what would change — nothing is
+   written until it is confirmed */
+function bulkMakePlan(aoa){
+  const head = aoa[0].map(h=>String(h).trim().toLowerCase());
+  const at = n => head.indexOf(n.toLowerCase());
+  const iId = at("Lead ID"), iPhone = at("Phone"), iCo = at("Company"),
+        iNew = at("New status"), iCmt = at("Comment"), iName = at("Lead");
+  const plan = { rows:[], counts:{status:0, comment:0, both:0, none:0, nomatch:0, blocked:0} };
+  const seen = {};
+  const allowed = bulkStatuses().map(s=>s.toLowerCase());
+  aoa.slice(1).forEach((r, n)=>{
+    const val = i => i<0? "" : String(r[i]==null? "" : r[i]).trim();
+    const id = val(iId), phone = val(iPhone), co = val(iCo);
+    if(!id && !phone && !co) return;
+    let l = id? visibleLeads().find(x=>x.id===id) : null;
+    const pk = phoneKey(phone);
+    if(!l && pk) l = visibleLeads().find(x=>phoneKey(x.phone)===pk || phoneKey(x.phone2)===pk);
+    if(!l && co)    l = visibleLeads().find(x=>String(x.company||"").toLowerCase()===co.toLowerCase());
+    const row = { n:n+2, id, who: co || val(iName) || phone, lead:l,
+                  status: val(iNew), comment: val(iCmt), issue:"" };
+    if(!l){ row.issue = "No lead of yours matches this row"; row.skip = true;
+            plan.counts.nomatch++; plan.rows.push(row); return; }
+    if(seen[l.id]){ row.issue = "Same lead appears twice — only the first row is used"; row.skip = true;
+            plan.counts.nomatch++; plan.rows.push(row); return; }
+    seen[l.id] = true;
+    if(row.status){
+      if(!allowed.includes(row.status.toLowerCase())){
+        /* Won and Lost need a value, a date and a reason — they are not bulk work */
+        row.issue = /^won$|^lost$/i.test(row.status)
+          ? "“"+row.status+"” is set on the lead itself, not here"
+          : "“"+row.status+"” is not one of the CRM's statuses";
+        row.status = ""; plan.counts.blocked++;
+      } else if(row.status === l.status){
+        row.status = "";                       // already there, nothing to do
+      }
+    }
+    const s = !!row.status, c = !!row.comment;
+    if(s && c) plan.counts.both++;
+    else if(s) plan.counts.status++;
+    else if(c) plan.counts.comment++;
+    else if(!row.issue) plan.counts.none++;
+    plan.rows.push(row);
+  });
+  return plan;
+}
+function bulkApply(){
+  if(!bulkPlan) return;
+  let n = 0;
+  bulkPlan.rows.forEach(r=>{
+    if(r.skip || !r.lead || (!r.status && !r.comment)) return;
+    const l = r.lead;
+    if(r.comment){
+      pushLog(l, "Comment (bulk sheet): " + r.comment);
+      l.notes = (l.notes? l.notes + "\n" : "") + fmtDate(today()) + " — " + r.comment;
+      l.lastContact = today();               // you reached out, so the clock resets
+    }
+    if(r.status){
+      const was = l.status;
+      l.status = r.status;
+      pushLog(l, "Status changed via bulk sheet: " + was + " → " + r.status);
+      const needsDate = REQ_FOLLOWUP.indexOf(r.status)>=0 || REQ_DATETIME.indexOf(r.status)>=0;
+      if(needsDate && !l.next){
+        /* these statuses are meaningless without a date to come back on */
+        const d = new Date(); d.setDate(d.getDate()+2);
+        l.next = d.toISOString().slice(0,10);
+      }
+    }
+    if(typeof gsMirrorLead === "function") gsMirrorLead(l);
+    n++;
+  });
+  persist();
+  bulkPlan = null;
+  toast(n? ("Updated "+n+" lead"+(n===1?"":"s")) : "Nothing to apply");
+  render();
+}
+function bulkPanel(){
+  const p = bulkPlan;
+  return `
+  <div class="card" style="margin-bottom:12px">
+    <div class="eyebrow red">Bulk update by spreadsheet</div>
+    <p class="muted" style="margin:4px 0 10px;font-size:.82rem">
+      Download the leads you are working through, send your messages, then write the
+      <b>New status</b> and a <b>Comment</b> against each one and upload the sheet back.
+      The status column is a dropdown of the CRM's own statuses, so nothing invalid comes back.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-red btn-sm" onclick="bulkExport()">⬇ Download sheet</button>
+      <label class="btn btn-ghost btn-sm" style="cursor:pointer">⬆ Upload filled sheet
+        <input type="file" accept=".xlsx,.xls" style="display:none" onchange="bulkRead(this)"></label>
+      ${p? `<button class="btn btn-ghost btn-sm" onclick="bulkPlan=null;render()">Discard</button>`:""}
+    </div>
+  </div>
+  ${!p? "" : `
+  <div class="card" style="overflow:auto;margin-bottom:12px">
+    <div class="eyebrow red">Preview — ${p.rows.length} row${p.rows.length===1?"":"s"} read</div>
+    <p style="font-size:.84rem;margin:4px 0 8px">
+      <b>${p.counts.both}</b> status and comment ·
+      <b>${p.counts.status}</b> status only ·
+      <b>${p.counts.comment}</b> comment only ·
+      ${p.counts.none} unchanged ·
+      ${p.counts.nomatch} not matched${p.counts.blocked? ` · ${p.counts.blocked} status not allowed`:""}</p>
+    <table><thead><tr><th>Row</th><th>Lead</th><th>Status</th><th>Comment</th></tr></thead>
+      <tbody>${p.rows.map(r=>`<tr>
+        <td>${r.n}</td>
+        <td>${r.lead? esc(r.lead.company||r.lead.name) : esc(r.who||"—")}
+          ${r.issue? `<div class="muted">${esc(r.issue)}</div>`:""}</td>
+        <td>${r.status? `${esc(r.lead? r.lead.status : "")} → <b>${esc(r.status)}</b>` : `<span class="muted">—</span>`}</td>
+        <td>${r.comment? esc(r.comment) : `<span class="muted">—</span>`}</td></tr>`).join("")}
+      </tbody></table>
+  </div>
+  <button class="btn btn-red" onclick="bulkApply()" ${(p.counts.both+p.counts.status+p.counts.comment)?"":"disabled"}>
+    Confirm and update ${p.counts.both + p.counts.status + p.counts.comment} lead${(p.counts.both+p.counts.status+p.counts.comment)===1?"":"s"}</button>`}`;
+}
+
 function exportFiltered(){
   const ids = lastFilteredIds;
   const rows = (ids && ids.length)? ids.map(id=>state.leads.find(l=>l.id===id)).filter(Boolean) : null;
