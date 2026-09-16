@@ -1410,10 +1410,14 @@ function phoneIntl(raw){
   if(/^1\d{9}$/.test(d))    return "+20"+d;                   // Excel dropped the leading 0
   if(/^05\d{8}$/.test(d))   return "+966"+d.slice(1);         // KSA/UAE local — defaults to KSA
   if(/^5\d{8}$/.test(d))    return "+966"+d;                  // dropped 0, Gulf mobile
-  if(/^2\d{9}$/.test(d))    return "+20"+d.slice(1)?"" : "";  // ambiguous — flag
+  if(/^0\d{8,10}$/.test(d)) return "+20"+d.slice(1);          // Egyptian landline: 02…, 03…, 045…, 062…
+  if(/^2\d{9}$/.test(d))    return "";                        // ambiguous — flagged rather than guessed
   return d.length>=11 && d.length<=15? "+"+d : "";             // other full intl numbers pass; fragments flagged
 }
 function fmtPhone(v){ if(!v) return ""; return phoneIntl(v) || v; }
+/* what to show on screen: the repaired number where we have one, otherwise
+   exactly what was uploaded — a number we cannot tidy is still a number */
+function showPhone(v){ const s = String(v==null? "" : v).trim(); return s? (phoneIntl(s) || s) : ""; }
 function bestPhone(l){
   /* the number WhatsApp should use — phone, then phone 2, then a customer
      number that is really a phone in disguise */
@@ -1461,7 +1465,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev FE";
+const APP_BUILD = "20 Aug 2026 · rev FG";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -13610,7 +13614,7 @@ function bulkMakePlan(aoa){
   const at = n => head.indexOf(n.toLowerCase());
   const iId = at("Lead ID"), iPhone = at("Phone"), iCo = at("Company"),
         iNew = at("New status"), iCmt = at("Comment"), iName = at("Lead");
-  const plan = { rows:[], counts:{status:0, comment:0, both:0, none:0, nomatch:0, blocked:0} };
+  const plan = { rows:[], counts:{status:0, comment:0, both:0, none:0, nomatch:0, blocked:0, phone:0} };
   const seen = {};
   const allowed = bulkStatuses().map(s=>s.toLowerCase());
   aoa.slice(1).forEach((r, n)=>{
@@ -13622,7 +13626,7 @@ function bulkMakePlan(aoa){
     if(!l && pk) l = visibleLeads().find(x=>phoneKey(x.phone)===pk || phoneKey(x.phone2)===pk);
     if(!l && co)    l = visibleLeads().find(x=>String(x.company||"").toLowerCase()===co.toLowerCase());
     const row = { n:n+2, id, who: co || val(iName) || phone, lead:l,
-                  status: val(iNew), comment: val(iCmt), issue:"" };
+                  status: val(iNew), comment: val(iCmt), phone:"", issue:"" };
     if(!l){ row.issue = "No lead of yours matches this row"; row.skip = true;
             plan.counts.nomatch++; plan.rows.push(row); return; }
     if(seen[l.id]){ row.issue = "Same lead appears twice — only the first row is used"; row.skip = true;
@@ -13639,11 +13643,17 @@ function bulkMakePlan(aoa){
         row.status = "";                       // already there, nothing to do
       }
     }
+    /* a number typed into the sheet is a correction worth keeping */
+    if(phone){
+      const tidy = phoneIntl(phone) || phone.trim();
+      const now  = phoneIntl(l.phone) || String(l.phone||"").trim();
+      if(tidy && tidy !== now){ row.phone = tidy; plan.counts.phone++; }
+    }
     const s = !!row.status, c = !!row.comment;
     if(s && c) plan.counts.both++;
     else if(s) plan.counts.status++;
     else if(c) plan.counts.comment++;
-    else if(!row.issue) plan.counts.none++;
+    else if(!row.issue && !row.phone) plan.counts.none++;
     plan.rows.push(row);
   });
   return plan;
@@ -13652,8 +13662,15 @@ function bulkApply(){
   if(!bulkPlan) return;
   let n = 0;
   bulkPlan.rows.forEach(r=>{
-    if(r.skip || !r.lead || (!r.status && !r.comment)) return;
+    if(r.skip || !r.lead || (!r.status && !r.comment && !r.phone)) return;
     const l = r.lead;
+    if(r.phone){
+      const was = l.phone || "—";
+      /* the old number becomes the second one rather than being thrown away */
+      if(l.phone && !l.phone2) l.phone2 = l.phone;
+      l.phone = r.phone;
+      pushLog(l, "Phone updated from the bulk sheet: " + was + " → " + r.phone);
+    }
     if(r.comment){
       pushLog(l, "Comment (bulk sheet): " + r.comment);
       l.notes = (l.notes? l.notes + "\n" : "") + fmtDate(today()) + " — " + r.comment;
@@ -13701,19 +13718,22 @@ function bulkPanel(){
       <b>${p.counts.both}</b> status and comment ·
       <b>${p.counts.status}</b> status only ·
       <b>${p.counts.comment}</b> comment only ·
+      ${p.counts.phone? `<b>${p.counts.phone}</b> phone number · ` : ""}
       ${p.counts.none} unchanged ·
       ${p.counts.nomatch} not matched${p.counts.blocked? ` · ${p.counts.blocked} status not allowed`:""}</p>
-    <table><thead><tr><th>Row</th><th>Lead</th><th>Status</th><th>Comment</th></tr></thead>
+    <table><thead><tr><th>Row</th><th>Lead</th><th>Status</th><th>Phone</th><th>Comment</th></tr></thead>
       <tbody>${p.rows.map(r=>`<tr>
         <td>${r.n}</td>
         <td>${r.lead? esc(r.lead.company||r.lead.name) : esc(r.who||"—")}
           ${r.issue? `<div class="muted">${esc(r.issue)}</div>`:""}</td>
         <td>${r.status? `${esc(r.lead? r.lead.status : "")} → <b>${esc(r.status)}</b>` : `<span class="muted">—</span>`}</td>
+        <td>${r.phone? `${esc((r.lead&&r.lead.phone)||"—")} → <b>${esc(r.phone)}</b>` : `<span class="muted">—</span>`}</td>
         <td>${r.comment? esc(r.comment) : `<span class="muted">—</span>`}</td></tr>`).join("")}
       </tbody></table>
   </div>
-  <button class="btn btn-red" onclick="bulkApply()" ${(p.counts.both+p.counts.status+p.counts.comment)?"":"disabled"}>
-    Confirm and update ${p.counts.both + p.counts.status + p.counts.comment} lead${(p.counts.both+p.counts.status+p.counts.comment)===1?"":"s"}</button>`}`;
+  ${(function(){ const k = p.counts.both + p.counts.status + p.counts.comment + p.counts.phone;
+    return `<button class="btn btn-red" onclick="bulkApply()" ${k?"":"disabled"}>
+      Confirm and update ${k} lead${k===1?"":"s"}</button>`; })()}`}`;
 }
 
 function exportFiltered(){
