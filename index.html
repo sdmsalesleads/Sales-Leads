@@ -1418,6 +1418,54 @@ function fmtPhone(v){ if(!v) return ""; return phoneIntl(v) || v; }
 /* what to show on screen: the repaired number where we have one, otherwise
    exactly what was uploaded — a number we cannot tidy is still a number */
 function showPhone(v){ const s = String(v==null? "" : v).trim(); return s? (phoneIntl(s) || s) : ""; }
+/* A number already stored may have been mangled on the way in, before the
+   repair understood landlines. This puts those right in place: it re-reads what
+   is stored, recovers a number that was parked in the reference field, and
+   never overwrites a good number with a worse one. Running it twice changes
+   nothing. */
+function phoneRepairLead(l){
+  const fixes = [];
+  const better = (raw)=>{ const v = String(raw==null? "" : raw).trim(); if(!v) return "";
+                          return phoneIntl(v) || v; };
+  /* 1. tidy what is there */
+  ["phone","phone2"].forEach(k=>{
+    const was = String(l[k]||"").trim();
+    if(!was) return;
+    const now = better(was);
+    if(now && now !== was){ l[k] = now; fixes.push(k+": "+was+" → "+now); }
+  });
+  /* 2. a number that was filed under the reference by mistake */
+  if(!String(l.phone||"").trim() && l.custno && phoneValid(l.custno)){
+    const moved = better(l.custno);
+    if(moved){ l.phone = moved; l.custno = ""; fixes.push("recovered from the reference field: "+moved); }
+  }
+  /* 3. the same number twice is not two numbers */
+  if(l.phone && l.phone2 && phoneKey(l.phone) && phoneKey(l.phone)===phoneKey(l.phone2)){
+    l.phone2 = ""; fixes.push("removed a duplicate second number");
+  }
+  return fixes;
+}
+function phoneRepairAll(quiet){
+  let leads = 0, changes = 0;
+  (state.leads||[]).forEach(l=>{
+    const f = phoneRepairLead(l);
+    if(f.length){ leads++; changes += f.length; f.forEach(t=>pushLog(l, "Phone tidied — "+t)); }
+  });
+  if(leads){ persist(); if(!quiet) toast("Tidied numbers on "+leads+" lead"+(leads===1?"":"s")); }
+  else if(!quiet) toast("Every number is already in order");
+  return {leads, changes};
+}
+function phoneRepairReport(){
+  const before = (state.leads||[]).filter(l=>!phoneIntl(l.phone) && String(l.phone||"").trim()).length;
+  const r = phoneRepairAll(true);
+  const stillBad = (state.leads||[]).filter(l=>String(l.phone||"").trim() && !phoneIntl(l.phone));
+  toast(r.leads
+    ? ("Tidied "+r.changes+" number"+(r.changes===1?"":"s")+" across "+r.leads+" lead"+(r.leads===1?"":"s")
+       + (stillBad.length? " · "+stillBad.length+" still need a look":""))
+    : (stillBad.length? stillBad.length+" number"+(stillBad.length===1?"":"s")+" could not be read — open those leads to correct them"
+                      : "Every stored number is already in order"));
+  render();
+}
 function bestPhone(l){
   /* the number WhatsApp should use — phone, then phone 2, then a customer
      number that is really a phone in disguise */
@@ -1465,7 +1513,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev FG";
+const APP_BUILD = "20 Aug 2026 · rev FH";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1714,6 +1762,7 @@ async function loadAll(){
     }
     serverIds.leads = new Set(state.leads.map(l=>l.id));
     serverIds.ext = new Set(state.extSales.map(e=>e.id));
+    phoneRepairAll(true);                     // put historic numbers right
     if(beforeSnapG) notifDiff(beforeSnapG);
     invalidateDupes();
     return;
@@ -1730,6 +1779,7 @@ async function loadAll(){
   const beforeSnap = currentUser? notifSnapshot() : null;
   state.members = (pr.data||[]).map(profileToMember);
   state.leads = (ld.data||[]).map(leadFromDb).filter(l=>!isMergedAway(l));   // merged-away copies stay gone
+  phoneRepairAll(true);                       // put historic numbers right
   state.extSales = (ex.data||[]).map(extFromDb);
   serverIds.leads = new Set((ld.data||[]).map(r=>r.id));   // includes merged rows so the cleanup delete still fires
   serverIds.ext = new Set(state.extSales.map(e=>e.id));
@@ -13706,6 +13756,7 @@ function bulkPanel(){
       The status column is a dropdown of the CRM's own statuses, so nothing invalid comes back.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-red btn-sm" onclick="bulkExport()">⬇ Download sheet</button>
+      <button class="btn btn-ghost btn-sm" onclick="phoneRepairReport()" title="Re-read every stored number and put right anything that was mangled on the way in">☎ Tidy stored numbers</button>
       <label class="btn btn-ghost btn-sm" style="cursor:pointer">⬆ Upload filled sheet
         <input type="file" accept=".xlsx,.xls" style="display:none" onchange="bulkRead(this)"></label>
       ${p? `<button class="btn btn-ghost btn-sm" onclick="bulkPlan=null;render()">Discard</button>`:""}
