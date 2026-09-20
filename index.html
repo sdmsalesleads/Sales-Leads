@@ -715,6 +715,12 @@ th.th-sort.on .th-ar{opacity:1}
 .of-saved-r.on{border-color:var(--red);background:#fff7f7}
 .of-saved-m{flex:1;min-width:0;font-size:.8rem}
 .of-sent{background:#e6f4ea;color:#1a7f4b;border-radius:4px;padding:1px 6px;font-size:.66rem;font-weight:700}
+.mk-bar{display:flex;align-items:center;gap:9px;font-size:.8rem;margin-bottom:7px}
+.mk-bar span{min-width:150px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-2)}
+.mk-bar-t{flex:1;height:9px;background:var(--line-soft);border-radius:5px;overflow:hidden}
+.mk-bar-t i{display:block;height:100%}
+.mk-bar b{min-width:26px;text-align:right}
+.mk-bar em{min-width:38px;text-align:right;font-style:normal;color:var(--steel);font-size:.74rem}
 .ai-mount{position:relative;z-index:170}
 
 /* the button: quiet until you go near it, then it says what it is */
@@ -1513,7 +1519,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev FH";
+const APP_BUILD = "20 Aug 2026 · rev FJ";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -8175,13 +8181,19 @@ const AI_TOOLS = {
       return { period, leads:A.total, won:A.won, lost:A.lost,
         conversionPct: A.total? Math.round(A.won/A.total*1000)/10 : 0,
         wonValue:aiMoney(A.wonValue), pipelineValue:aiMoney(A.pipeline),
+        landSold: Math.round((d.pool||[]).filter(l=>l.status==="Won")
+                    .reduce((s,l)=>s+(Number(l.soldArea||l.land)||0),0)),
         averageDeal: A.won? aiMoney(Math.round(A.wonValue/A.won)) : null,
-        note:"Won deals are counted by their closing date, not the day the lead was entered." };
+        note: canSeeMoney()
+          ? "Won deals are counted by their closing date, not the day the lead was entered."
+          : "Values are not shown for your role — the figures are counts and land area. Won deals are counted by their closing date." };
     }
   },
   team_performance: {
     what:"Per-salesperson figures for a period — leads, won, conversion, value. Managers and above only.",
     run:(a)=>{
+      if(isMarketing()) return {allowed:false,
+        note:"Individual salespeople's figures sit with their managers. Ask about channels, projects or lost reasons instead."};
       if(!canManage()) return {allowed:false, note:"Only managers and above can see other people's figures."};
       const saved = repFilters.period; repFilters.period = a.period||"all";
       let d; try{ d = repData(); } finally { repFilters.period = saved; }
@@ -8210,6 +8222,16 @@ const AI_TOOLS = {
       return { total:out.length,
         groups: Object.entries(grouped).map(([k,v])=>({issue:k, count:v.length, examples:v.slice(0,5)}))
           .sort((a2,b2)=>b2.count-a2.count) };
+    }
+  },
+  lost_reasons: {
+    what:"Why deals were lost — by category, by reason given, by channel and by project. Counts and land area only.",
+    run:()=>{
+      const L = mktLostData(aiScope());
+      const pair = a => a.slice(0,8).map(([k,v])=>({key:k, deals:v}));
+      return { lost:L.lost.length, landNotConverted:L.area,
+               byCategory:pair(L.byCat), byReason:pair(L.byReason),
+               byChannel:pair(L.bySource), byProject:pair(L.byProject) };
     }
   },
   whats_changed: {
@@ -8441,6 +8463,10 @@ const AI_INTENTS = [
     when:q=>/chang|new|happen|since|thisweek|latest|update/.test(q) && !/missing/.test(q),
     plan:q=>({tool:"whats_changed", args:{days: aiDays(q) || 7}}) },
 
+  { id:"lostwhy", say:"Why deals are lost",
+    when:q=>/lost/.test(q) && /(why|reason|most|which|howmany)/.test(q),
+    plan:()=>({tool:"lost_reasons", args:{}}) },
+
   { id:"quality", say:"Data problems",
     when:q=>/missing|quality|duplicat|conflict/.test(q),
     plan:()=>({tool:"data_quality", args:{}}) },
@@ -8646,6 +8672,16 @@ function aiWrite(plan, r){
     return h;
   }
 
+  if(t==="lost_reasons"){
+    if(!r.lost) return `<p>No lead in view was closed as lost.</p>`;
+    const rows = (a, head) => aiTable([head,"Deals"], a.map(x=>[esc(x.key), String(x.deals)]));
+    return `<p><b>${r.lost}</b> lost deal${r.lost===1?"":"s"}`
+      + (r.landNotConverted? `, covering ${Math.round(r.landNotConverted).toLocaleString()} m² we did not convert`:"")
+      + `.</p>`
+      + `<p><b>By reason given</b></p>` + rows(r.byReason,"Reason")
+      + `<p><b>By channel</b></p>` + rows(r.byChannel,"Channel")
+      + `<p><b>By project</b></p>` + rows(r.byProject,"Project");
+  }
   if(t==="whats_changed"){
     let h = `<p>Since <b>${esc(fmtDate(r.sinceDate))}</b>: ${r.leadsAdded} lead${r.leadsAdded===1?"":"s"} added, `
       + `${r.dealsWon} deal${r.dealsWon===1?"":"s"} won${r.wonValue? " worth "+fmtMoney(r.wonValue):""}, `
@@ -8760,10 +8796,11 @@ const AI_PROMPTS = {
   contracts:{label:"Contracts", q:["Show me overdue contracts","Where is each contract now?","Which contracts are due soon?","Which contracts are with Legal?"]},
   projects: {label:"Projects", q:["Which contracts are blocked by construction?","Which projects have the most blockers?","Show me contracts in Industria Sadat"]},
   ops:      {label:"Operations", q:["Where are the bottlenecks?","Which department is slowest?","What data is missing?"]},
-  mgmt:     {label:"Management", q:["Give me the contract position","How is the team performing?","What changed this week?"]}
+  mgmt:     {label:"Management", q:["Give me the contract position","How is the team performing?","What changed this week?"]},
+  lost:     {label:"Lost deals", q:["Why are we losing deals?","Which channel loses the most?","Which project loses the most?"]}
 };
 function aiRoleGroups(){
-  if(isMarketing())            return ["today","customers","sales"];
+  if(isMarketing())            return ["today","lost","customers","sales"];
   if(typeof isFinance==="function" && isFinance()) return ["contracts","customers","today"];
   if(canManage())              return ["today","mgmt","contracts","sales","projects","ops"];
   return ["today","sales","customers","contracts"];
@@ -9790,6 +9827,93 @@ function viewDirectorReports(){
   </div>`;
 }
 /* ---------- MARKETING: outcomes only ---------- */
+
+/* ================= WHY WE LOSE — the marketing view =================
+   Marketing needs to know what is failing and why, across the whole book, not
+   only the leads they sourced: a reason that keeps coming back is a campaign
+   problem, a pricing problem or a product problem, and they cannot act on what
+   they cannot see. What they still do not get is the money — deal values,
+   revenue and targets stay with sales and management. Volume, area and reasons
+   tell them everything they need without exposing commercial terms. */
+function mktLostData(pool){
+  const lost = (pool||[]).filter(l=>l.status==="Lost");
+  const by = (get)=>{
+    const o = {};
+    lost.forEach(l=>{ const k = get(l) || "Not recorded"; o[k] = (o[k]||0)+1; });
+    return Object.entries(o).sort((a,b)=>b[1]-a[1]);
+  };
+  return {
+    lost,
+    byCat:     by(l=>l.lostCat),
+    byReason:  by(l=>l.lostReason),
+    bySource:  by(l=>normSource(l.source)),
+    byProject: by(l=>l.project),
+    /* the detail behind the biggest reason, so it is not just a number */
+    area: lost.reduce((s,l)=>s+(Number(l.soldArea||l.land)||0),0)
+  };
+}
+const MKT_COLS = ["#E01E25","#E7434A","#ED6870","#F08A90","#F5ACB1","#2A5D9C","#5C87BE","#C9CDD2"];
+function mktBarRows(pairs, total){
+  if(!pairs.length) return `<p class="muted" style="font-size:.8rem">Nothing recorded yet.</p>`;
+  const max = Math.max(...pairs.map(p=>p[1]));
+  return pairs.slice(0,8).map(([k,v],i)=>`
+    <div class="mk-bar">
+      <span title="${esc(k)}">${esc(k)}</span>
+      <div class="mk-bar-t"><i style="width:${Math.round(v/max*100)}%;background:${MKT_COLS[i%MKT_COLS.length]}"></i></div>
+      <b>${v}</b><em>${total? Math.round(v/total*100)+"%" : ""}</em>
+    </div>`).join("");
+}
+/* the section marketing gets: every lost deal, charted, no commercial values */
+function mktLostSection(pool){
+  const L = mktLostData(pool);
+  if(!L.lost.length) return `<div class="section-head"><h2>Why deals are lost</h2></div>
+    <div class="card card-pad"><p class="muted">No lead in this period was closed as lost.</p></div>`;
+  const n = L.lost.length;
+  const top = L.byReason[0], topSrc = L.bySource[0];
+  return `
+  <div class="section-head"><h2>Why deals are lost</h2></div>
+  <p class="muted" style="font-size:.84rem;margin:-4px 0 12px">
+    Every lost lead in this period, whoever sourced it — ${n.toLocaleString()} in total${
+      L.area? ", covering "+Math.round(L.area).toLocaleString()+" m² of demand we did not convert" : ""}.
+    ${top? "The reason given most often is <b>"+esc(top[0])+"</b> ("+top[1]+")." : ""}
+    ${topSrc? " Most of them came through <b>"+esc(topSrc[0])+"</b>." : ""}</p>
+  <div class="rep-grid2">
+    <div class="card card-pad">
+      <div class="eyebrow red">By category</div>
+      ${chartDonut(L.byCat.map(([k,v],i)=>({k, v, color:MKT_COLS[i%MKT_COLS.length]})))}
+    </div>
+    <div class="card card-pad">
+      <div class="eyebrow red">By reason given</div>
+      ${mktBarRows(L.byReason, n)}
+    </div>
+  </div>
+  <div class="rep-grid2">
+    <div class="card card-pad">
+      <div class="eyebrow red">Which channel they came from</div>
+      ${mktBarRows(L.bySource, n)}
+      <p class="muted" style="font-size:.76rem;margin-top:8px">A channel losing more than it wins is a targeting problem, not a sales one.</p>
+    </div>
+    <div class="card card-pad">
+      <div class="eyebrow red">Which project they wanted</div>
+      ${mktBarRows(L.byProject, n)}
+      <p class="muted" style="font-size:.76rem;margin-top:8px">Repeated losses on one project point at price, utilities or plot sizes.</p>
+    </div>
+  </div>
+  <div class="card" style="overflow:auto">
+    <table><thead><tr><th>Customer</th><th>Project</th><th class="num hide-sm">Area (m²)</th>
+      <th class="hide-sm">Channel</th><th>Category</th><th>Reason</th></tr></thead>
+      <tbody>${L.lost.slice(0,40).map(l=>`<tr>
+        <td><b>${esc(l.company||l.name||"—")}</b></td>
+        <td>${esc(l.project||"—")}</td>
+        <td class="num hide-sm">${(Number(l.soldArea||l.land)||0)? Math.round(Number(l.soldArea||l.land)).toLocaleString():"—"}</td>
+        <td class="hide-sm">${esc(normSource(l.source)||"—")}</td>
+        <td>${esc(l.lostCat||"—")}</td>
+        <td>${esc(l.lostReason||"—")}</td></tr>`).join("")}
+      </tbody></table>
+    ${L.lost.length>40? `<p class="muted" style="margin:8px 12px">Showing the first 40 of ${L.lost.length}.</p>`:""}
+  </div>`;
+}
+
 function viewMarketingReports(){
   const d = repData(), a = d.now, p = d.prev;
   const natCard = repNationalityCard(d.pool);
@@ -9808,8 +9932,11 @@ function viewMarketingReports(){
       ${repKpi("Leads generated", m.total.toLocaleString(), "from marketing channels", repDelta(m.total, p&&p.total))}
       ${repKpi("Finalised deals", m.won.toLocaleString(), "won from our leads", repDelta(m.won, p&&p.won))}
       ${repKpi("Conversion", m.convRate.toFixed(1)+"%", "leads that became deals", repDelta(m.convRate, p&&p.convRate))}
-      ${repKpi("Revenue generated", fmtMoney(m.wonValue), "value of those deals", repDelta(m.wonValue, p&&p.wonValue))}
-      ${repKpi("Average deal", m.avgDeal? fmtMoney(m.avgDeal):"—", "per won deal", "")}
+      ${canSeeMoney()
+        ? repKpi("Revenue generated", fmtMoney(m.wonValue), "value of those deals", repDelta(m.wonValue, p&&p.wonValue))
+          + repKpi("Average deal", m.avgDeal? fmtMoney(m.avgDeal):"—", "per won deal", "")
+        : repKpi("Land sold", mktArea(mkt,true).toLocaleString()+" m²", "from our leads", "")
+          + repKpi("Average plot", mktAvgPlot(mkt), "per won deal", "")}
       ${repKpi("Lost leads", m.lost.toLocaleString(), "closed without a deal", repDelta(m.lost, p&&p.lost, {lowerIsBetter:true}))}
     </div>
     <div class="rep-grid2">
@@ -9836,9 +9963,20 @@ function viewMarketingReports(){
       <p class="muted" style="font-size:.76rem;margin-top:8px">Volume is not quality — a channel with fewer leads but a higher conversion rate is often worth more.</p>
     </div>
     ${repChannels(m)}
+    ${mktLostSection(d.pool)}
     ${natCard}
     ${repTrend(mkt)}
   </div>`;
+}
+/* area stands in for value where the commercial terms are not theirs to see */
+function mktArea(pool, wonOnly){
+  return Math.round((pool||[]).filter(l=>!wonOnly || l.status==="Won")
+    .reduce((s,l)=>s+(Number(l.soldArea||l.land)||0),0));
+}
+function mktAvgPlot(pool){
+  const won = (pool||[]).filter(l=>l.status==="Won" && (Number(l.soldArea||l.land)||0));
+  if(!won.length) return "—";
+  return Math.round(mktArea(won,true)/won.length).toLocaleString()+" m²";
 }
 function viewReports(){
   /* Marketing sees outcomes only; management sees the full picture; a
