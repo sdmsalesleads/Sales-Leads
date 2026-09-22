@@ -715,6 +715,9 @@ th.th-sort.on .th-ar{opacity:1}
 .of-saved-r.on{border-color:var(--red);background:#fff7f7}
 .of-saved-m{flex:1;min-width:0;font-size:.8rem}
 .of-sent{background:#e6f4ea;color:#1a7f4b;border-radius:4px;padding:1px 6px;font-size:.66rem;font-weight:700}
+.load-banner{position:fixed;left:50%;transform:translateX(-50%);top:12px;z-index:300;
+  background:var(--amber-soft);color:#7a4e0a;border:1px solid #efd9ad;border-radius:10px;
+  padding:9px 16px;font-size:.82rem;font-weight:600;box-shadow:var(--shadow);max-width:calc(100vw - 32px)}
 .mk-bar{display:flex;align-items:center;gap:9px;font-size:.8rem;margin-bottom:7px}
 .mk-bar span{min-width:150px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-2)}
 .mk-bar-t{flex:1;height:9px;background:var(--line-soft);border-radius:5px;overflow:hidden}
@@ -1519,7 +1522,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev FJ";
+const APP_BUILD = "20 Aug 2026 · rev FK";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1733,6 +1736,7 @@ async function insertChunked(table, rows, size){
   }
 }
 async function deleteChunked(table, ids, size){
+  if(table==="leads") loadLastCount = Math.max(0, (loadLastCount||0) - (ids||[]).length);
   const n = size || 500;
   for(let i=0; i<ids.length; i+=n){
     const batch = ids.slice(i, i+n);
@@ -1750,6 +1754,37 @@ async function deleteChunked(table, ids, size){
     }
   }
 }
+/* A list that suddenly holds far fewer leads than a moment ago, with no delete
+   in between, is a broken read — not the truth. Real deletions go through the
+   app and adjust the count they are checked against. */
+let loadLastCount = 0, loadFailCount = 0, loadRetryTimer = null;
+function loadLooksWhole(incoming){
+  const prev = loadLastCount || (state.leads||[]).length;
+  if(!prev) return true;                          // nothing to compare with yet
+  if(incoming.length === 0 && prev > 0) return false;
+  if(prev >= 20 && incoming.length < prev * 0.6) return false;
+  return true;
+}
+function loadOk(){
+  loadFailCount = 0;
+  clearTimeout(loadRetryTimer);
+  const b = document.getElementById("loadBanner"); if(b) b.remove();
+}
+function loadFailed(why){
+  loadFailCount++;
+  /* say it once, quietly, and keep what is on screen */
+  if(loadFailCount === 1) toast("\u26A0 Couldn't refresh ("+why+") \u2014 showing the last loaded data, retrying");
+  if(loadFailCount >= 3 && !document.getElementById("loadBanner")){
+    const b = document.createElement("div");
+    b.id = "loadBanner"; b.className = "load-banner";
+    b.textContent = "Connection is struggling \u2014 you're seeing the last data that loaded. Changes you make are still saved.";
+    document.body.appendChild(b);
+  }
+  clearTimeout(loadRetryTimer);
+  /* back off: 5s, 10s, 20s … up to a minute */
+  const wait = Math.min(60000, 5000 * Math.pow(2, Math.min(loadFailCount-1, 4)));
+  loadRetryTimer = setTimeout(()=>{ loadAll().then(()=>{ if(currentUser) render(); }).catch(()=>{}); }, wait);
+}
 async function loadAll(){
   if(!sb) return;
   if(gsDbOn()){
@@ -1761,13 +1796,15 @@ async function loadAll(){
     state.members = (pr0.data||[]).map(profileToMember);
     try{
       await gsLoadFromSheet();
+      loadOk();
     }catch(err){
       gsStat.err = err.message; gsSaveStat();
-      toast("\u26A0 Could not read the workbook: "+err.message+" \u2014 showing the last data loaded");
+      loadFailed(err.message);
       return;
     }
     serverIds.leads = new Set(state.leads.map(l=>l.id));
     serverIds.ext = new Set(state.extSales.map(e=>e.id));
+    loadLastCount = state.leads.length;
     phoneRepairAll(true);                     // put historic numbers right
     if(beforeSnapG) notifDiff(beforeSnapG);
     invalidateDupes();
@@ -1781,10 +1818,21 @@ async function loadAll(){
     sb.from("app_settings").select("*"),
     fetchAllRows("bd_weekly")
   ]);
+  /* A read that errored — a timeout, a dropped connection, a rate limit —
+     used to hand back an empty list and wipe every lead from the screen until
+     the next load. What we already hold is kept instead, and we try again. */
+  if(ld.error || pr.error){
+    loadFailed((ld.error||pr.error).message || "the database did not answer");
+    return;
+  }
+  const incoming = (ld.data||[]).map(leadFromDb).filter(l=>!isMergedAway(l));
+  if(!loadLooksWhole(incoming)){ loadFailed("the database returned an incomplete list"); return; }
+  loadOk();
   state.bdWeekly = (bw && bw.data)||[];
   const beforeSnap = currentUser? notifSnapshot() : null;
   state.members = (pr.data||[]).map(profileToMember);
-  state.leads = (ld.data||[]).map(leadFromDb).filter(l=>!isMergedAway(l));   // merged-away copies stay gone
+  state.leads = incoming;                     // merged-away copies stay gone
+  loadLastCount = state.leads.length;
   phoneRepairAll(true);                       // put historic numbers right
   state.extSales = (ex.data||[]).map(extFromDb);
   serverIds.leads = new Set((ld.data||[]).map(r=>r.id));   // includes merged rows so the cleanup delete still fires
@@ -1909,10 +1957,16 @@ async function doSync(){
 }
 
 /* ---- realtime: any change by a teammate refreshes this screen ---- */
-let reloadTimer = null;
+let reloadTimer = null, reloadBusy = false, reloadAgain = false;
+/* A burst of edits from the team used to set off one full reload after another,
+   each fetching every lead. Now the edits are gathered for a few seconds and
+   answered with a single reload, and a reload already running is never
+   stacked with another — the second request simply follows it. */
 function scheduleReload(){
+  if(reloadBusy){ reloadAgain = true; return; }
   clearTimeout(reloadTimer);
   reloadTimer = setTimeout(async ()=>{
+    reloadBusy = true;
     try{
       await persistChain.catch(()=>{});  // never reload over unsaved local changes
       await loadAll();
@@ -1922,7 +1976,9 @@ function scheduleReload(){
         render(); updateBell();
       }
     }catch(e){}
-  }, 900);
+    reloadBusy = false;
+    if(reloadAgain){ reloadAgain = false; scheduleReload(); }
+  }, 3000);
 }
 let rtStarted = false;
 function startRealtime(){
@@ -3344,6 +3400,7 @@ function bulkClearDup(){
   toast(rows.length+" marked as genuine — warnings cleared");
 }
 function bulkDelete(){
+  setTimeout(()=>{ loadLastCount = (state.leads||[]).length; }, 0);
   if(!canEditLeads()) return;
   const rows = selectedLeadObjects();
   if(!rows.length){ toast("Nothing selected"); return; }
@@ -3633,7 +3690,12 @@ async function gsLoadFromSheet(){
     if(offset===PAGE*3) toast("Loading "+(page.total||"")+" leads from the workbook\u2026");
   }
   const d = first||{};
-  state.leads    = allLeads.map(gsToLead).filter(l=>!isMergedAway(l));   // merged-away copies stay gone
+  const incoming = allLeads.map(gsToLead).filter(l=>!isMergedAway(l));
+  const announced = Number((first||{}).total)||0;
+  if(announced && allLeads.length < announced)
+    throw new Error("the workbook sent "+allLeads.length+" of "+announced+" leads");
+  if(!loadLooksWhole(incoming)) throw new Error("the workbook returned an incomplete list");
+  state.leads    = incoming;                                             // merged-away copies stay gone
   state.extSales = (d.extSales||[]).map(gsToExt);
   state.bdWeekly = (d.bdWeekly||[]).map(gsToBd);
   state.importLog= (d.importLog||[]).map(r=>({d:r["Date"], method:r["Method"], added:r["Rows Added"],
@@ -4189,6 +4251,7 @@ function notifyAR(l){
   toast("Email draft to the AR team opened — send it to notify them");
 }
 function deleteLead(){
+  setTimeout(()=>{ loadLastCount = (state.leads||[]).length; }, 0);
   if(!editingLeadId || !canEditLeads()) return;
   if(!confirm("Delete this lead permanently?")) return;
   const gone = state.leads.find(l=>l.id===editingLeadId);
