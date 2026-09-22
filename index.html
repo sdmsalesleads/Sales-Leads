@@ -2458,11 +2458,21 @@ async function tryLogin(){
   await afterAuth();
 }
 async function forgotPassword(){
-  const typed = $("loginEmail")? $("loginEmail").value.trim() : "";
+  const typed = $("loginEmail") ? $("loginEmail").value.trim() : "";
   const email = typed || prompt("Your account email:");
   if(!email) return;
-  const {error} = await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.href.split("#")[0] });
-  toast(error? error.message : "Password reset email sent — open the link, then set your new password here");
+
+  // Always return to this exact app page. Supabase adds the recovery token
+  // to the URL and the PASSWORD_RECOVERY event below opens the password form.
+  const resetUrl = window.location.origin + window.location.pathname;
+
+  const {error} = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: resetUrl
+  });
+
+  toast(error
+    ? error.message
+    : "Password reset email sent. Open the link in your email to set a new password.");
 }
 async function afterAuth(){
   const {data:{user}} = await sb.auth.getUser();
@@ -14392,15 +14402,28 @@ function inviteInfo(){
 }
 
 /* =================== Change own password =================== */
-function openPwModal(){ $("pw_new").value=$("pw_new2").value=""; $("pwOverlay").classList.add("open"); setTimeout(()=>$("pw_new").focus(),50); }
+function openPwModal(){
+  $("pw_new").value = "";
+  $("pw_new2").value = "";
+  $("pwOverlay").classList.add("open");
+  setTimeout(() => $("pw_new").focus(), 100);
+}
 function closePwModal(){ $("pwOverlay").classList.remove("open"); }
+
 async function changePassword(){
   const p1=$("pw_new").value, p2=$("pw_new2").value;
   if(p1.length<6){ toast("New password must be at least 6 characters"); return; }
   if(p1!==p2){ toast("New passwords do not match"); return; }
+
   const {error} = await sb.auth.updateUser({ password:p1 });
   if(error){ toast(error.message); return; }
-  closePwModal(); toast("Password changed");
+
+  closePwModal();
+  toast("Password changed successfully");
+  setTimeout(() => {
+    history.replaceState({}, document.title, window.location.pathname);
+    sb.auth.signOut().finally(() => renderLogin());
+  }, 900);
 }
 
 /* Overlay close + Esc */
@@ -14413,13 +14436,37 @@ document.addEventListener("keydown", e=>{
 
 /* Init */
 renderLogin();
+
 (async function(){
   if(!sb) return;
-  sb.auth.onAuthStateChange((event)=>{ if(event==="PASSWORD_RECOVERY") openPwModal(); });
+
+  let recoveryMode = false;
+
+  sb.auth.onAuthStateChange((event)=>{
+    if(event === "PASSWORD_RECOVERY"){
+      recoveryMode = true;
+      openPwModal();
+    }
+  });
+
   try{
     const {data:{session}} = await sb.auth.getSession();
+
+    // Supabase recovery links contain type=recovery in the URL hash.
+    // This fallback makes the reset form appear even if the auth event
+    // arrives before/after the initial page render.
+    const isRecoveryUrl = /(^|[#&?])type=recovery(&|$)/i.test(window.location.href);
+
+    if(isRecoveryUrl || recoveryMode){
+      recoveryMode = true;
+      if(session) openPwModal();
+      return;
+    }
+
     if(session) await afterAuth();
-  }catch(e){ console.error(e); }
+  }catch(e){
+    console.error(e);
+  }
 })();
 </script>
 </body>
