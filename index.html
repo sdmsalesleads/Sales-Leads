@@ -715,6 +715,24 @@ th.th-sort.on .th-ar{opacity:1}
 .of-saved-r.on{border-color:var(--red);background:#fff7f7}
 .of-saved-m{flex:1;min-width:0;font-size:.8rem}
 .of-sent{background:#e6f4ea;color:#1a7f4b;border-radius:4px;padding:1px 6px;font-size:.66rem;font-weight:700}
+/* A wide table used to put its side-scroll bar at the very bottom of the
+   list, so reaching the right-hand columns meant scrolling all the way down
+   first. Each table now fits the screen: it scrolls inside its own frame, the
+   side bar stays in view at the foot of the window, and the header row stays
+   pinned so the columns never lose their names. Phones keep normal scrolling. */
+@media (min-width:700px){
+  .card[style*="overflow:auto"]{ max-height:calc(100vh - 170px); overscroll-behavior:contain; }
+  .card[style*="overflow:auto"] > table > thead th,
+  .card[style*="overflow:auto"] table:first-child > thead th{
+    position:sticky; top:0; z-index:3; background:var(--card);
+    box-shadow:inset 0 -1px 0 var(--line); }
+  /* a visible, grabbable bar rather than the thin one that fades out */
+  .card[style*="overflow:auto"]::-webkit-scrollbar{ height:12px; width:10px; }
+  .card[style*="overflow:auto"]::-webkit-scrollbar-thumb{ background:#c9cdd3; border-radius:6px;
+    border:3px solid var(--card); }
+  .card[style*="overflow:auto"]::-webkit-scrollbar-thumb:hover{ background:#aab0b8; }
+  .card[style*="overflow:auto"]::-webkit-scrollbar-track{ background:var(--line-soft); }
+}
 .load-banner{position:fixed;left:50%;transform:translateX(-50%);top:12px;z-index:300;
   background:var(--amber-soft);color:#7a4e0a;border:1px solid #efd9ad;border-radius:10px;
   padding:9px 16px;font-size:.82rem;font-weight:600;box-shadow:var(--shadow);max-width:calc(100vw - 32px)}
@@ -1475,6 +1493,11 @@ function phoneRepairReport(){
                       : "Every stored number is already in order"));
   render();
 }
+/* people in a dropdown are listed A to Z — the database hands them back in
+   whatever order they were created, which makes a long team list hard to scan */
+function byName(list){
+  return (list||[]).slice().sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""), undefined, {sensitivity:"base"}));
+}
 function bestPhone(l){
   /* the number WhatsApp should use — phone, then phone 2, then a customer
      number that is really a phone in disguise */
@@ -1522,7 +1545,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev FK";
+const APP_BUILD = "20 Aug 2026 · rev FM";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1759,7 +1782,7 @@ async function deleteChunked(table, ids, size){
    app and adjust the count they are checked against. */
 let loadLastCount = 0, loadFailCount = 0, loadRetryTimer = null;
 function loadLooksWhole(incoming){
-  const prev = loadLastCount || (state.leads||[]).length;
+  const prev = loadLastCount;
   if(!prev) return true;                          // nothing to compare with yet
   if(incoming.length === 0 && prev > 0) return false;
   if(prev >= 20 && incoming.length < prev * 0.6) return false;
@@ -1821,6 +1844,9 @@ async function loadAll(){
   /* A read that errored — a timeout, a dropped connection, a rate limit —
      used to hand back an empty list and wipe every lead from the screen until
      the next load. What we already hold is kept instead, and we try again. */
+  /* the team list first, on its own: signing in depends on it, and it must
+     never be held back by a problem with the leads */
+  if(!pr.error && pr.data && pr.data.length) state.members = pr.data.map(profileToMember);
   if(ld.error || pr.error){
     loadFailed((ld.error||pr.error).message || "the database did not answer");
     return;
@@ -1830,7 +1856,6 @@ async function loadAll(){
   loadOk();
   state.bdWeekly = (bw && bw.data)||[];
   const beforeSnap = currentUser? notifSnapshot() : null;
-  state.members = (pr.data||[]).map(profileToMember);
   state.leads = incoming;                     // merged-away copies stay gone
   loadLastCount = state.leads.length;
   phoneRepairAll(true);                       // put historic numbers right
@@ -2458,25 +2483,16 @@ async function tryLogin(){
   await afterAuth();
 }
 async function forgotPassword(){
-  const typed = $("loginEmail") ? $("loginEmail").value.trim() : "";
+  const typed = $("loginEmail")? $("loginEmail").value.trim() : "";
   const email = typed || prompt("Your account email:");
   if(!email) return;
-
-  // Always return to this exact app page. Supabase adds the recovery token
-  // to the URL and the PASSWORD_RECOVERY event below opens the password form.
-  const resetUrl = window.location.origin + window.location.pathname;
-
-  const {error} = await sb.auth.resetPasswordForEmail(email, {
-    redirectTo: resetUrl
-  });
-
-  toast(error
-    ? error.message
-    : "Password reset email sent. Open the link in your email to set a new password.");
+  const {error} = await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.href.split("#")[0] });
+  toast(error? error.message : "Password reset email sent — open the link, then set your new password here");
 }
 async function afterAuth(){
   const {data:{user}} = await sb.auth.getUser();
   if(!user){ renderLogin(); return; }
+  loadLastCount = 0; loadFailCount = 0;       // a new session starts with no yardstick
   await loadAll();
   let me = state.members.find(m=>m.id===user.id);
   if(!me){ await new Promise(r=>setTimeout(r,900)); await loadAll(); me = state.members.find(m=>m.id===user.id); }
@@ -3173,7 +3189,7 @@ function viewAdminDashboard(){
         </div>
         ${canDistribute()?`<select onchange="assignLead('${l.id}', this.value)" style="border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:#fff">
           <option value="">Assign to…</option>
-          ${state.members.filter(m=>!m.pending && canOwnLeads(m)).map(m=>`<option value="${m.id}">${esc(m.name)}${m.bd? " · Business Development":""}</option>`).join("")}
+          ${byName(state.members.filter(m=>!m.pending && canOwnLeads(m))).map(m=>`<option value="${m.id}">${esc(m.name)}${m.bd? " · Business Development":""}</option>`).join("")}
         </select>`:`<span class="pill" style="color:var(--amber);background:var(--amber-soft)">Sales Operations distributes</span>`}
         <button class="btn btn-ghost btn-sm" onclick="openLeadModal('${l.id}')">Open</button>
       </div>`).join("") + (un.length>12? `<div class="cs-item muted" style="justify-content:center;font-size:.85rem">+ ${un.length-12} more in the Leads page</div>`:"")
@@ -3298,7 +3314,7 @@ function viewLeads(){
   </div>
   <div class="filters no-print">
     <input type="search" id="fl_q" placeholder="Search name, company, phone (with or without +2)…" value="${esc(F.q)}">
-    ${(adm && !isMarketing())?`<select id="fl_owner"><option value="">All owners</option>${fullView()?`<option value="__none" ${F.owner==="__none"?"selected":""}>Unassigned</option>`:""}${teamMembers().filter(canOwnLeads).map(m=>`<option value="${m.id}" ${F.owner===m.id?"selected":""}>${esc(m.name)}${m.bd? " · BD":""}</option>`).join("")}</select>`:""}
+    ${(adm && !isMarketing())?`<select id="fl_owner"><option value="">All owners</option>${fullView()?`<option value="__none" ${F.owner==="__none"?"selected":""}>Unassigned</option>`:""}${byName(teamMembers().filter(canOwnLeads)).map(m=>`<option value="${m.id}" ${F.owner===m.id?"selected":""}>${esc(m.name)}${m.bd? " · BD":""}</option>`).join("")}</select>`:""}
     ${isMarketing()? "" : statusFilterUI()}
     ${sourceFilterUI()}
     ${isMarketing()? `<select onchange="leadFilters.outcome=this.value;render()">
@@ -3315,7 +3331,7 @@ function viewLeads(){
   ${canSelectLeads() && selCount? `<div class="bulkbar no-print">
     <b>${selCount} selected</b>
     ${canDistribute()? `\u2014 transfer to
-      <select id="bulkOwner"><option value="">Choose salesperson\u2026</option>${state.members.filter(m=>!m.pending && canOwnLeads(m)).map(m=>`<option value="${m.id}">${esc(m.name)}${m.bd? " · Business Development":""}</option>`).join("")}</select>
+      <select id="bulkOwner"><option value="">Choose salesperson\u2026</option>${byName(state.members.filter(m=>!m.pending && canOwnLeads(m))).map(m=>`<option value="${m.id}">${esc(m.name)}${m.bd? " · Business Development":""}</option>`).join("")}</select>
       <button class="btn btn-red btn-sm" onclick="bulkAssign()">Transfer</button>`:""}
     <button class="btn btn-ghost btn-sm" onclick="bulkExport()">\u2b07 Export selected</button>
     ${canMergeLeads() && selCount===2? `<button class="btn btn-red btn-sm" onclick="bulkMerge()">\u21c4 Merge these two</button>`:""}
@@ -3702,7 +3718,10 @@ async function gsLoadFromSheet(){
   const d = first||{};
   const incoming = allLeads.map(gsToLead).filter(l=>!isMergedAway(l));
   const announced = Number((first||{}).total)||0;
-  if(announced && allLeads.length < announced)
+  /* only once this session has a good load to stand on — the first load is
+     always taken as it comes, so a count the workbook reports differently can
+     never leave someone looking at an empty CRM */
+  if(loadLastCount && announced && allLeads.length < announced)
     throw new Error("the workbook sent "+allLeads.length+" of "+announced+" leads");
   if(!loadLooksWhole(incoming)) throw new Error("the workbook returned an incomplete list");
   state.leads    = incoming;                                             // merged-away copies stay gone
@@ -7443,7 +7462,7 @@ function ctDetailHtml(l){
         <label class="muted" style="font-size:.74rem;font-weight:700">Handled by</label>
         <select onchange="ctAssign('${l.id}', this.value)" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;background:#fff;margin-top:3px">
           <option value="">Unassigned</option>
-          ${handlers.map(m=>`<option value="${m.id}" ${c.handler===m.id?"selected":""}>${esc(m.name)}</option>`).join("")}
+          ${byName(handlers).map(m=>`<option value="${m.id}" ${c.handler===m.id?"selected":""}>${esc(m.name)}</option>`).join("")}
         </select></div>`:""}
     </div>
     <div class="card card-pad">
@@ -7592,9 +7611,9 @@ function ctFilterBar(full){
     <select onchange="ctSet({status:this.value})"><option value="">All statuses</option>
       ${CT_STATUSES.map(s=>`<option ${ctFilters.status===s?"selected":""}>${s}</option>`).join("")}</select>
     ${full? `<select onchange="ctSet({owner:this.value})"><option value="">All salespeople</option>
-      ${state.members.filter(m=>!m.pending&&canOwnLeads(m)).map(m=>`<option value="${m.id}" ${ctFilters.owner===m.id?"selected":""}>${esc(m.name)}</option>`).join("")}</select>
+      ${byName(state.members.filter(m=>!m.pending&&canOwnLeads(m))).map(m=>`<option value="${m.id}" ${ctFilters.owner===m.id?"selected":""}>${esc(m.name)}</option>`).join("")}</select>
     <select onchange="ctSet({handler:this.value})"><option value="">All handlers</option>
-      ${handlers.map(m=>`<option value="${m.id}" ${ctFilters.handler===m.id?"selected":""}>${esc(m.name)}</option>`).join("")}</select>`:""}
+      ${byName(handlers).map(m=>`<option value="${m.id}" ${ctFilters.handler===m.id?"selected":""}>${esc(m.name)}</option>`).join("")}</select>`:""}
     <select onchange="ctSet({project:this.value})"><option value="">All projects</option>
       ${projects.map(p=>`<option ${ctFilters.project===p?"selected":""}>${esc(p)}</option>`).join("")}</select>
     ${Object.values(ctFilters).some(Boolean)? `<button class="rep-pill" onclick="ctSet({from:'',to:'',owner:'',handler:'',project:'',status:'',process:'',step:'',bucket:''})">✕ Clear</button>`:""}
@@ -9621,7 +9640,7 @@ function repFilterBar(full){
     ${full? `
       <select onchange="repSet({owner:this.value})">
         <option value="">All salespeople</option>
-        ${state.members.filter(m=>!m.pending && canOwnLeads(m)).map(m=>`<option value="${m.id}" ${repFilters.owner===m.id?"selected":""}>${esc(m.name)}</option>`).join("")}
+        ${byName(state.members.filter(m=>!m.pending && canOwnLeads(m))).map(m=>`<option value="${m.id}" ${repFilters.owner===m.id?"selected":""}>${esc(m.name)}</option>`).join("")}
       </select>`:""}
     <select onchange="repSet({source:this.value})">
       <option value="">All sources</option>
@@ -12045,7 +12064,7 @@ function viewCalendar(){
   <div class="section-head" style="margin-top:0"><h2>${fullView()||isManager()? "Team calendar":"My calendar"}</h2>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       ${memberOpts.length?`<select onchange="calMember=this.value;render()" style="border:1px solid var(--line);border-radius:8px;padding:6px 10px;background:#fff">
-        <option value="">All ${fullView()?"teams":"my team"}</option>${memberOpts.map(m=>`<option value="${m.id}" ${calMember===m.id?"selected":""}>${esc(m.name)}</option>`).join("")}</select>`:""}
+        <option value="">All ${fullView()?"teams":"my team"}</option>${byName(memberOpts).map(m=>`<option value="${m.id}" ${calMember===m.id?"selected":""}>${esc(m.name)}</option>`).join("")}</select>`:""}
       ${["day","week","month"].map(mo=>`<button class="btn btn-sm ${calMode===mo?"btn-red":"btn-ghost"}" onclick="calMode='${mo}';render()">${mo[0].toUpperCase()+mo.slice(1)}</button>`).join("")}
       <button class="btn btn-ghost btn-sm" onclick="calShift(-1)">‹</button>
       <button class="btn btn-ghost btn-sm" onclick="calAnchor=null;render()">Today</button>
@@ -13118,7 +13137,7 @@ function openMerge(keepId, dropId){
             `<option value="${best.owner}">${esc(memberName(best.owner))} — did the most work on this client</option>`:""; })()}
         ${p.drop.owner && p.drop.owner!==p.keep.owner? `<option value="${p.drop.owner}">Give it to ${esc(memberName(p.drop.owner))} (owner of the other record)</option>`:""}
         <option value="">Leave unassigned — decide later</option>
-        ${state.members.filter(m=>!m.pending && canOwnLeads(m)).map(m=>`<option value="${m.id}">${esc(m.name)}${m.bd? " · Business Development":""}</option>`).join("")}
+        ${byName(state.members.filter(m=>!m.pending && canOwnLeads(m))).map(m=>`<option value="${m.id}">${esc(m.name)}${m.bd? " · Business Development":""}</option>`).join("")}
       </select>
       <div class="muted" style="font-size:.74rem;margin-top:6px">The two records may belong to different salespeople — choose who keeps the client. They are notified and the handover is written into the lead's history.</div>
     </div>`:""}
@@ -14402,28 +14421,15 @@ function inviteInfo(){
 }
 
 /* =================== Change own password =================== */
-function openPwModal(){
-  $("pw_new").value = "";
-  $("pw_new2").value = "";
-  $("pwOverlay").classList.add("open");
-  setTimeout(() => $("pw_new").focus(), 100);
-}
+function openPwModal(){ $("pw_new").value=$("pw_new2").value=""; $("pwOverlay").classList.add("open"); setTimeout(()=>$("pw_new").focus(),50); }
 function closePwModal(){ $("pwOverlay").classList.remove("open"); }
-
 async function changePassword(){
   const p1=$("pw_new").value, p2=$("pw_new2").value;
   if(p1.length<6){ toast("New password must be at least 6 characters"); return; }
   if(p1!==p2){ toast("New passwords do not match"); return; }
-
   const {error} = await sb.auth.updateUser({ password:p1 });
   if(error){ toast(error.message); return; }
-
-  closePwModal();
-  toast("Password changed successfully");
-  setTimeout(() => {
-    history.replaceState({}, document.title, window.location.pathname);
-    sb.auth.signOut().finally(() => renderLogin());
-  }, 900);
+  closePwModal(); toast("Password changed");
 }
 
 /* Overlay close + Esc */
@@ -14436,37 +14442,13 @@ document.addEventListener("keydown", e=>{
 
 /* Init */
 renderLogin();
-
 (async function(){
   if(!sb) return;
-
-  let recoveryMode = false;
-
-  sb.auth.onAuthStateChange((event)=>{
-    if(event === "PASSWORD_RECOVERY"){
-      recoveryMode = true;
-      openPwModal();
-    }
-  });
-
+  sb.auth.onAuthStateChange((event)=>{ if(event==="PASSWORD_RECOVERY") openPwModal(); });
   try{
     const {data:{session}} = await sb.auth.getSession();
-
-    // Supabase recovery links contain type=recovery in the URL hash.
-    // This fallback makes the reset form appear even if the auth event
-    // arrives before/after the initial page render.
-    const isRecoveryUrl = /(^|[#&?])type=recovery(&|$)/i.test(window.location.href);
-
-    if(isRecoveryUrl || recoveryMode){
-      recoveryMode = true;
-      if(session) openPwModal();
-      return;
-    }
-
     if(session) await afterAuth();
-  }catch(e){
-    console.error(e);
-  }
+  }catch(e){ console.error(e); }
 })();
 </script>
 </body>
