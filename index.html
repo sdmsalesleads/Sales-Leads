@@ -1548,7 +1548,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev FS";
+const APP_BUILD = "20 Aug 2026 · rev FT";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -2556,19 +2556,19 @@ async function logout(){
 const NAV_ITEMS = [
   {v:"dashboard", ic:"◧", label:()=> canManage()? "Team Day":"My Day", show:()=>!isFinance()},
   {v:"leads", ic:"☰", label:()=> fullView()? "Leads" : canManage()? "Leads":"My Leads", show:()=>!isFinance()},
-  {v:"finance", ic:"✓", label:()=> isFinance()? "My Day — Won Deals":"Won Deals", show:()=>isFinance()||fullView()},
+  {v:"finance", ic:"✓", label:()=> isFinance()? "My Day — Won Deals":"Won Deals", show:()=>(isFinance()||fullView()) && !(currentUser&&currentUser.mkt)},
   {v:"reports", ic:"▤", label:()=> isFinance()? "Revenue Reports":"Team Reports", show:()=>canManage()||isFinance()},
   {v:"calendar", ic:"▦", label:()=>"Calendar", show:()=>canSeeCalendar()},
   {v:"achievements", ic:"🏅", label:()=>"Achievements", show:()=>gamEligible()},
   {v:"guide", ic:"🎓", label:()=>"How to use", show:()=>!!currentUser},
   {v:"offers", ic:"📄", label:()=>{ const n = visibleLeads().filter(offerOverdue).length; return "Offers"+(n? " ("+n+")":""); },
-   show:()=>!!currentUser && !currentUser.fin},
+   show:()=>!!currentUser && !currentUser.mkt && !currentUser.fin},
   {v:"contracts", ic:"📜", label:()=>isOps()? "Contracts":"Contracts & Ops", show:()=>canSeeContracts()},
   {v:"ctcontrol", ic:"🎛", label:()=>"Control Centre", show:()=>canSeeContracts()},
   {v:"ctblockers", ic:"🚧", label:()=>"Construction", show:()=>canSeeContracts()},
   {v:"ctimport",  ic:"⬆", label:()=>"Contract Excel", show:()=>canSeeContracts()},
   {v:"ctreports", ic:"📈", label:()=>"Contract Reports", show:()=>canSeeContracts()},
-  {v:"bdtrack", ic:"📋", label:()=>"BD Tracker", show:()=>(currentUser&&(currentUser.bd||currentUser.mkt))||isOps()||isAdmin()||(currentUser&&currentUser.director)||(currentUser&&currentUser.exec)},
+  {v:"bdtrack", ic:"📋", label:()=>"BD Tracker", show:()=>(currentUser&&currentUser.bd)||isOps()||isAdmin()||(currentUser&&currentUser.director)||(currentUser&&currentUser.exec)},
   {v:"hierarchy", ic:"◬", label:()=>"Hierarchy", show:()=>canManage()},
   {v:"myreport", ic:"▣", label:()=>"My Report", show:()=>!canManage() && !isFinance()},
   {v:"extsales", ic:"↗", label:()=>"External Sales", show:()=>!isFinance() && !isOps() && !isMarketing()},
@@ -4021,11 +4021,10 @@ function auditChange(l, label, oldV, newV){
   const n = (newV===undefined||newV===null||newV==="")? "—" : String(newV);
   if(o!==n){ pushLog(l, label+' changed: "'+o+'" → "'+n+'"'); gsAudit(label+" changed","Leads",l.id,label,o,n); }
 }
-function canSeeMoney(){ return !!currentUser; }            // everyone who can sign in sees the figures
-/* kept as a named idea rather than scattered checks: marketing used to see a
-   reduced lead list. It no longer does — this is the one place to change if
-   that is ever wanted back. */
-function mktRestricted(){ return false; }
+function canSeeMoney(){ return currentUser && !currentUser.mkt; } // marketing: no commercial values
+/* marketing's lead list stays as it was — outcomes rather than pipeline detail.
+   The reports are where they see everything (see viewReports). */
+function mktRestricted(){ return isMarketing(); }
 function renderLog(l){
   $("leadLog").innerHTML = (l.log&&l.log.length)? l.log.map(e=>`
     <div class="log-item"><div class="l-date">${fmtDate(e.d)}${e.tm?" "+e.tm:""}${e.by?" · "+esc(e.by):""}</div>${esc(e.t)}</div>`).join("")
@@ -7328,7 +7327,7 @@ function ctProcessDays(c, process){
 function ctPool(){ return visibleLeads().filter(ctEligible); }
 function ctActive(){ return ctPool().filter(l=>{ const c=ctOf(l); return c && c.process!=="Completed" && c.status!=="Signed"; }); }
 function canManageContracts(){ return isOps() || isAdmin() || (currentUser && (currentUser.director || currentUser.exec)); }
-function canSeeContracts(){ return canManageContracts() || (currentUser && (currentUser.mgr || currentUser.dmgr || currentUser.fin || currentUser.mkt)); }
+function canSeeContracts(){ return canManageContracts() || (currentUser && (currentUser.mgr || currentUser.dmgr || currentUser.fin)); }
 /* ---------- contract detail: timeline + one-click actions ---------- */
 let ctOpenId = "";
 function openContract(id){
@@ -9971,6 +9970,11 @@ function repNationalityCard(pool){
     <p class="muted" style="font-size:.74rem;margin:8px 12px 12px">${known} of ${tot.n} leads have a nationality recorded — add it on the lead so this reads true.</p>
   </div>`;
 }
+function mktViewSwitch(){
+  return isMarketing()
+    ? `<button class="btn btn-ghost btn-sm no-print" onclick="repToggleFull()">Marketing view →</button>`
+    : "";
+}
 function viewDirectorReports(){
   const d = repData(), a = d.now, p = d.prev;
   const who = repFilters.owner? memberName(repFilters.owner) : "";
@@ -9978,7 +9982,7 @@ function viewDirectorReports(){
   return `<div class="rep-wrap">
     <div class="section-head" style="margin-top:0">
       <h2>Sales intelligence${who? " — "+esc(who):""}</h2>
-      <span class="no-print">${pdfButton()}</span>
+      <span class="no-print" style="display:flex;gap:8px;align-items:center">${mktViewSwitch()}${pdfButton()}</span>
     </div>
     ${repFilterBar(true)}
     ${who? `<div class="rep-drill">Showing <b>${esc(who)}</b> only · <button class="rep-pill" onclick="repSet({owner:''})">← back to the whole team</button></div>`:""}
@@ -10115,8 +10119,7 @@ function viewMarketingReports(){
   const cols = ["#E01E25","#E7434A","#ED6870","#F08A90","#F5ACB1","#C9CDD2"];
   return `<div class="rep-wrap">
     <div class="section-head" style="margin-top:0"><h2>Marketing performance</h2>
-      <span class="no-print" style="display:flex;gap:8px;align-items:center">
-        <button class="btn btn-ghost btn-sm" onclick="repToggleFull()">Full team report →</button>${pdfButton()}</span></div>
+      <span class="no-print">${pdfButton()}</span></div>
     <p class="muted" style="font-size:.84rem;margin:-4px 0 12px">How effective are our marketing leads at generating actual business?</p>
     <p class="muted" style="font-size:.8rem;margin:-8px 0 12px"><b>${m.total.toLocaleString()}</b> of the <b>${d.pool.length.toLocaleString()}</b> leads in this period came from marketing channels — the figures below cover those only. ${d.pool.length-m.total>0? "The remaining "+(d.pool.length-m.total).toLocaleString()+" were self-generated by sales or business development." : ""}</p>
     ${repFilterBar(false)}
@@ -10172,11 +10175,12 @@ function mktAvgPlot(pool){
 function viewReports(){
   /* Marketing sees outcomes only; management sees the full picture; a
      salesperson gets the same depth, about themselves. */
-  if(isMarketing() && !repFullView) return viewMarketingReports();
-  if(isMarketing()) return `<div class="section-head" style="margin-top:0">
-      <h2>Team report</h2><button class="btn btn-ghost btn-sm no-print" onclick="repToggleFull()">← Marketing view</button></div>`
-    + viewDirectorReports();
-  if(repIsDirector()) return viewDirectorReports();
+  /* marketing reads the same report as sales operations. Their own view — the
+     channel breakdown and the lost-reasons section — is one click away. */
+  if(isMarketing() && repFullView) return `<div class="section-head" style="margin-top:0">
+      <h2>Marketing view</h2><button class="btn btn-ghost btn-sm no-print" onclick="repToggleFull()">← Team report</button></div>`
+    + viewMarketingReports();
+  if(repIsDirector() || isMarketing()) return viewDirectorReports();
   return viewMyReports();
 }
 /* ---------- SALESPERSON: the same analysis, about their own work ---------- */
@@ -10476,7 +10480,7 @@ function viewLegacyReports(){
 
   ${commercialSection(leads)}
 
-  ${workloadSection(membersScope)}
+  ${!isMarketing()? workloadSection(membersScope) : ""}
 
   ${lostSection(leads)}
 
