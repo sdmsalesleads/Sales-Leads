@@ -1548,7 +1548,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev FQ";
+const APP_BUILD = "20 Aug 2026 · rev FS";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -2556,19 +2556,19 @@ async function logout(){
 const NAV_ITEMS = [
   {v:"dashboard", ic:"◧", label:()=> canManage()? "Team Day":"My Day", show:()=>!isFinance()},
   {v:"leads", ic:"☰", label:()=> fullView()? "Leads" : canManage()? "Leads":"My Leads", show:()=>!isFinance()},
-  {v:"finance", ic:"✓", label:()=> isFinance()? "My Day — Won Deals":"Won Deals", show:()=>(isFinance()||fullView()) && !(currentUser&&currentUser.mkt)},
+  {v:"finance", ic:"✓", label:()=> isFinance()? "My Day — Won Deals":"Won Deals", show:()=>isFinance()||fullView()},
   {v:"reports", ic:"▤", label:()=> isFinance()? "Revenue Reports":"Team Reports", show:()=>canManage()||isFinance()},
   {v:"calendar", ic:"▦", label:()=>"Calendar", show:()=>canSeeCalendar()},
   {v:"achievements", ic:"🏅", label:()=>"Achievements", show:()=>gamEligible()},
   {v:"guide", ic:"🎓", label:()=>"How to use", show:()=>!!currentUser},
   {v:"offers", ic:"📄", label:()=>{ const n = visibleLeads().filter(offerOverdue).length; return "Offers"+(n? " ("+n+")":""); },
-   show:()=>!!currentUser && !currentUser.mkt && !currentUser.fin},
+   show:()=>!!currentUser && !currentUser.fin},
   {v:"contracts", ic:"📜", label:()=>isOps()? "Contracts":"Contracts & Ops", show:()=>canSeeContracts()},
   {v:"ctcontrol", ic:"🎛", label:()=>"Control Centre", show:()=>canSeeContracts()},
   {v:"ctblockers", ic:"🚧", label:()=>"Construction", show:()=>canSeeContracts()},
   {v:"ctimport",  ic:"⬆", label:()=>"Contract Excel", show:()=>canSeeContracts()},
   {v:"ctreports", ic:"📈", label:()=>"Contract Reports", show:()=>canSeeContracts()},
-  {v:"bdtrack", ic:"📋", label:()=>"BD Tracker", show:()=>(currentUser&&currentUser.bd)||isOps()||isAdmin()||(currentUser&&currentUser.director)||(currentUser&&currentUser.exec)},
+  {v:"bdtrack", ic:"📋", label:()=>"BD Tracker", show:()=>(currentUser&&(currentUser.bd||currentUser.mkt))||isOps()||isAdmin()||(currentUser&&currentUser.director)||(currentUser&&currentUser.exec)},
   {v:"hierarchy", ic:"◬", label:()=>"Hierarchy", show:()=>canManage()},
   {v:"myreport", ic:"▣", label:()=>"My Report", show:()=>!canManage() && !isFinance()},
   {v:"extsales", ic:"↗", label:()=>"External Sales", show:()=>!isFinance() && !isOps() && !isMarketing()},
@@ -3317,8 +3317,8 @@ function viewLeads(){
   </div>
   <div class="filters no-print">
     <input type="search" id="fl_q" placeholder="Search name, company, phone (with or without +2)…" value="${esc(F.q)}">
-    ${(adm && !isMarketing())?`<select id="fl_owner"><option value="">All owners</option>${fullView()?`<option value="__none" ${F.owner==="__none"?"selected":""}>Unassigned</option>`:""}${byName(teamMembers().filter(canOwnLeads)).map(m=>`<option value="${m.id}" ${F.owner===m.id?"selected":""}>${esc(m.name)}${m.bd? " · BD":""}</option>`).join("")}</select>`:""}
-    ${isMarketing()? "" : statusFilterUI()}
+    ${(adm && !mktRestricted())?`<select id="fl_owner"><option value="">All owners</option>${fullView()?`<option value="__none" ${F.owner==="__none"?"selected":""}>Unassigned</option>`:""}${byName(teamMembers().filter(canOwnLeads)).map(m=>`<option value="${m.id}" ${F.owner===m.id?"selected":""}>${esc(m.name)}${m.bd? " · BD":""}</option>`).join("")}</select>`:""}
+    ${mktRestricted()? "" : statusFilterUI()}
     ${sourceFilterUI()}
     ${isMarketing()? `<select onchange="leadFilters.outcome=this.value;render()">
       <option value="">All outcomes</option>
@@ -3329,7 +3329,7 @@ function viewLeads(){
     <select id="fl_project"><option value="">All projects</option>${PROJECTS.map(p=>`<option ${F.project===p?"selected":""}>${p}</option>`).join("")}</select>
     <select id="fl_dup"><option value="">All leads</option><option value="only" ${F.dup==="only"?"selected":""}>\u26A0 Duplicates only${dupTotal?" ("+dupTotal+")":""}</option></select>
     <select id="fl_sort"><option value="">Sort: follow-up date</option><option value="dupes" ${F.sort==="dupes"?"selected":""}>Sort: duplicates grouped together</option><option value="newest" ${F.sort==="newest"?"selected":""}>Sort: newest first</option><option value="name" ${F.sort==="name"?"selected":""}>Sort: name A\u2013Z</option><option value="company" ${F.sort==="company"?"selected":""}>Sort: company A\u2013Z</option><option value="value" ${F.sort==="value"?"selected":""}>Sort: highest value</option><option value="land" ${F.sort==="land"?"selected":""}>Sort: land size \u2014 largest first</option><option value="landsm" ${F.sort==="landsm"?"selected":""}>Sort: land size \u2014 smallest first</option></select>
-    ${isMarketing()? "" : `<select id="fl_due"><option value="">Any follow-up</option><option value="overdue" ${F.due==="overdue"?"selected":""}>Overdue</option><option value="today" ${F.due==="today"?"selected":""}>Due today</option><option value="none" ${F.due==="none"?"selected":""}>No date set</option></select>`}
+    ${mktRestricted()? "" : `<select id="fl_due"><option value="">Any follow-up</option><option value="overdue" ${F.due==="overdue"?"selected":""}>Overdue</option><option value="today" ${F.due==="today"?"selected":""}>Due today</option><option value="none" ${F.due==="none"?"selected":""}>No date set</option></select>`}
   </div>
   ${canSelectLeads() && selCount? `<div class="bulkbar no-print">
     <b>${selCount} selected</b>
@@ -3353,7 +3353,7 @@ function viewLeads(){
   ${leadSortChip()}
   <div class="card" style="overflow:auto">
     ${rows.length? `<table>
-      <thead><tr>${canSelectLeads()?`<th style="width:34px"><input type="checkbox" onclick="toggleAllSel(this.checked, ${JSON.stringify(rows.map(r=>r.id)).replace(/"/g,"&quot;")})"></th>`:""}${leadSortHead("Lead","name")}<th>Contact</th>${leadSortHead("Source","source","hide-sm")}${leadSortHead("Project","project")}${leadSortHead("Land (sqm)","land","num hide-sm")}${leadSortHead("Added","created","hide-sm")}${leadFilters.dateField==="wonDate"? `<th class="hide-sm">Won on</th>`:""}${isMarketing()?"":leadSortHead("Status","status")}${(adm && !isMarketing())?leadSortHead("Owner","owner","hide-sm"):""}${isMarketing()?"<th>Outcome</th>":leadSortHead("Follow-up","next")}${canSeeMoney()?leadSortHead("Value","value","num"):""}</tr></thead>
+      <thead><tr>${canSelectLeads()?`<th style="width:34px"><input type="checkbox" onclick="toggleAllSel(this.checked, ${JSON.stringify(rows.map(r=>r.id)).replace(/"/g,"&quot;")})"></th>`:""}${leadSortHead("Lead","name")}<th>Contact</th>${leadSortHead("Source","source","hide-sm")}${leadSortHead("Project","project")}${leadSortHead("Land (sqm)","land","num hide-sm")}${leadSortHead("Added","created","hide-sm")}${leadFilters.dateField==="wonDate"? `<th class="hide-sm">Won on</th>`:""}${mktRestricted()?"":leadSortHead("Status","status")}${(adm && !mktRestricted())?leadSortHead("Owner","owner","hide-sm"):""}${mktRestricted()?"<th>Outcome</th>":leadSortHead("Follow-up","next")}${canSeeMoney()?leadSortHead("Value","value","num"):""}</tr></thead>
       <tbody>${rows.map(l=>{
         const dc = dueClass(l);
         return `<tr class="row-click" onclick="openLeadModal('${l.id}')">
@@ -3369,9 +3369,9 @@ function viewLeads(){
         <td class="num hide-sm">${l.land?Number(l.land).toLocaleString():"—"}</td>
         <td class="hide-sm" style="white-space:nowrap;font-size:.8rem">${l.created? esc(fmtDate(l.created)) : "—"}</td>
         ${leadFilters.dateField==="wonDate"? `<td class="hide-sm" style="white-space:nowrap;font-size:.8rem">${wonOn(l)? esc(fmtDate(wonOn(l))) : "—"}</td>`:""}
-        ${isMarketing()?"":`<td>${statusPill(l.status)}</td>`}
-        ${(adm && !isMarketing())?`<td class="hide-sm">${l.owner? esc(memberName(l.owner)) : '<span class="pill" style="color:var(--amber);background:var(--amber-soft)">Unassigned</span>'}</td>`:""}
-        ${isMarketing()
+        ${mktRestricted()?"":`<td>${statusPill(l.status)}</td>`}
+        ${(adm && !mktRestricted())?`<td class="hide-sm">${l.owner? esc(memberName(l.owner)) : '<span class="pill" style="color:var(--amber);background:var(--amber-soft)">Unassigned</span>'}</td>`:""}
+        ${mktRestricted()
           ? `<td>${l.status==="Won"? '<span class="pill" style="color:#14663F;background:#F1FAF5">Won</span>'
                  : l.status==="Lost"? '<span class="pill" style="color:var(--red-dark);background:#FFF1F1">Lost'+(l.lostCat? " · "+esc(l.lostCat):"")+'</span>'
                  : '<span class="pill muted">With sales</span>'}</td>`
@@ -4021,7 +4021,11 @@ function auditChange(l, label, oldV, newV){
   const n = (newV===undefined||newV===null||newV==="")? "—" : String(newV);
   if(o!==n){ pushLog(l, label+' changed: "'+o+'" → "'+n+'"'); gsAudit(label+" changed","Leads",l.id,label,o,n); }
 }
-function canSeeMoney(){ return currentUser && !currentUser.mkt; } // marketing: no commercial values
+function canSeeMoney(){ return !!currentUser; }            // everyone who can sign in sees the figures
+/* kept as a named idea rather than scattered checks: marketing used to see a
+   reduced lead list. It no longer does — this is the one place to change if
+   that is ever wanted back. */
+function mktRestricted(){ return false; }
 function renderLog(l){
   $("leadLog").innerHTML = (l.log&&l.log.length)? l.log.map(e=>`
     <div class="log-item"><div class="l-date">${fmtDate(e.d)}${e.tm?" "+e.tm:""}${e.by?" · "+esc(e.by):""}</div>${esc(e.t)}</div>`).join("")
@@ -7324,7 +7328,7 @@ function ctProcessDays(c, process){
 function ctPool(){ return visibleLeads().filter(ctEligible); }
 function ctActive(){ return ctPool().filter(l=>{ const c=ctOf(l); return c && c.process!=="Completed" && c.status!=="Signed"; }); }
 function canManageContracts(){ return isOps() || isAdmin() || (currentUser && (currentUser.director || currentUser.exec)); }
-function canSeeContracts(){ return canManageContracts() || (currentUser && (currentUser.mgr || currentUser.dmgr || currentUser.fin)); }
+function canSeeContracts(){ return canManageContracts() || (currentUser && (currentUser.mgr || currentUser.dmgr || currentUser.fin || currentUser.mkt)); }
 /* ---------- contract detail: timeline + one-click actions ---------- */
 let ctOpenId = "";
 function openContract(id){
@@ -10097,6 +10101,9 @@ function mktLostSection(pool){
   </div>`;
 }
 
+/* marketing can switch between its own view and the full team report */
+let repFullView = false;
+function repToggleFull(){ repFullView = !repFullView; render(); }
 function viewMarketingReports(){
   const d = repData(), a = d.now, p = d.prev;
   const natCard = repNationalityCard(d.pool);
@@ -10107,7 +10114,9 @@ function viewMarketingReports(){
   const lost = Object.entries(m.byLost).sort((x,y)=>y[1]-x[1]);
   const cols = ["#E01E25","#E7434A","#ED6870","#F08A90","#F5ACB1","#C9CDD2"];
   return `<div class="rep-wrap">
-    <div class="section-head" style="margin-top:0"><h2>Marketing performance</h2><span class="no-print">${pdfButton()}</span></div>
+    <div class="section-head" style="margin-top:0"><h2>Marketing performance</h2>
+      <span class="no-print" style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-ghost btn-sm" onclick="repToggleFull()">Full team report →</button>${pdfButton()}</span></div>
     <p class="muted" style="font-size:.84rem;margin:-4px 0 12px">How effective are our marketing leads at generating actual business?</p>
     <p class="muted" style="font-size:.8rem;margin:-8px 0 12px"><b>${m.total.toLocaleString()}</b> of the <b>${d.pool.length.toLocaleString()}</b> leads in this period came from marketing channels — the figures below cover those only. ${d.pool.length-m.total>0? "The remaining "+(d.pool.length-m.total).toLocaleString()+" were self-generated by sales or business development." : ""}</p>
     ${repFilterBar(false)}
@@ -10163,7 +10172,10 @@ function mktAvgPlot(pool){
 function viewReports(){
   /* Marketing sees outcomes only; management sees the full picture; a
      salesperson gets the same depth, about themselves. */
-  if(isMarketing()) return viewMarketingReports();
+  if(isMarketing() && !repFullView) return viewMarketingReports();
+  if(isMarketing()) return `<div class="section-head" style="margin-top:0">
+      <h2>Team report</h2><button class="btn btn-ghost btn-sm no-print" onclick="repToggleFull()">← Marketing view</button></div>`
+    + viewDirectorReports();
   if(repIsDirector()) return viewDirectorReports();
   return viewMyReports();
 }
@@ -10464,7 +10476,7 @@ function viewLegacyReports(){
 
   ${commercialSection(leads)}
 
-  ${!isMarketing()? workloadSection(membersScope) : ""}
+  ${workloadSection(membersScope)}
 
   ${lostSection(leads)}
 
