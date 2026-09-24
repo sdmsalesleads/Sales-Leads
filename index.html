@@ -1548,7 +1548,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev FT";
+const APP_BUILD = "20 Aug 2026 · rev FU";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -10108,11 +10108,52 @@ function mktLostSection(pool){
 /* marketing can switch between its own view and the full team report */
 let repFullView = false;
 function repToggleFull(){ repFullView = !repFullView; render(); }
+/* Leads the salespeople brought in themselves are not marketing's work, and
+   marketing's are not theirs. The two are reported separately and never added
+   into one revenue figure. */
+function mktSplit(pool){
+  const mine  = (pool||[]).filter(l=>isMktSource(l.source));
+  const self  = (pool||[]).filter(l=>!isMktSource(l.source));
+  return {mine, self, m:repAgg(mine, repRange()), s:repAgg(self, repRange())};
+}
+/* a lost lead is one we reached and still did not win — measuring it against
+   every lead ever received hides how well the conversation itself is going */
+function mktLostRate(agg){
+  if(!agg || !agg.contacted) return null;
+  return Math.round(agg.lost / agg.contacted * 1000) / 10;
+}
+function mktSideBySide(S){
+  const row = (label, a, b, fmt)=>`<tr><td>${esc(label)}</td>
+    <td class="num">${fmt? fmt(a):a}</td><td class="num">${fmt? fmt(b):b}</td></tr>`;
+  const money = v => canSeeMoney()? fmtMoney(v||0) : "—";
+  const pct = v => v===null? "—" : v.toFixed(1)+"%";
+  return `
+  <div class="section-head"><h2>Marketing leads and self-generated leads, side by side</h2></div>
+  <p class="muted" style="font-size:.82rem;margin:-4px 0 10px">
+    Two separate books of business. Marketing's figures never include the leads salespeople
+    or business development brought in themselves, and those are shown here on their own rather
+    than folded into anyone else's total.</p>
+  <div class="card" style="overflow:auto">
+    <table><thead><tr><th></th><th class="num">From marketing</th><th class="num">Self-generated</th></tr></thead>
+      <tbody>
+        ${row("Leads received", S.m.total, S.s.total)}
+        ${row("Contacted", S.m.contacted, S.s.contacted)}
+        ${row("Won", S.m.won, S.s.won)}
+        ${row("Lost", S.m.lost, S.s.lost)}
+        ${row("Conversion", S.m.convRate, S.s.convRate, v=>(v||0).toFixed(1)+"%")}
+        ${row("Lost rate, of those contacted", mktLostRate(S.m), mktLostRate(S.s), pct)}
+        ${row("Revenue", S.m.wonValue, S.s.wonValue, money)}
+        ${row("Average deal", S.m.avgDeal, S.s.avgDeal, money)}
+        ${row("Land sold (m²)", mktArea(S.mine,true), mktArea(S.self,true), v=>v.toLocaleString())}
+      </tbody></table>
+  </div>`;
+}
 function viewMarketingReports(){
   const d = repData(), a = d.now, p = d.prev;
   const natCard = repNationalityCard(d.pool);
-  const mkt = d.pool.filter(l=>isMktSource(l.source));
-  const m = repAgg(mkt);
+  const S = mktSplit(d.pool);
+  const mkt = S.mine;
+  const m = S.m;
   const bySrc = Object.entries(m.bySource).filter(([k])=>isMktSource(k))
     .map(([k,s])=>({k, ...s, conv: s.leads? s.won/s.leads*100:0})).sort((x,y)=>y.leads-x.leads);
   const lost = Object.entries(m.byLost).sort((x,y)=>y[1]-x[1]);
@@ -10132,6 +10173,8 @@ function viewMarketingReports(){
       ${repKpi("Land sold", mktArea(mkt,true).toLocaleString()+" m²", "from our leads", "")}
       ${repKpi("Average plot", mktAvgPlot(mkt), "per won deal", "")}
       ${repKpi("Lost leads", m.lost.toLocaleString(), "closed without a deal", repDelta(m.lost, p&&p.lost, {lowerIsBetter:true}))}
+      ${repKpi("Lost rate", mktLostRate(m)===null? "—" : mktLostRate(m).toFixed(1)+"%",
+        "of the "+m.contacted.toLocaleString()+" leads we reached", "")}
     </div>
     <div class="rep-grid2">
       <div class="card card-pad">
@@ -10157,6 +10200,7 @@ function viewMarketingReports(){
       <p class="muted" style="font-size:.76rem;margin-top:8px">Volume is not quality — a channel with fewer leads but a higher conversion rate is often worth more.</p>
     </div>
     ${repChannels(m)}
+    ${mktSideBySide(S)}
     ${mktLostSection(d.pool)}
     ${natCard}
     ${repTrend(mkt)}
