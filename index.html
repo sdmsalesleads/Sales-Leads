@@ -1548,7 +1548,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev FW";
+const APP_BUILD = "20 Aug 2026 · rev FY";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1762,7 +1762,7 @@ async function insertChunked(table, rows, size){
   }
 }
 async function deleteChunked(table, ids, size){
-  if(table==="leads") loadLastCount = Math.max(0, (loadLastCount||0) - (ids||[]).length);
+  if(table==="leads") rememberLeadCount(Math.max(0, (loadLastCount||0) - (ids||[]).length));
   const n = size || 500;
   for(let i=0; i<ids.length; i+=n){
     const batch = ids.slice(i, i+n);
@@ -1783,11 +1783,22 @@ async function deleteChunked(table, ids, size){
 /* A list that suddenly holds far fewer leads than a moment ago, with no delete
    in between, is a broken read — not the truth. Real deletions go through the
    app and adjust the count they are checked against. */
-let loadLastCount = 0, loadFailCount = 0, loadRetryTimer = null;
+/* How many leads this CRM is known to hold, remembered between sessions. A
+   fresh page has nothing in memory to compare against, which is exactly when an
+   empty read used to be believed — and the whole team saw nothing. */
+const LEAD_COUNT_KEY = "crm_known_lead_count";
+function knownLeadCount(){
+  try{ return Number(localStorage.getItem(LEAD_COUNT_KEY)) || 0; }catch(e){ return 0; }
+}
+function rememberLeadCount(n){
+  loadLastCount = n;
+  try{ localStorage.setItem(LEAD_COUNT_KEY, String(n)); }catch(e){}
+}
+let loadLastCount = knownLeadCount(), loadFailCount = 0, loadRetryTimer = null;
 function loadLooksWhole(incoming){
-  const prev = loadLastCount;
-  if(!prev) return true;                          // nothing to compare with yet
-  return incoming.length > 0;                     // empty when we had leads is the only sure fault
+  const expected = loadLastCount || knownLeadCount();
+  if(!expected) return true;                      // a genuinely empty CRM, or the very first use
+  return incoming.length > 0;                     // nothing returned, when we know there is something
 }
 function loadOk(){
   loadFailCount = 0;
@@ -1796,6 +1807,16 @@ function loadOk(){
 }
 function loadFailed(why){
   loadFailCount++;
+  /* Nothing on screen at all is not a hiccup to keep quiet about — it is the
+     whole CRM looking empty, so it is said at once with a way to try again. */
+  if(!(state.leads||[]).length && !document.getElementById("loadBanner")){
+    const b = document.createElement("div");
+    b.id = "loadBanner"; b.className = "load-banner";
+    b.innerHTML = "Couldn't load the leads \u2014 nothing has been lost, the connection just didn't answer."
+      + ' <button onclick="loadRetryNow()" style="margin-inline-start:10px;border:1px solid currentColor;'
+      + 'background:none;border-radius:6px;padding:2px 10px;cursor:pointer;font:inherit;font-weight:700">Try again</button>';
+    document.body.appendChild(b);
+  }
   /* Stay quiet about a single hiccup: refreshes happen constantly and one that
      misses is not worth a message. Only a run of them is worth saying out loud,
      and the note can be dismissed. */
@@ -1812,12 +1833,24 @@ function loadFailed(why){
   /* wait longer each time, starting well back: a struggling connection is not
      helped by asking it again straight away */
   const wait = Math.min(120000, 15000 * Math.pow(2, Math.min(loadFailCount-1, 3)));
-  loadRetryTimer = setTimeout(()=>{
+  loadRetryTimer = setTimeout(async ()=>{
     if(loadBusy) return;                          // never pile onto a load already running
+    /* a sign-in that has quietly expired answers with no rows and no error —
+       renewing it is usually all that is needed */
+    try{ if(sb && sb.auth && sb.auth.refreshSession) await sb.auth.refreshSession(); }catch(e){}
     loadAll().then(()=>{ if(currentUser) render(); }).catch(()=>{});
   }, wait);
 }
 let loadBusy = false;
+/* the button on that message */
+async function loadRetryNow(){
+  const b = document.getElementById("loadBanner");
+  if(b) b.textContent = "Trying again\u2026";
+  try{ if(sb && sb.auth && sb.auth.refreshSession) await sb.auth.refreshSession(); }catch(e){}
+  await loadAll();
+  if(currentUser) render();
+  if((state.leads||[]).length) loadOk();
+}
 async function loadAll(){
   if(!sb) return;
   if(loadBusy) return;                            // one at a time
@@ -1842,7 +1875,7 @@ async function loadAllInner(){
     }
     serverIds.leads = new Set(state.leads.map(l=>l.id));
     serverIds.ext = new Set(state.extSales.map(e=>e.id));
-    loadLastCount = state.leads.length;
+    rememberLeadCount(state.leads.length);
     phoneRepairAll(true);                     // put historic numbers right
     if(beforeSnapG) notifDiff(beforeSnapG);
     invalidateDupes();
@@ -1872,7 +1905,7 @@ async function loadAllInner(){
   state.bdWeekly = (bw && bw.data)||[];
   const beforeSnap = currentUser? notifSnapshot() : null;
   state.leads = incoming;                     // merged-away copies stay gone
-  loadLastCount = state.leads.length;
+  rememberLeadCount(state.leads.length);
   phoneRepairAll(true);                       // put historic numbers right
   state.extSales = (ex.data||[]).map(extFromDb);
   serverIds.leads = new Set((ld.data||[]).map(r=>r.id));   // includes merged rows so the cleanup delete still fires
@@ -2527,7 +2560,7 @@ async function forgotPassword(){
 async function afterAuth(){
   const {data:{user}} = await sb.auth.getUser();
   if(!user){ renderLogin(); return; }
-  loadLastCount = 0; loadFailCount = 0;       // a new session starts with no yardstick
+  loadLastCount = knownLeadCount(); loadFailCount = 0;   // what this CRM held last time still stands
   await loadAll();
   let me = state.members.find(m=>m.id===user.id);
   if(!me){ await new Promise(r=>setTimeout(r,900)); await loadAll(); me = state.members.find(m=>m.id===user.id); }
@@ -3461,7 +3494,7 @@ function bulkClearDup(){
   toast(rows.length+" marked as genuine — warnings cleared");
 }
 function bulkDelete(){
-  setTimeout(()=>{ loadLastCount = (state.leads||[]).length; }, 0);
+  setTimeout(()=>{ rememberLeadCount((state.leads||[]).length); }, 0);
   if(!canEditLeads()) return;
   const rows = selectedLeadObjects();
   if(!rows.length){ toast("Nothing selected"); return; }
@@ -4313,7 +4346,7 @@ function notifyAR(l){
   toast("Email draft to the AR team opened — send it to notify them");
 }
 function deleteLead(){
-  setTimeout(()=>{ loadLastCount = (state.leads||[]).length; }, 0);
+  setTimeout(()=>{ rememberLeadCount((state.leads||[]).length); }, 0);
   if(!editingLeadId || !canEditLeads()) return;
   if(!confirm("Delete this lead permanently?")) return;
   const gone = state.leads.find(l=>l.id===editingLeadId);
