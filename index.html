@@ -1548,7 +1548,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev FU";
+const APP_BUILD = "20 Aug 2026 · rev FW";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1787,9 +1787,7 @@ let loadLastCount = 0, loadFailCount = 0, loadRetryTimer = null;
 function loadLooksWhole(incoming){
   const prev = loadLastCount;
   if(!prev) return true;                          // nothing to compare with yet
-  if(incoming.length === 0 && prev > 0) return false;
-  if(prev >= 20 && incoming.length < prev * 0.6) return false;
-  return true;
+  return incoming.length > 0;                     // empty when we had leads is the only sure fault
 }
 function loadOk(){
   loadFailCount = 0;
@@ -1798,21 +1796,35 @@ function loadOk(){
 }
 function loadFailed(why){
   loadFailCount++;
-  /* say it once, quietly, and keep what is on screen */
-  if(loadFailCount === 1) toast("\u26A0 Couldn't refresh ("+why+") \u2014 showing the last loaded data, retrying");
-  if(loadFailCount >= 3 && !document.getElementById("loadBanner")){
+  /* Stay quiet about a single hiccup: refreshes happen constantly and one that
+     misses is not worth a message. Only a run of them is worth saying out loud,
+     and the note can be dismissed. */
+  if(loadFailCount === 3) toast("\u26A0 Couldn't refresh \u2014 showing the last loaded data");
+  if(loadFailCount >= 5 && !document.getElementById("loadBanner")){
     const b = document.createElement("div");
     b.id = "loadBanner"; b.className = "load-banner";
-    b.textContent = "Connection is struggling \u2014 you're seeing the last data that loaded. Changes you make are still saved.";
+    b.innerHTML = "Connection is struggling \u2014 you're seeing the last data that loaded. Your changes are still saved."
+      + ' <button onclick="this.parentNode.remove()" style="margin-inline-start:10px;border:0;background:none;'
+      + 'cursor:pointer;font:inherit;font-weight:800">\u00d7</button>';
     document.body.appendChild(b);
   }
   clearTimeout(loadRetryTimer);
-  /* back off: 5s, 10s, 20s … up to a minute */
-  const wait = Math.min(60000, 5000 * Math.pow(2, Math.min(loadFailCount-1, 4)));
-  loadRetryTimer = setTimeout(()=>{ loadAll().then(()=>{ if(currentUser) render(); }).catch(()=>{}); }, wait);
+  /* wait longer each time, starting well back: a struggling connection is not
+     helped by asking it again straight away */
+  const wait = Math.min(120000, 15000 * Math.pow(2, Math.min(loadFailCount-1, 3)));
+  loadRetryTimer = setTimeout(()=>{
+    if(loadBusy) return;                          // never pile onto a load already running
+    loadAll().then(()=>{ if(currentUser) render(); }).catch(()=>{});
+  }, wait);
 }
+let loadBusy = false;
 async function loadAll(){
   if(!sb) return;
+  if(loadBusy) return;                            // one at a time
+  loadBusy = true;
+  try{ return await loadAllInner(); } finally { loadBusy = false; }
+}
+async function loadAllInner(){
   if(gsDbOn()){
     /* Google Sheets is the database. Supabase supplies nothing but the list of
        accounts and their roles; every lead, sale and activity comes from the workbook. */
@@ -1990,23 +2002,43 @@ let reloadTimer = null, reloadBusy = false, reloadAgain = false;
    each fetching every lead. Now the edits are gathered for a few seconds and
    answered with a single reload, and a reload already running is never
    stacked with another — the second request simply follows it. */
+/* Reading the whole book is expensive, so it is done sparingly: at most once
+   every half a minute however many changes arrive, never while the tab is in
+   the background, and never on top of a reload already running. */
+const RELOAD_MIN_GAP = 30000;
+let reloadLastAt = 0;
 function scheduleReload(){
   if(reloadBusy){ reloadAgain = true; return; }
+  if(document.hidden) return;                    // nothing to refresh for nobody
+  const since = Date.now() - reloadLastAt;
+  const wait = Math.max(3000, RELOAD_MIN_GAP - since);
   clearTimeout(reloadTimer);
   reloadTimer = setTimeout(async ()=>{
     reloadBusy = true;
     try{
       await persistChain.catch(()=>{});  // never reload over unsaved local changes
       await loadAll();
+      reloadLastAt = Date.now();
       if(currentUser){
         const me = state.members.find(x=>x.id===currentUser.id);
         if(me && !me.pending) currentUser = me;
-        render(); updateBell();
+        /* redrawing the page under someone's hands loses their place and their
+           typing — a form or a document open means the refresh waits */
+        if(!uiBusy()){ render(); updateBell(); }
+        else updateBell();
       }
     }catch(e){}
     reloadBusy = false;
     if(reloadAgain){ reloadAgain = false; scheduleReload(); }
-  }, 3000);
+  }, wait);
+}
+/* is the person in the middle of something the screen must not disturb? */
+function uiBusy(){
+  const open = Array.from(document.querySelectorAll(".overlay"))
+    .some(el=>el.classList.contains("open"));
+  const el = document.activeElement;
+  const typing = el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName);
+  return open || typing;
 }
 let rtStarted = false;
 function startRealtime(){
@@ -2014,7 +2046,7 @@ function startRealtime(){
   sb.channel("crm-live").on("postgres_changes", {event:"*", schema:"public"}, scheduleReload).subscribe();
   /* resilience: even if realtime is unavailable, refresh every 45s and whenever
      the tab regains focus — teammates' changes never sit stale for long */
-  setInterval(()=>{ if(currentUser) scheduleReload(); }, 45000);
+  setInterval(()=>{ if(currentUser && !document.hidden) scheduleReload(); }, 120000);
   setInterval(()=>{ if(currentUser) notifTick(); }, 60000);
   document.addEventListener("visibilitychange", ()=>{ if(!document.hidden && currentUser) scheduleReload(); });
 }
@@ -3721,11 +3753,6 @@ async function gsLoadFromSheet(){
   const d = first||{};
   const incoming = allLeads.map(gsToLead).filter(l=>!isMergedAway(l));
   const announced = Number((first||{}).total)||0;
-  /* only once this session has a good load to stand on — the first load is
-     always taken as it comes, so a count the workbook reports differently can
-     never leave someone looking at an empty CRM */
-  if(loadLastCount && announced && allLeads.length < announced)
-    throw new Error("the workbook sent "+allLeads.length+" of "+announced+" leads");
   if(!loadLooksWhole(incoming)) throw new Error("the workbook returned an incomplete list");
   state.leads    = incoming;                                             // merged-away copies stay gone
   state.extSales = (d.extSales||[]).map(gsToExt);
