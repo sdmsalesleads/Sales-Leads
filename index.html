@@ -736,6 +736,44 @@ th.th-sort.on .th-ar{opacity:1}
 .of-rates{background:#fafbfc;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:2px 0 12px}
 .of-rates-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;
   font-size:.66rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--steel)}
+.day-head{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;justify-content:space-between;
+  background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px;
+  box-shadow:var(--shadow)}
+.day-date{font-size:.7rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--steel)}
+.day-head h1{font-size:1.5rem;letter-spacing:-.02em;margin:3px 0 4px}
+.day-head p{font-size:.86rem}
+.day-kpis{display:flex;gap:8px;flex-wrap:wrap}
+.day-kpi{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 13px;min-width:78px;
+  cursor:pointer;font-family:inherit;text-align:center}
+.day-kpi:hover{border-color:var(--red)}
+.day-kpi b{display:block;font-size:1.3rem;line-height:1.1}
+.day-kpi span{font-size:.68rem;color:var(--steel);text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+.day-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.day-card{border:1px solid var(--line);border-inline-start:3px solid var(--line);background:var(--card);
+  border-radius:12px;padding:12px 14px;box-shadow:var(--shadow)}
+.day-card.p0{border-inline-start-color:var(--red)}
+.day-card.p1{border-inline-start-color:var(--amber)}
+.day-card.p2{border-inline-start-color:var(--blue)}
+.day-card.p3{border-inline-start-color:var(--line)}
+.day-card-t{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.day-name{font-weight:700;color:var(--ink);text-decoration:none;font-size:.95rem}
+.day-name:hover{color:var(--red)}
+.day-sub{font-size:.75rem;color:var(--steel);margin-top:2px}
+.day-val{font-size:.82rem;font-weight:700;white-space:nowrap}
+.day-why{display:flex;gap:7px;align-items:baseline;font-size:.82rem;font-weight:600;margin:9px 0 4px}
+.day-why i{width:6px;height:6px;border-radius:3px;background:currentColor;flex:none;opacity:.55}
+.day-card.p0 .day-why{color:var(--red)}
+.day-card.p1 .day-why{color:var(--amber)}
+.day-card.p2 .day-why{color:var(--blue)}
+.day-meta{font-size:.74rem;color:var(--steel)}
+.day-act{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.day-out{background:var(--red-soft);border:1px solid var(--red-line);border-radius:12px;padding:12px 14px;margin-bottom:14px}
+.day-out-h{font-weight:700;font-size:.9rem;margin-bottom:8px}
+.day-out-b{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.day-out-w{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.day-out-w label{font-size:.76rem;color:var(--steel);font-weight:700}
+.day-out-w input{flex:1;min-width:180px}
+.day-rest{display:flex;gap:20px;flex-wrap:wrap;font-size:.86rem}
 .mk-upl{margin-top:12px;border-top:1px solid var(--line-soft);padding-top:10px}
 .mk-upl-h{font-size:.82rem;font-weight:700;margin-bottom:8px}
 .mk-upl-t{width:100%;border-collapse:collapse;font-size:.78rem}
@@ -1643,7 +1681,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev GF";
+const APP_BUILD = "20 Aug 2026 · rev GH";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -2846,7 +2884,7 @@ function render(){
   c.classList.remove("view-anim"); void c.offsetWidth; c.classList.add("view-anim");
   renderStreakBar();
   updateAppBadge();
-  if(currentView==="dashboard" && !isFinance()) c.innerHTML = isMarketing()? viewMarketingDay() : (canManage()? viewAdminDashboard() : viewDashboard());
+  if(currentView==="dashboard" && !isFinance()) c.innerHTML = isMarketing()? viewMarketingDay() : (canManage()? viewAdminDashboard() : (viewMyDay() + viewDashboard()));
   else if(currentView==="leads" && !isFinance()){ c.innerHTML = viewLeads(); bindLeadFilters(); }
   else if(currentView==="finance" && (isFinance()||fullView()) && !currentUser.mkt) c.innerHTML = viewFinance();
   else if(currentView==="reports") c.innerHTML = isFinance()? viewFinReports() : viewReports();
@@ -3195,6 +3233,285 @@ function viewMarketingDay(){
   </div>
   <p class="muted" style="font-size:.78rem;margin-top:12px">Full detail is on the <b>Reports</b> page. Day-to-day sales activity is handled by the sales team.</p>`;
 }
+
+/* ================= MY DAY — the priority engine =================
+   A follow-up date on a lead nobody has ever spoken to is not a follow-up: it
+   is an untouched lead that the system generated a date for. Mixing the two is
+   what turns this screen into fifty rows nobody trusts. Everything here is
+   sorted into what was PROMISED to a client and what has simply not been
+   started, and every row carries the reason it is in front of you. */
+
+/* Has anyone actually engaged with this lead? */
+const DAY_ADMIN_LOG = /^(Lead added|Imported|Uploaded|Self-generated|Assigned|Transferred|Merged|Duplicate|Source|Phone tidied|Closing date|Status changed via)/i;
+function dayEngaged(l){
+  if(!l) return false;
+  if(l.firstContactAt) return true;
+  if(l.lastContact) return true;
+  if(l.offerSent || l.meetingDate) return true;
+  if((l.stageMeta && (l.stageMeta.offers||[]).length)) return true;
+  /* a log entry that is not just the record being created or moved */
+  return (l.log||[]).some(e=>e && e.t && !DAY_ADMIN_LOG.test(String(e.t)));
+}
+/* Statuses where the client is waiting on US to do something */
+const DAY_WE_OWE = ["Call Back","Mail Sent","Offer Sent – Following Up","Scheduled Meeting","Site Visit Scheduled"];
+const DAY_THEY_OWE = ["Client Will Call Back","Need Time to Study Our Offer"];
+
+function dayGap(l){
+  const last = l.lastContact || (l.firstContactAt? String(l.firstContactAt).slice(0,10) : "");
+  return last? Math.floor(ctDays(last)) : null;
+}
+/* One task per lead, with its level, its reason and what to do about it. */
+function dayTask(l){
+  const t = today(), engaged = dayEngaged(l), gap = dayGap(l);
+  const val = Number(l.value)||0, land = Number(l.land||l.soldArea)||0;
+  const hot = l.qualStatus==="Qualified" && l.temperature==="Hot";
+  const base = { lead:l, engaged, gap };
+
+  /* a meeting or a visit today is the one thing that cannot be moved */
+  if(l.meetingDate === t)
+    return Object.assign(base, {kind:"meeting", level:0,
+      why:"Meeting today" + (l.meetingTime? " at "+l.meetingTime : ""), when:l.meetingTime||""});
+
+  if(engaged && l.next){
+    if(l.next < t){
+      const days = Math.floor(ctDays(l.next));
+      return Object.assign(base, {kind:"overdue", level:0,
+        why:"Follow-up was due " + (days===1? "yesterday" : fmtDate(l.next)) + (days>1? " — "+days+" days ago":"")});
+    }
+    if(l.next === t)
+      return Object.assign(base, {kind:"followup", level:0, why:"Follow-up scheduled for today"});
+  }
+  /* we promised them something and the date has not come round yet */
+  if(engaged && DAY_WE_OWE.includes(l.status))
+    return Object.assign(base, {kind:"owe", level:1,
+      why: l.status==="Call Back" ? "They asked us to call back"
+         : l.status==="Mail Sent" ? "We sent them something — no reply yet"
+         : l.status==="Offer Sent – Following Up" ? "Offer sent" + (gap!==null? " "+gap+" days ago":"")
+         : "We owe them the next step"});
+
+  if(engaged && (hot || val>=20000000 || land>=20000) && gap!==null && gap>=5)
+    return Object.assign(base, {kind:"risk", level:1,
+      why:(hot? "Hot opportunity" : "High-value opportunity") + " — nothing for "+gap+" days"});
+
+  if(!engaged)
+    return Object.assign(base, {kind:"first", level:2,
+      why:"New lead — never contacted" + (l.created? ", added "+fmtDate(l.created) : "")});
+
+  if(engaged && gap!==null && gap>=10)
+    return Object.assign(base, {kind:"cold", level:3, why:"Going cold — nothing for "+gap+" days"});
+
+  return Object.assign(base, {kind:"later", level:3,
+    why: l.next? "Next follow-up "+fmtDate(l.next) : "No next step set"});
+}
+/* within a level, the bigger and warmer opportunities come first */
+function dayRank(task){
+  const l = task.lead;
+  let s = (4 - task.level) * 1000;
+  if(task.kind==="meeting") s += 500;
+  if(task.kind==="overdue") s += 300 + Math.min((l.next? Math.floor(ctDays(l.next)):0), 30) * 4;
+  const v = Number(l.value)||0;
+  s += Math.min(v/1000000, 60);
+  try{ s += (leadScore(l).score||0) / 4; }catch(e){}
+  if(l.priority==="VIP") s += 40;
+  return s;
+}
+function dayBoard(userId){
+  const uid = userId || (currentUser && currentUser.id);
+  const mine = (state.leads||[]).filter(l=>!isMergedAway(l) && l.owner===uid
+    && l.status!=="Won" && l.status!=="Lost");
+  const tasks = mine.map(dayTask).sort((a,b)=>dayRank(b)-dayRank(a));
+  const of = k => tasks.filter(x=>x.kind===k);
+  return {
+    tasks,
+    meetings: of("meeting"),
+    overdue:  of("overdue"),
+    today:    of("followup"),
+    owe:      of("owe"),
+    risk:     of("risk"),
+    first:    of("first"),
+    cold:     of("cold"),
+    later:    of("later"),
+    /* the call list: everything that must or should happen today, in order */
+    callList: tasks.filter(x=>x.level<=1)
+  };
+}
+/* how many untouched leads to put in front of someone in one day */
+function dayBatchSize(){
+  const n = (state.settings && Number(state.settings.firstContactBatch)) || 5;
+  return Math.max(1, Math.min(20, n));
+}
+
+/* ---- the screen ---- */
+const DAY_LEVEL = ["P0 — must do","P1 — high","P2 — should do","P3 — backlog"];
+function dayCard(task){
+  const l = task.lead, v = Number(l.value)||0;
+  const phone = bestPhone(l);
+  const tone = task.level===0? "p0" : task.level===1? "p1" : task.level===2? "p2":"p3";
+  return `<div class="day-card ${tone}">
+    <div class="day-card-t">
+      <div>
+        <a href="#" onclick="openLeadModal('${l.id}');return false" class="day-name">${esc(l.company||l.name)}</a>
+        <div class="day-sub">${esc(l.name||"")}${l.project? " · "+esc(l.project):""}${
+          normSource(l.source)? " · "+esc(normSource(l.source)) : ""}${l.status? " · "+esc(l.status):""}</div>
+      </div>
+      <div class="day-val">${canSeeMoney() && v? fmtMoney(v) : (Number(l.land||l.soldArea)? Math.round(Number(l.land||l.soldArea)).toLocaleString()+" m²" : "")}</div>
+    </div>
+    <div class="day-why"><i></i>${esc(task.why)}</div>
+    <div class="day-meta">${
+      task.gap!==null && task.gap!==undefined? "Last contact "+task.gap+" day"+(task.gap===1?"":"s")+" ago" : "Never contacted"
+    }${l.next? " · next "+esc(fmtDate(l.next)) : ""}${phone? " · "+esc(phone) : ""}</div>
+    <div class="day-act">
+      ${phone? `<a class="btn btn-ghost btn-sm" href="tel:${esc(phone)}">Call</a>
+        <button class="btn btn-ghost btn-sm" onclick="dayWhats('${l.id}')">WhatsApp</button>`:""}
+      <button class="btn btn-ghost btn-sm" onclick="openLeadModal('${l.id}')">Open</button>
+      <button class="btn btn-red btn-sm" onclick="dayOutcome('${l.id}')">Log outcome</button>
+    </div>
+  </div>`;
+}
+function dayWhats(id){
+  const l = state.leads.find(x=>x.id===id); if(!l) return;
+  const p = bestPhone(l); if(!p){ toast("No number on this lead"); return; }
+  window.open("https://wa.me/"+p.replace("+","")+"?text="+encodeURIComponent(tmplFill(waCompose("No answer — tried to reach you"), l)), "_blank");
+}
+/* After a call, one question: what happens next? That answer is what keeps
+   tomorrow's list honest, so it is asked here rather than left to memory. */
+let dayOutcomeId = "";
+function dayOutcome(id){
+  dayOutcomeId = id;
+  const l = state.leads.find(x=>x.id===id); if(!l) return;
+  const box = document.getElementById("dayOutcomeBox");
+  if(!box) return;
+  box.innerHTML = `<div class="day-out">
+    <div class="day-out-h">${esc(l.company||l.name)} — what happens next?</div>
+    <div class="day-out-b">
+      <button class="btn btn-ghost btn-sm" onclick="dayAnswer('theirs')">They will come back to me</button>
+      <button class="btn btn-ghost btn-sm" onclick="dayAnswer('mine')">I need to call again</button>
+      <button class="btn btn-ghost btn-sm" onclick="dayAnswer('send')">I owe them something</button>
+      <button class="btn btn-ghost btn-sm" onclick="dayAnswer('none')">Nothing needed</button>
+      <button class="btn btn-ghost btn-sm" onclick="dayAnswer('')">Cancel</button>
+    </div>
+    <div class="day-out-w">
+      <label>Come back to it in</label>
+      <select id="dayOutDays">
+        <option value="1">1 day</option><option value="2">2 days</option>
+        <option value="3" selected>3 days</option><option value="7">a week</option>
+        <option value="14">2 weeks</option>
+      </select>
+      <input id="dayOutNote" placeholder="What was said, or what you owe them">
+    </div>
+  </div>`;
+  box.scrollIntoView({block:"nearest"});
+}
+function dayAnswer(kind){
+  const box = document.getElementById("dayOutcomeBox");
+  const l = state.leads.find(x=>x.id===dayOutcomeId);
+  if(!kind || !l){ if(box) box.innerHTML = ""; return; }
+  const days = Number((document.getElementById("dayOutDays")||{}).value) || 3;
+  const note = ((document.getElementById("dayOutNote")||{}).value||"").trim();
+  const d = new Date(); d.setDate(d.getDate()+days);
+  const nextDate = d.toISOString().slice(0,10);
+
+  l.lastContact = today();
+  if(!l.firstContactAt) l.firstContactAt = nowStamp();     // this is a real contact now
+  if(kind==="theirs"){
+    l.status = "Client Will Call Back"; l.next = nextDate;
+    pushLog(l, "Spoke to the client — they will come back to us" + (note? ": "+note : "") + ". Checking again " + fmtDate(nextDate));
+  } else if(kind==="mine"){
+    l.status = "Call Back"; l.next = nextDate;
+    pushLog(l, "Spoke to the client — calling again " + fmtDate(nextDate) + (note? ": "+note : ""));
+  } else if(kind==="send"){
+    l.next = nextDate;
+    l.owe = { what: note || "something we promised", since: today() };
+    pushLog(l, "We owe the client: " + (note||"something we promised") + " — due " + fmtDate(nextDate));
+  } else if(kind==="none"){
+    l.next = "";
+    pushLog(l, "Spoke to the client — nothing outstanding" + (note? ": "+note : ""));
+  }
+  dayOutcomeId = "";
+  if(box) box.innerHTML = "";
+  persist(); render();
+  toast("Noted");
+}
+function daySection(title, tasks, note, limit){
+  if(!tasks.length) return "";
+  const show = limit? tasks.slice(0, limit) : tasks;
+  return `<div class="section-head"><h2>${esc(title)} <span class="muted" style="font-weight:400">${tasks.length}</span></h2></div>
+    ${note? `<p class="muted" style="font-size:.82rem;margin:-4px 0 10px">${esc(note)}</p>`:""}
+    <div class="day-grid">${show.map(dayCard).join("")}</div>
+    ${limit && tasks.length>limit? `<p class="muted" style="font-size:.8rem;margin-top:8px">
+      ${tasks.length-limit} more waiting — work through these first.</p>`:""}`;
+}
+
+function viewMyDay(){
+  const b = dayBoard();
+  const name = currentUser? String(currentUser.name).split(" ")[0] : "";
+  const h = new Date().getHours();
+  const hello = h<12? "Good morning" : h<17? "Good afternoon" : "Good evening";
+  const batch = dayBatchSize();
+  const firstBatch = b.first.slice(0, batch);
+  const remaining = b.callList.length + firstBatch.length;
+  const count = (n, one, many)=>`<button class="day-kpi" onclick="dayJump('${one}')">
+      <b>${n}</b><span>${n===1? one : many}</span></button>`;
+
+  return `
+  <div class="day-head">
+    <div class="day-head-l">
+      <div class="day-date">${new Date().toLocaleDateString("en-GB",{weekday:"long", day:"numeric", month:"long"})}</div>
+      <h1>${hello}${name? ", "+esc(name):""}</h1>
+      <p class="muted">${remaining? remaining+" thing"+(remaining===1?"":"s")+" to get through today."
+        : "Nothing outstanding today. Worth picking up a few new leads."}</p>
+    </div>
+    <div class="day-kpis">
+      ${count(b.meetings.length, "meeting", "meetings")}
+      ${count(b.overdue.length, "overdue", "overdue")}
+      ${count(b.today.length + b.owe.length, "follow-up", "follow-ups")}
+      ${count(b.first.length, "new lead", "new leads")}
+      ${count(b.risk.length, "at risk", "at risk")}
+    </div>
+  </div>
+  <div id="dayOutcomeBox"></div>
+
+  ${b.callList.length? `
+    <div class="section-head" id="day-call"><h2>Call list — in this order</h2>
+      <span class="muted" style="font-size:.8rem">${b.callList.length} to work through</span></div>
+    <p class="muted" style="font-size:.82rem;margin:-4px 0 10px">
+      Everything a client is actually waiting for, biggest and most overdue first.
+      Each one says why it is here.</p>
+    <div class="day-grid">${b.callList.map(dayCard).join("")}</div>`
+  : `<div class="card card-pad"><b>No promises outstanding.</b>
+      <p class="muted" style="margin:6px 0 0;font-size:.85rem">Nobody is waiting on you today.
+      ${b.first.length? "There are "+b.first.length+" leads nobody has contacted yet — a good use of the morning." : ""}</p></div>`}
+
+  ${daySection("Meetings today", b.meetings, "")}
+  ${firstBatch.length? `
+    <div class="section-head" id="day-first"><h2>First contact needed
+      <span class="muted" style="font-weight:400">${b.first.length} waiting</span></h2></div>
+    <p class="muted" style="font-size:.82rem;margin:-4px 0 10px">
+      Leads nobody has spoken to yet. These are not follow-ups, and they are not counted as
+      overdue — today's batch is ${batch}, so the list stays workable.</p>
+    <div class="day-grid">${firstBatch.map(dayCard).join("")}</div>
+    ${b.first.length>batch? `<p class="muted" style="font-size:.8rem;margin-top:8px">
+      ${b.first.length-batch} more after these.</p>`:""}`:""}
+
+  ${daySection("Going cold", b.cold, "Spoken to before, but nothing for a while.", 6)}
+
+  <div class="section-head"><h2>The rest</h2></div>
+  <div class="card card-pad">
+    <div class="day-rest">
+      <span><b>${b.later.length}</b> with a later follow-up date</span>
+      <span><b>${b.first.length - firstBatch.length}</b> untouched leads after today's batch</span>
+      <span><b>${b.cold.length}</b> going cold</span>
+    </div>
+    <p class="muted" style="font-size:.79rem;margin:8px 0 0">
+      Nothing here needs you today. It is listed so you know it has not been lost.</p>
+  </div>`;
+}
+function dayJump(kind){
+  const id = (kind==="new lead"||kind==="new leads")? "day-first" : "day-call";
+  const el = document.getElementById(id);
+  if(el) el.scrollIntoView({behavior:"smooth", block:"start"});
+}
+
 function viewDashboard(){
   const f = myFollowups(currentUser.id);
   const mine = state.leads.filter(l=>l.owner===currentUser.id);
