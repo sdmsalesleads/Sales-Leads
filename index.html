@@ -736,9 +736,7 @@ th.th-sort.on .th-ar{opacity:1}
 .of-rates{background:#fafbfc;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:2px 0 12px}
 .of-rates-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;
   font-size:.66rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--steel)}
-.dl-top{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between;margin-bottom:18px}
 .dl-date{font-size:.7rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--steel)}
-.dl-top h1{font-size:1.6rem;letter-spacing:-.02em;margin-top:3px}
 .dl-prog{min-width:210px;flex:0 0 auto}
 .dl-prog-n{font-size:.78rem;color:var(--steel);font-weight:700;margin-bottom:5px;text-align:end}
 .dl-bar{height:5px;border-radius:3px;background:var(--line);overflow:hidden}
@@ -786,6 +784,21 @@ th.th-sort.on .th-ar{opacity:1}
 .dl-name{font-weight:700;font-size:.88rem;min-width:150px;flex:0 1 auto}
 .dl-why{font-size:.8rem;color:var(--steel);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dl-val{font-size:.8rem;font-weight:700;white-space:nowrap}
+.dl-ach{display:flex;align-items:center;gap:12px;width:100%;margin-top:22px;border:1px solid var(--line);
+  background:var(--card);border-radius:12px;padding:13px 16px;font-family:inherit;cursor:pointer;text-align:start}
+.dl-ach:hover{border-color:var(--green)}
+.dl-ach-l{font-size:.68rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--steel)}
+.dl-ach b{font-size:1.15rem;color:var(--green)}
+.dl-ach-t{font-size:.78rem;color:var(--steel)}
+.dl-ach-bar{flex:1;min-width:60px;height:5px;border-radius:3px;background:var(--line);overflow:hidden}
+.dl-ach-bar i{display:block;height:100%;background:var(--green)}
+.dl-fold-h em{width:7px;height:7px;border-radius:4px;background:var(--line);flex:none;font-style:normal}
+.dl-fold.red .dl-fold-h em{background:var(--red)}
+.dl-fold.amber .dl-fold-h em{background:var(--amber)}
+.dl-fold.blue .dl-fold-h em{background:var(--blue)}
+.dl-fold.red .dl-fold-h b{background:var(--red-soft);color:var(--red)}
+.dl-fold.amber .dl-fold-h b{background:var(--amber-soft);color:var(--amber)}
+.dl-top{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin:22px 0 14px}
 .dl-folds{margin-top:24px;display:flex;flex-direction:column;gap:8px}
 .dl-fold{border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden}
 .dl-fold-h{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;cursor:pointer;
@@ -1715,7 +1728,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev GI";
+const APP_BUILD = "20 Aug 2026 · rev GJ";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -2918,7 +2931,7 @@ function render(){
   c.classList.remove("view-anim"); void c.offsetWidth; c.classList.add("view-anim");
   renderStreakBar();
   updateAppBadge();
-  if(currentView==="dashboard" && !isFinance()) c.innerHTML = isMarketing()? viewMarketingDay() : (canManage()? viewAdminDashboard() : (viewMyDay() + viewDashboard()));
+  if(currentView==="dashboard" && !isFinance()) c.innerHTML = isMarketing()? viewMarketingDay() : (canManage()? viewAdminDashboard() : viewMyDay());
   else if(currentView==="leads" && !isFinance()){ c.innerHTML = viewLeads(); bindLeadFilters(); }
   else if(currentView==="finance" && (isFinance()||fullView()) && !currentUser.mkt) c.innerHTML = viewFinance();
   else if(currentView==="reports") c.innerHTML = isFinance()? viewFinReports() : viewReports();
@@ -3531,15 +3544,31 @@ function dayRow(task, n){
 }
 function dayGoTo(n){ dayCursor = n; render(); window.scrollTo({top:0,behavior:"smooth"}); }
 
-function dayFold(key, title, count, body, hint){
+function dayFold(key, title, count, body, hint, tone){
   if(!count) return "";
   const open = dayOpenSection===key;
-  return `<div class="dl-fold ${open?"open":""}">
+  return `<div class="dl-fold ${open?"open":""} ${tone||""}">
     <button class="dl-fold-h" onclick="daySection2('${key}')">
-      <span>${esc(title)}</span><b>${count}</b><i>${open? "−":"+"}</i>
+      <em></em><span>${esc(title)}</span><b>${count}</b><i>${open? "−":"+"}</i>
     </button>
     ${open? `<div class="dl-fold-b">${hint? `<p class="muted" style="font-size:.8rem;margin:0 0 8px">${esc(hint)}</p>`:""}${body}</div>`:""}
   </div>`;
+}
+/* the single figure a salesperson is measured on, kept where they can see it
+   without a row of boxes around it */
+function dayAchieved(){
+  const yr = new Date().getFullYear();
+  const target = Number(currentUser && currentUser.target) || 0;
+  const ext = (typeof extConfirmed==="function")? extConfirmed(currentUser.id, yr) : 0;
+  const achieved = (typeof wonThisYearValue==="function"? wonThisYearValue(currentUser.id) : 0) + ext;
+  if(!canSeeMoney()) return "";
+  const pct = target? Math.min(100, achieved/target*100) : 0;
+  return `<button class="dl-ach" onclick="goWonYear(currentUser.id)">
+    <span class="dl-ach-l">Achieved ${yr}</span>
+    <b>${fmtMoney(achieved)}</b>
+    ${target? `<span class="dl-ach-t">${pct.toFixed(1)}% of ${fmtMoney(target)}</span>
+      <span class="dl-ach-bar"><i style="width:${pct}%"></i></span>`:""}
+  </button>`;
 }
 function viewMyDay(){
   const b = dayBoard();
@@ -3558,11 +3587,10 @@ function viewMyDay(){
   const rest = queue.filter((_,i)=>i!==cursor);
 
   return `
+  ${greetingCard()}
+  ${weekRecapCard()}
   <div class="dl-top">
-    <div>
-      <div class="dl-date">${new Date().toLocaleDateString("en-GB",{weekday:"long", day:"numeric", month:"long"})}</div>
-      <h1>${hello}${name? ", "+esc(name):""}</h1>
-    </div>
+    <div class="dl-date">${new Date().toLocaleDateString("en-GB",{weekday:"long", day:"numeric", month:"long"})} · today's work</div>
     <div class="dl-prog">
       <div class="dl-prog-n">${done} done${queue.length? " · "+queue.length+" to go" : ""}</div>
       <div class="dl-bar"><i style="width:${pct}%"></i></div>
@@ -3584,16 +3612,29 @@ function viewMyDay(){
     </div>
     <div id="dayOutcomeBox"></div>`}
 
+  ${dayAchieved()}
   <div class="dl-folds">
-    ${dayFold("first","Leads never contacted", b.first.length,
-      `<div class="dl-list">${b.first.slice(batch, batch+30).map((t,i)=>dayRow(t, b.callList.length+batch+i)).join("")}</div>`,
-      "Today's "+batch+" are already in the queue above. These are the rest — not follow-ups, and not overdue.")}
+    ${dayFold("overdue","Overdue follow-ups", b.overdue.length,
+      `<div class="dl-list">${b.overdue.slice(0,40).map(t=>dayRow(t,-1)).join("")}</div>`,
+      "Promises that slipped. These are real follow-ups — someone was expecting to hear from you.", "red")}
+    ${dayFold("today","Due today", b.today.length + b.meetings.length,
+      `<div class="dl-list">${b.meetings.concat(b.today).map(t=>dayRow(t,-1)).join("")}</div>`,
+      "Meetings and follow-ups you set for today.", "red")}
+    ${dayFold("owe","Waiting on me", b.owe.length,
+      `<div class="dl-list">${b.owe.slice(0,40).map(t=>dayRow(t,-1)).join("")}</div>`,
+      "You owe them the next step.", "amber")}
+    ${dayFold("risk","At risk", b.risk.length,
+      `<div class="dl-list">${b.risk.slice(0,40).map(t=>dayRow(t,-1)).join("")}</div>`,
+      "Big or hot, and nothing has happened for a few days.", "amber")}
+    ${dayFold("first","Never contacted", b.first.length,
+      `<div class="dl-list">${b.first.slice(batch, batch+40).map(t=>dayRow(t,-1)).join("")}</div>`,
+      "Today's "+batch+" are already in the queue above. These are the rest — not follow-ups, and not overdue.", "blue")}
     ${dayFold("cold","Going quiet", b.cold.length,
-      `<div class="dl-list">${b.cold.slice(0,30).map((t,i)=>dayRow(t,-1)).join("")}</div>`,
-      "Spoken to before, but nothing for a while.")}
+      `<div class="dl-list">${b.cold.slice(0,40).map(t=>dayRow(t,-1)).join("")}</div>`,
+      "Spoken to before, but nothing for a while.", "blue")}
     ${dayFold("later","Scheduled for later", b.later.length,
-      `<div class="dl-list">${b.later.slice(0,30).map((t,i)=>dayRow(t,-1)).join("")}</div>`,
-      "Nothing needed today — listed so you know they haven't been lost.")}
+      `<div class="dl-list">${b.later.slice(0,40).map(t=>dayRow(t,-1)).join("")}</div>`,
+      "Nothing needed today — listed so you know they haven't been lost.", "")}
   </div>`;
 }
 
