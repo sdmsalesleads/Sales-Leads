@@ -736,6 +736,28 @@ th.th-sort.on .th-ar{opacity:1}
 .of-rates{background:#fafbfc;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:2px 0 12px}
 .of-rates-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;
   font-size:.66rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--steel)}
+.mk-upl{margin-top:12px;border-top:1px solid var(--line-soft);padding-top:10px}
+.mk-upl-h{font-size:.82rem;font-weight:700;margin-bottom:8px}
+.mk-upl-t{width:100%;border-collapse:collapse;font-size:.78rem}
+.mk-upl-t th{text-align:start;font-size:.62rem;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--steel);font-weight:800;padding:3px 6px;border-bottom:1px solid var(--line)}
+.mk-upl-t td{padding:5px 6px;border-bottom:1px solid var(--line-soft)}
+.mk-upl-t tr:last-child td{border-bottom:0}
+.src-req{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;
+  background:var(--amber-soft);border:1px solid #efd9ad;border-radius:10px;padding:10px 12px;
+  margin-bottom:12px;font-size:.84rem}
+.src-req-b{display:flex;gap:6px}
+.mg-auto{border:1px solid var(--line);background:#fff;border-radius:10px;padding:11px 12px;margin-bottom:12px}
+.mg-auto-h{font-size:.66rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--steel);margin-bottom:6px}
+.mg-rules{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px}
+.mg-rule{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:18px;
+  padding:5px 11px;font-size:.78rem;cursor:pointer}
+.mg-rule.on{border-color:var(--red);color:var(--red);font-weight:700}
+.mg-rule input{width:auto;margin:0}
+.mg-prev{border-top:1px solid var(--line-soft);padding-top:8px;margin-bottom:9px}
+.mg-prev-r{display:flex;gap:8px;align-items:baseline;font-size:.79rem;padding:3px 0;flex-wrap:wrap}
+.mg-prev-r span:first-child{min-width:150px}
+.mg-prev-r em{font-style:normal;color:var(--steel);font-size:.74rem}
 .load-banner{position:fixed;left:50%;transform:translateX(-50%);top:12px;z-index:300;
   background:var(--amber-soft);color:#7a4e0a;border:1px solid #efd9ad;border-radius:10px;
   padding:9px 16px;font-size:.82rem;font-weight:600;box-shadow:var(--shadow);max-width:calc(100vw - 32px)}
@@ -1204,6 +1226,7 @@ th.th-sort.on .th-ar{opacity:1}
       <button class="x-btn" onclick="closeLeadModal()">×</button>
     </div>
     <div class="modal-body">
+      <div id="srcReqBox"></div>
       <div id="dupBanner" style="display:none;background:var(--amber-soft);border:1px solid #E8D5A8;border-radius:10px;padding:12px 14px;font-size:.86rem;line-height:1.5"></div>
       <div class="grid g2">
         <div class="field"><label>Lead name *</label><input id="f_name" placeholder="Client / contact name"></div>
@@ -1288,6 +1311,8 @@ th.th-sort.on .th-ar{opacity:1}
         <div class="eyebrow red" style="margin-bottom:8px">Contact the client</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
           <select id="waTemplate" onchange="applyTemplate()" style="border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:#fff"></select>
+          <select id="waLang" onchange="waSetLang(this.value)" title="Language of the message"
+            style="border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:#fff"></select>
           <button class="btn btn-ghost btn-sm" onclick="openWhatsApp()" type="button">🟢 WhatsApp</button>
           <button class="btn btn-ghost btn-sm" onclick="emailClient()" type="button">✉ Email client</button>
         </div>
@@ -1382,19 +1407,45 @@ const SOURCES = ["Website","Billboard","Google SEM","Facebook","Instagram","Link
 /* "Business Development" and "BD Research" were two names for the same team.
    Only BD Research remains; anything imported under the old name is read as it. */
 const SOURCE_ALIASES = {
-  "Business Development": "BD Research", "BD": "BD Research", "Business development": "BD Research",
+  "business development": "BD Research", "bd": "BD Research",
   /* the paid-search channel has been written several ways over the years */
-  "Google": "Google SEM", "google": "Google SEM", "Google Ads": "Google SEM", "Google ads": "Google SEM",
-  "Adwords": "Google SEM", "AdWords": "Google SEM", "SEM": "Google SEM", "Google Search": "Google SEM",
-  "Google SEM ": "Google SEM"
+  "google": "Google SEM", "google ads": "Google SEM", "adwords": "Google SEM",
+  "sem": "Google SEM", "google search": "Google SEM", "google adwords": "Google SEM",
+  /* anything that just says the lead came from the internet is paid search —
+     that is where the online spend goes */
+  "internet": "Google SEM", "online": "Google SEM", "social media": "Google SEM",
+  "social": "Google SEM", "web": "Google SEM", "website ads": "Google SEM",
+  /* the shorthand the team actually types */
+  "fb": "Facebook", "f.b": "Facebook", "face book": "Facebook", "fb leads": "Facebook",
+  "facebook leads": "Facebook", "meta": "Facebook",
+  "ig": "Instagram", "insta": "Instagram", "instgram": "Instagram", "instagram leads": "Instagram",
+  "in": "LinkedIn", "linked in": "LinkedIn", "linkedin leads": "LinkedIn",
+  "yt": "YouTube", "you tube": "YouTube",
+  "walk in": "Walk-In", "walkin": "Walk-In", "walk-in customer": "Walk-In",
+  "exhibition": "Event / Exhibition", "event": "Event / Exhibition", "expo": "Event / Exhibition",
+  /* a source nobody filled in is said as such rather than left looking like a channel */
+  "n/a": "Not recorded", "na": "Not recorded", "n.a": "Not recorded", "none": "Not recorded",
+  "unknown": "Not recorded", "-": "Not recorded", "--": "Not recorded", "not specified": "Not recorded"
 };
-function normSource(s){ const v = String(s||"").trim(); return SOURCE_ALIASES[v] || v; }
+/* matched however it was typed — case, spacing and punctuation vary from one
+   sheet to the next, and an unmatched value is left exactly as it was written */
+const NOT_RECORDED = "Not recorded";
+function normSource(s){
+  const v = String(s||"").trim();
+  if(!v) return "";
+  const key = v.toLowerCase().replace(/\s+/g," ").replace(/[._]+$/,"");
+  const alias = SOURCE_ALIASES[key] || SOURCE_ALIASES[v.toLowerCase()];
+  if(alias) return alias;
+  /* a real source typed in any case comes back spelled the way the CRM spells it */
+  const canon = SOURCES.find(s=>s.toLowerCase()===key);
+  return canon || v;
+}
 /* A lead counts as marketing-generated unless the salesperson found it themselves.
    Referral and Walk-In DO count as marketing — the company's presence is what
    brought the client. Personal and Management are the salesperson's own doing,
    and the two Business Development channels belong to BD, which keeps its own
    credit rather than having it counted as marketing. */
-const NON_MARKETING_SOURCES = ["Personal","Management","BD Research","Business Development"];  // last one only for rows imported under the old name
+const NON_MARKETING_SOURCES = ["Personal","Management","BD Research","Business Development"];  // last one only for rows imported under the old name. A lead with no source recorded counts as marketing: it came in through the company, not from a salesperson's own contacts
 const MARKETING_SOURCES = SOURCES.filter(s=>!NON_MARKETING_SOURCES.includes(s));
 const INDUSTRIES = ["Engineering","Pharmaceutical","Textile","Chemical","Food & Beverage (F&B)","Logistics","Heavy Industry","Services","Automotive","Warehouse"];
 const PRIORITIES = ["VIP","High","Medium","Low"];
@@ -1410,13 +1461,57 @@ const ACTIVE_EXCLUDE = ["Won","Lost","Not Interested","Low Budget","Wrong Number
 const PIPELINE_STATUSES = ["Offer Sent – Following Up","Scheduled Meeting","Site Visit Scheduled","Negotiation"];
 const LOST_CATS = ["Price","Not Interested","Competitor","Location"];
 const LOST_REASONS = ["Low Budget","Need More Time","Need Small Area","Need Large Area","Collecting Information","Industry Not Available","Lack of Utilities","Not Interested","Broker","Bought From Another Developer","Bought From IDA","Bought From SCZone"];
+/* Messages the client actually receives. Each one is written twice, in Arabic
+   and in English, and sent in whichever the rep chooses — most clients here read
+   both, and a message that opens in Arabic lands better than one that does not.
+   No name is used: "حضرتك" and "Dear Sir/Madam" carry it, so a template is never
+   wrong because the record holds a company name, a misspelling or nothing. */
 const WA_TEMPLATES = {
-  "Initial Introduction": "Dear {name}, this is {rep} from Elsewedy Industrial Development. Thank you for your interest in {project}. I would love to tell you more about our industrial land solutions for {company}. When is a good time to talk?",
-  "Follow-Up": "Dear {name}, {rep} from Elsewedy Industrial Development following up on our conversation about {project}. Do you have any questions I can help with?",
-  "Offer Sent": "Dear {name}, as promised I have sent you our offer for {project}. Please review it and let me know your thoughts — happy to walk you through the details.",
-  "Meeting Confirmation": "Dear {name}, confirming our meeting on {date} at {time} regarding {project}. Looking forward to it! — {rep}, Elsewedy Industrial Development",
-  "Site Visit Confirmation": "Dear {name}, confirming your site visit to {project} on {date} at {time}. I will meet you there. — {rep}, Elsewedy Industrial Development"
+  "Initial introduction": {
+    ar: "السلام عليكم ورحمة الله وبركاته\n\nمعكم {rep} من شركة السويدي للتنمية الصناعية.\nيسعدنا اهتمام حضرتك بـ{project}، ويمكننا توفير كافة التفاصيل عن الأراضي الصناعية والمرافق والأسعار.\n\nمتى يكون الوقت مناسباً لحضرتك للتحدث؟",
+    en: "Greetings,\n\nThis is {rep} from Elsewedy Industrial Development.\nThank you for your interest in {project}. I can share the full details on the available industrial land, utilities and pricing.\n\nWhen would be a convenient time to speak?"
+  },
+  "No answer — tried to reach you": {
+    ar: "السلام عليكم ورحمة الله وبركاته\n\nمعكم {rep} من شركة السويدي للتنمية الصناعية.\nحاولت التواصل مع حضرتك بخصوص الاستفسار عن الأرض الصناعية في {project}.\n\nبرجاء إفادتي بالوقت المناسب لحضرتك لمعاودة الاتصال.",
+    en: "Greetings,\n\nThis is {rep} from Elsewedy Industrial Development.\nI tried to reach you regarding your enquiry about industrial land in {project}.\n\nPlease let me know a convenient time to call you back."
+  },
+  "Follow-up": {
+    ar: "السلام عليكم ورحمة الله وبركاته\n\nمعكم {rep} من شركة السويدي للتنمية الصناعية، متابعةً لحديثنا بخصوص {project}.\n\nهل لدى حضرتك أي استفسار يمكنني المساعدة فيه؟",
+    en: "Greetings,\n\nThis is {rep} from Elsewedy Industrial Development, following up on our conversation about {project}.\n\nIs there anything I can help clarify?"
+  },
+  "Offer sent": {
+    ar: "السلام عليكم ورحمة الله وبركاته\n\nكما وعدت حضرتك، تم إرسال العرض الخاص بـ{project}.\nبرجاء الاطلاع عليه وإفادتي برأي حضرتك، وتحت أمركم لشرح أي تفاصيل.\n\n{rep} — السويدي للتنمية الصناعية",
+    en: "Greetings,\n\nAs promised, our offer for {project} has been sent to you.\nPlease review it and let me know your thoughts. I am happy to walk you through any of the details.\n\n{rep} — Elsewedy Industrial Development"
+  },
+  "Meeting confirmation": {
+    ar: "السلام عليكم ورحمة الله وبركاته\n\nتأكيد موعد الاجتماع يوم {date} الساعة {time} بخصوص {project}.\nفي انتظار لقاء حضرتك.\n\n{rep} — السويدي للتنمية الصناعية",
+    en: "Greetings,\n\nConfirming our meeting on {date} at {time} regarding {project}.\nLooking forward to seeing you.\n\n{rep} — Elsewedy Industrial Development"
+  },
+  "Site visit confirmation": {
+    ar: "السلام عليكم ورحمة الله وبركاته\n\nتأكيد زيارة الموقع في {project} يوم {date} الساعة {time}.\nسأكون في انتظار حضرتك هناك.\n\n{rep} — السويدي للتنمية الصناعية",
+    en: "Greetings,\n\nConfirming your site visit to {project} on {date} at {time}.\nI will meet you there.\n\n{rep} — Elsewedy Industrial Development"
+  },
+  "Thank you after a meeting": {
+    ar: "السلام عليكم ورحمة الله وبركاته\n\nشكراً لوقت حضرتك اليوم. سعدت بالتعرف على متطلبات المشروع، وسأوافيكم بكل التفاصيل المطلوبة بخصوص {project}.\n\n{rep} — السويدي للتنمية الصناعية",
+    en: "Greetings,\n\nThank you for your time today. It was a pleasure understanding your project requirements, and I will send over everything discussed regarding {project}.\n\n{rep} — Elsewedy Industrial Development"
+  }
 };
+/* Arabic first, then English, unless the rep asks for one of them alone */
+const WA_LANGS = {both:"العربية + English", ar:"العربية", en:"English"};
+function waLang(){
+  try{ const v = localStorage.getItem("crm_wa_lang"); return WA_LANGS[v]? v : "both"; }catch(e){ return "both"; }
+}
+function waSetLang(v){
+  try{ localStorage.setItem("crm_wa_lang", v); }catch(e){}
+  applyTemplate();
+}
+function waCompose(key){
+  const t = WA_TEMPLATES[key]; if(!t) return "";
+  const lang = waLang();
+  if(lang==="ar") return t.ar;
+  if(lang==="en") return t.en;
+  return t.ar + "\n\n— — —\n\n" + t.en;
+}
 function statusStage(s){ if(s==="Won") return "won"; if(s==="Lost") return "lost"; if(ACTIVE_EXCLUDE.includes(s)) return "closed"; if(PIPELINE_STATUSES.includes(s)) return "pipeline"; return "active"; }
 function calType(s){ return s==="Call Back"?"Call back": s==="Scheduled Meeting"?"Meeting": s==="Site Visit Scheduled"?"Site visit":"Follow-up"; }
 function fillStatusSelect(sel, current){
@@ -1548,7 +1643,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev FY";
+const APP_BUILD = "20 Aug 2026 · rev GF";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -1876,6 +1971,7 @@ async function loadAllInner(){
     serverIds.leads = new Set(state.leads.map(l=>l.id));
     serverIds.ext = new Set(state.extSales.map(e=>e.id));
     rememberLeadCount(state.leads.length);
+    srcStampAll();                            // remember how each lead arrived
     phoneRepairAll(true);                     // put historic numbers right
     if(beforeSnapG) notifDiff(beforeSnapG);
     invalidateDupes();
@@ -1906,6 +2002,7 @@ async function loadAllInner(){
   const beforeSnap = currentUser? notifSnapshot() : null;
   state.leads = incoming;                     // merged-away copies stay gone
   rememberLeadCount(state.leads.length);
+  srcStampAll();                              // remember how each lead arrived
   phoneRepairAll(true);                       // put historic numbers right
   state.extSales = (ex.data||[]).map(extFromDb);
   serverIds.leads = new Set((ld.data||[]).map(r=>r.id));   // includes merged rows so the cleanup delete still fires
@@ -2481,6 +2578,84 @@ function periodTabs(){
 /* Only three channels are self-generated by the company's own people. Everything
    else — Facebook, Instagram, Website, Referral, Google SEM, Billboard, Radio,
    Walk-In, and anything not recorded — reached us through marketing. */
+
+/* ================= WHERE A LEAD CAME FROM =================
+   A lead that reached us through marketing stays a marketing lead. If the same
+   customer is later entered again by a salesperson, the record still carries the
+   source it arrived with — otherwise the work marketing did disappears from
+   their figures the moment someone re-types the number.
+
+   Nobody edits that source in place. Marketing may ASK for it to be changed, and
+   the salesperson holding the lead answers. Both sides are recorded. */
+function srcOrigin(l){
+  return normSource(l && (l.srcOriginal || l.source)) || "";
+}
+function srcLocked(l){
+  /* locked once it arrived through marketing — including Walk-In and Referral,
+     which are marketing's work too */
+  return !!l && isMktSource(srcOrigin(l)) && !!srcOrigin(l);
+}
+/* every lead remembers the source it arrived with, once */
+function srcStamp(l){
+  if(l && !l.srcOriginal && l.source) l.srcOriginal = normSource(l.source);
+}
+function srcStampAll(){
+  let n = 0;
+  (state.leads||[]).forEach(l=>{ if(!l.srcOriginal && l.source){ srcStamp(l); n++; } });
+  return n;
+}
+/* ---- asking for a change ---- */
+function srcRequest(l, to, note){
+  if(!l) return;
+  const from = normSource(l.source) || "—";
+  l.srcReq = { from, to:normSource(to), by: currentUser? currentUser.id : "",
+               byName: currentUser? currentUser.name : "", at: nowStamp(), note: note||"" };
+  pushLog(l, "Source change requested: " + from + " → " + normSource(to)
+    + (note? " — "+note : "") + ". Waiting for " + (l.owner? memberName(l.owner) : "the owner") + " to approve.");
+  persist();
+}
+function srcCanAnswer(l){
+  /* the salesperson holding it answers; their manager and operations can too,
+     so a request never sits forever because someone is on leave */
+  if(!l || !l.srcReq) return false;
+  return !!((currentUser && l.owner===currentUser.id) || isOps() || isAdmin()
+      || (isManager() && scopeIds().has(l.owner)));
+}
+function srcApprove(id){
+  const l = state.leads.find(x=>x.id===id); if(!l || !l.srcReq) return;
+  const r = l.srcReq;
+  l.source = r.to;
+  l.srcOriginal = r.to;                 // the agreed answer becomes the record
+  l.srcReq = null;
+  pushLog(l, "Source change approved by " + (currentUser? currentUser.name : "") + ": " + r.from + " → " + r.to);
+  persist(); render();
+  toast("Source changed to " + r.to);
+}
+function srcDecline(id){
+  const l = state.leads.find(x=>x.id===id); if(!l || !l.srcReq) return;
+  const r = l.srcReq;
+  l.srcReq = null;
+  pushLog(l, "Source change declined by " + (currentUser? currentUser.name : "") + " — stays " + r.from);
+  persist(); render();
+  toast("Request declined — the source stays as it was");
+}
+/* the panel the salesperson sees on the lead */
+function srcReqPanel(l){
+  if(!l || !l.srcReq) return "";
+  const r = l.srcReq;
+  const mine = srcCanAnswer(l);
+  return `<div class="src-req">
+    <div><b>${esc(r.byName||"Marketing")}</b> has asked to change the source of this lead:
+      <b>${esc(r.from)} → ${esc(r.to)}</b>${r.note? " — "+esc(r.note):""}</div>
+    ${mine
+      ? `<div class="src-req-b">
+           <button class="btn btn-red btn-sm" type="button" onclick="srcApprove('${l.id}')">Approve</button>
+           <button class="btn btn-ghost btn-sm" type="button" onclick="srcDecline('${l.id}')">Decline</button>
+         </div>`
+      : `<div class="muted">Waiting for ${esc(l.owner? memberName(l.owner):"the owner")} to answer.</div>`}
+  </div>`;
+}
+
 function isMktSource(src){ return !NON_MARKETING_SOURCES.includes(normSource(src)); }
 function srcLabel(src){ const s = normSource(src); return s || "Not recorded"; }
 
@@ -2929,6 +3104,40 @@ function fireNotif(n, what){
 }
 
 /* =================== Sales dashboard =================== */
+/* The uploads themselves, most recent first: when each one went in, how many
+   leads it brought and how many of those were already in the system. The counts
+   above answer "how many leads arrived"; this answers "when did we last upload,
+   and what did it actually add". */
+function mkUploadsList(){
+  const logs = (state.importLog||[]).filter(e=>e && (e.added||e.updated||e.dupes));
+  if(!logs.length) return `<p class="muted" style="font-size:.8rem;margin:10px 0 0">
+    No upload recorded yet. Every sheet you bring in will be listed here with what it added.</p>`;
+  const last = logs[0];
+  const when = (d)=>{
+    if(!d) return "—";
+    const dt = new Date(d);
+    const days = Math.floor((new Date(today()+"T00:00:00") - new Date(dt.toISOString().slice(0,10)+"T00:00:00"))/86400000);
+    const clock = dt.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+    const day = days===0? "today" : days===1? "yesterday" : fmtDate(dt.toISOString().slice(0,10));
+    return day+" at "+clock;
+  };
+  const total = logs.reduce((s,e)=>s+(Number(e.added)||0), 0);
+  return `
+  <div class="mk-upl">
+    <div class="mk-upl-h">Uploads · last one ${esc(when(last.d))}, ${Number(last.added)||0} lead${(Number(last.added)||0)===1?"":"s"} added</div>
+    <table class="mk-upl-t"><thead><tr>
+      <th>When</th><th>How</th><th class="num">Added</th><th class="num">Updated</th><th class="num">Already here</th></tr></thead>
+      <tbody>${logs.slice(0,8).map(e=>`<tr>
+        <td>${esc(when(e.d))}</td>
+        <td>${esc(e.method||"—")}</td>
+        <td class="num"><b>${Number(e.added)||0}</b></td>
+        <td class="num">${Number(e.updated)||0}</td>
+        <td class="num">${Number(e.dupes)||0}</td></tr>`).join("")}
+      </tbody></table>
+    <div class="muted" style="font-size:.76rem;margin-top:6px">
+      ${total.toLocaleString()} lead${total===1?"":"s"} added across the last ${logs.length} upload${logs.length===1?"":"s"}.</div>
+  </div>`;
+}
 function viewMarketingDay(){
   /* Marketing's landing page answers "what became of the leads we sent?" —
      not what the sales team is doing today. */
@@ -2972,6 +3181,7 @@ function viewMarketingDay(){
         ${box(unassigned, "waiting for Sales Ops", unassigned? "not yet distributed":"all distributed", unassigned?"warn":"ok")}
       </div>`;
     })()}
+    ${mkUploadsList()}
   </div>
   <div class="card card-pad" style="margin-top:12px">
     <div class="eyebrow red">This month by channel</div>
@@ -3589,6 +3799,7 @@ function openLeadModal(id){
   $("f_phone2").value = l?fmtPhone(l.phone2)||l.phone2||"":"";
   $("f_email").value = l?l.email||"":"";
   $("f_source").value = l? (normSource(l.source)||"") : "";
+  $("srcReqBox").innerHTML = l? srcReqPanel(l) : "";
   $("f_project").value = l?l.project||"":"";
   $("f_land").value = l?l.land||"":"";
   $("f_industry").value = l?l.industry||"":"";
@@ -3629,7 +3840,12 @@ function openLeadModal(id){
   $("commsPanel").style.display = (l && (canFollow||canCore) && (bestPhone(l)||l.email))? "block":"none";
   const mb = document.querySelector("#leadOverlay .modal-body"); if(mb) mb.scrollTop = 0;
   const mo = document.querySelector("#leadOverlay .modal"); if(mo) mo.scrollTop = 0;
-  if(l && (canFollow||canCore)){ fillSelect($("waTemplate"), Object.keys(WA_TEMPLATES)); applyTemplate(); }
+  if(l && (canFollow||canCore)){
+    fillSelect($("waTemplate"), Object.keys(WA_TEMPLATES));
+    $("waLang").innerHTML = Object.keys(WA_LANGS)
+      .map(k=>`<option value="${k}" ${waLang()===k?"selected":""}>${WA_LANGS[k]}</option>`).join("");
+    applyTemplate();
+  }
   const dupB = $("dupBanner");
   const dupMs = l && !l.dupCleared? dupMatches(l, null) : [];
   if(l && dupMs.length){
@@ -3711,7 +3927,7 @@ function tmplFill(t, l){
 }
 function applyTemplate(){
   const l = leadModalLead(); if(!l) return;
-  $("waMessage").value = tmplFill(WA_TEMPLATES[$("waTemplate").value]||"", l);
+  $("waMessage").value = tmplFill(waCompose($("waTemplate").value), l);
 }
 function openWhatsApp(){
   const l = leadModalLead(); if(!l) return;
@@ -4128,7 +4344,21 @@ function saveLead(){
     Object.assign(l, {
       phone,
       email: $("f_email").value.trim(),
-      source: $("f_source").value,
+      source: (function(){
+        const picked = $("f_source").value, was = normSource(l.source)||"";
+        if(!l.srcOriginal && was) l.srcOriginal = was;          // remember how it arrived
+        if(normSource(picked) === was) return l.source;
+        if(srcLocked(l)){
+          /* it came to us through marketing, so it is not changed by a save —
+             it is asked for, and the salesperson holding the lead answers */
+          srcRequest(l, picked, "");
+          toast("This lead arrived through marketing — the change has been sent to "
+            + (l.owner? memberName(l.owner) : "the owner") + " to approve");
+          return l.source;
+        }
+        l.srcOriginal = normSource(picked);
+        return picked;
+      })(),
       custno: $("f_custno").value.trim(),
       priority: $("f_priority").value,
       created: $("f_created").value || l.created || today()
@@ -4137,6 +4367,7 @@ function saveLead(){
     if(l.phone)  l.phone  = phoneIntl(l.phone)  || l.phone;
     if(l.phone2) l.phone2 = phoneIntl(l.phone2) || l.phone2;
     adoptCustnoPhone(l);
+    srcStamp(l);
     if(isNewLead && isMarketing()) pushLog(l, "Lead added");
     if(isNewLead && isSelfAdder()){
       /* whoever brings the lead in works it — Sales Operations and management
@@ -13191,12 +13422,126 @@ function dupGroups(){
   });
   return (_dupGroups = groups);
 }
+
+/* ================= MERGING DUPLICATES FAIRLY =================
+   When the same customer reaches us twice, one salesperson keeps the lead and
+   the other loses it, so the rule has to be defensible rather than convenient.
+   The order below is the default, and every one of these can be made the first
+   test instead. Whatever happens, nothing is thrown away: the surviving record
+   absorbs the details, the history and the second phone number of the others. */
+const MERGE_RULES = [
+  {k:"contact",  label:"Whoever spoke to the client first",
+   why:"first contact", get:l=>l.firstContactAt || ""},
+  {k:"received", label:"Whoever received the lead first",
+   why:"received it first", get:l=>l.assignedAt || l.created || ""},
+  {k:"progress", label:"Whichever record has gone furthest",
+   why:"further along", get:null},
+  {k:"complete", label:"Whichever record is most complete",
+   why:"the fuller record", get:null}
+];
+function mergeRule(){
+  const r = state.settings && state.settings.dupRule;
+  return MERGE_RULES.some(x=>x.k===r)? r : "contact";
+}
+function mergeSetRule(k){
+  state.settings = Object.assign({}, state.settings||{}, {dupRule:k});
+  persist(); render();
+}
+/* how much of a record is actually filled in */
+function mergeCompleteness(l){
+  const fields = ["name","company","phone","phone2","email","project","soldArea","land",
+                  "value","plotNo","industry","notes","source","nat"];
+  return fields.reduce((s,f)=>s + (String(l[f]==null?"":l[f]).trim()? 1:0), 0)
+       + Math.min((l.log||[]).length, 10);
+}
+/* a closed deal can never be merged away into an open enquiry */
+function mergeClosed(l){ return l.status==="Won"? 2 : l.status==="Lost"? 1 : 0; }
+
+/* Decide, and say why in words a salesperson can argue with. */
+function mergeWinner(group, ruleKey){
+  const rule = ruleKey || mergeRule();
+  const rows = group.slice();
+  /* a won deal always survives — nothing else comes close in importance */
+  const closed = rows.filter(l=>mergeClosed(l)===2);
+  if(closed.length === 1) return {keep:closed[0], why:"holds the won deal", rule:"won"};
+  const order = [rule].concat(MERGE_RULES.map(r=>r.k).filter(k=>k!==rule));
+  for(const k of order){
+    const def = MERGE_RULES.find(r=>r.k===k);
+    let best = null, bestVal = null, tie = false;
+    rows.forEach(l=>{
+      let v;
+      if(k==="progress")      v = workScore(l).score;
+      else if(k==="complete") v = mergeCompleteness(l);
+      else { const s = def.get(l); v = s? -new Date(s).getTime() : null; }   // earlier wins
+      if(v===null || v==="" || (typeof v==="number" && !isFinite(v))) return;
+      if(bestVal===null || v > bestVal){ best = l; bestVal = v; tie = false; }
+      else if(v === bestVal) tie = true;
+    });
+    if(best && !tie) return {keep:best, why:def.why, rule:k};
+  }
+  /* everything equal: the oldest record, so the file keeps its original history */
+  const oldest = rows.slice().sort((a,b)=>String(a.created||"").localeCompare(String(b.created||"")))[0];
+  return {keep:oldest, why:"the oldest record", rule:"oldest"};
+}
+function mergeAutoPanel(){
+  const plan = mergePlan();
+  if(!plan.length) return "";
+  const total = plan.reduce((s,p)=>s+p.drops.length, 0);
+  return `<div class="mg-auto">
+    <div class="mg-auto-h">Merge them all automatically</div>
+    <p class="muted" style="font-size:.79rem;margin:0 0 8px">
+      Who keeps the lead is decided by the rule below, then by the others in order,
+      so the same question is never settled twice by different reasoning.
+      A won deal always survives, whatever the rule.</p>
+    <div class="mg-rules">
+      ${MERGE_RULES.map(r=>`<label class="mg-rule ${mergeRule()===r.k?"on":""}">
+        <input type="radio" name="mgRule" ${mergeRule()===r.k?"checked":""}
+          onchange="mergeSetRule('${r.k}')"> ${esc(r.label)}</label>`).join("")}
+    </div>
+    <div class="mg-prev">
+      ${plan.slice(0,6).map(p=>`<div class="mg-prev-r">
+        <span>${esc(p.keep.company||p.keep.name)}</span>
+        <b>${esc(p.keep.owner? memberName(p.keep.owner):"nobody")}</b>
+        <em>${esc(p.why)}</em>
+        <span class="muted">absorbs ${p.drops.length}</span></div>`).join("")}
+      ${plan.length>6? `<div class="muted" style="font-size:.76rem;margin-top:4px">…and ${plan.length-6} more</div>`:""}
+    </div>
+    <button class="btn btn-red btn-sm" onclick="mergeAutoAll()">
+      Merge all — ${total} duplicate${total===1?"":"s"} into ${plan.length} lead${plan.length===1?"":"s"}</button>
+  </div>`;
+}
+/* what would happen, before anything happens */
+function mergePlan(ruleKey){
+  return dupGroups().map(g=>{
+    const w = mergeWinner(g, ruleKey);
+    return { group:g, keep:w.keep, why:w.why,
+             drops:g.filter(l=>l.id!==w.keep.id) };
+  }).filter(p=>p.drops.length);
+}
+function mergeAutoAll(ruleKey){
+  if(!canMergeLeads()){ toast("Your access level cannot merge leads"); return; }
+  const plan = mergePlan(ruleKey);
+  if(!plan.length){ toast("No duplicates to merge"); return; }
+  let done = 0, absorbed = 0;
+  plan.forEach(p=>{
+    /* the reason is written onto the lead before the merge, so the losing
+       salesperson can see why it went the way it did */
+    pushLog(p.keep, "Merged automatically with "+p.drops.length+" duplicate"+(p.drops.length===1?"":"s")
+      + " — kept by "+(p.keep.owner? memberName(p.keep.owner):"nobody")+" ("+p.why+")");
+    doMerge(p.keep.id, null);
+    done++; absorbed += p.drops.length;
+  });
+  toast("Merged "+absorbed+" duplicate"+(absorbed===1?"":"s")+" into "+done+" lead"+(done===1?"":"s"));
+  render();
+}
+
 function dupGroupsCard(){
   const groups = dupGroups();
   if(!groups.length) return "";
   return `<div class="card card-pad" style="margin-bottom:14px">
     <div class="section-head" style="margin:0 0 4px"><h2 style="font-size:1rem">Duplicate customers — ${groups.length} to resolve</h2></div>
     <p class="muted" style="font-size:.8rem;margin:0 0 12px">Each block is one customer and <b>all</b> of their records. Merging a block deals with every copy at once — you never have to merge the same customer twice. The record with the most work done is listed first and suggested as the one to keep.</p>
+    ${mergeAutoPanel()}
     ${groups.map(g=>{
       const best = g[0];
       return `<div style="border:1px solid #E8D5A8;background:#FFFDF5;border-radius:10px;padding:11px 12px;margin-bottom:10px">
@@ -13360,6 +13705,18 @@ function openMerge(keepId, dropId){
 }
 function closeMerge(){ $("mergeOverlay").classList.remove("open"); }
 function doMerge(keepId, dropId){
+  /* whichever record survives, a marketing origin in the cluster is the origin */
+  try{
+    const cluster = dupCluster(keepId, dropId) || [];
+    const fromMkt = cluster.find(x=>x && isMktSource(srcOrigin(x)) && srcOrigin(x));
+    const keeper  = state.leads.find(x=>x.id===keepId);
+    if(keeper && fromMkt && !isMktSource(srcOrigin(keeper))){
+      const was = normSource(keeper.source)||"—";
+      keeper.source = srcOrigin(fromMkt);
+      keeper.srcOriginal = srcOrigin(fromMkt);
+      pushLog(keeper, "Source kept as "+keeper.source+" — this customer reached us through marketing first (was "+was+")");
+    }
+  }catch(e){}
   if(!canMergeLeads()){ toast("Your access level cannot merge leads"); return; }
   const keep = state.leads.find(l=>l.id===keepId);
   if(!keep) return;
