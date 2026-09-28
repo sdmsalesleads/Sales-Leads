@@ -736,44 +736,78 @@ th.th-sort.on .th-ar{opacity:1}
 .of-rates{background:#fafbfc;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:2px 0 12px}
 .of-rates-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;
   font-size:.66rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--steel)}
-.day-head{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;justify-content:space-between;
-  background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px;
-  box-shadow:var(--shadow)}
-.day-date{font-size:.7rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--steel)}
-.day-head h1{font-size:1.5rem;letter-spacing:-.02em;margin:3px 0 4px}
-.day-head p{font-size:.86rem}
-.day-kpis{display:flex;gap:8px;flex-wrap:wrap}
-.day-kpi{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 13px;min-width:78px;
-  cursor:pointer;font-family:inherit;text-align:center}
-.day-kpi:hover{border-color:var(--red)}
-.day-kpi b{display:block;font-size:1.3rem;line-height:1.1}
-.day-kpi span{font-size:.68rem;color:var(--steel);text-transform:uppercase;letter-spacing:.04em;font-weight:700}
-.day-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
-.day-card{border:1px solid var(--line);border-inline-start:3px solid var(--line);background:var(--card);
-  border-radius:12px;padding:12px 14px;box-shadow:var(--shadow)}
-.day-card.p0{border-inline-start-color:var(--red)}
-.day-card.p1{border-inline-start-color:var(--amber)}
-.day-card.p2{border-inline-start-color:var(--blue)}
-.day-card.p3{border-inline-start-color:var(--line)}
-.day-card-t{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
-.day-name{font-weight:700;color:var(--ink);text-decoration:none;font-size:.95rem}
-.day-name:hover{color:var(--red)}
-.day-sub{font-size:.75rem;color:var(--steel);margin-top:2px}
-.day-val{font-size:.82rem;font-weight:700;white-space:nowrap}
-.day-why{display:flex;gap:7px;align-items:baseline;font-size:.82rem;font-weight:600;margin:9px 0 4px}
-.day-why i{width:6px;height:6px;border-radius:3px;background:currentColor;flex:none;opacity:.55}
-.day-card.p0 .day-why{color:var(--red)}
-.day-card.p1 .day-why{color:var(--amber)}
-.day-card.p2 .day-why{color:var(--blue)}
-.day-meta{font-size:.74rem;color:var(--steel)}
-.day-act{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
-.day-out{background:var(--red-soft);border:1px solid var(--red-line);border-radius:12px;padding:12px 14px;margin-bottom:14px}
-.day-out-h{font-weight:700;font-size:.9rem;margin-bottom:8px}
-.day-out-b{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.dl-top{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between;margin-bottom:18px}
+.dl-date{font-size:.7rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--steel)}
+.dl-top h1{font-size:1.6rem;letter-spacing:-.02em;margin-top:3px}
+.dl-prog{min-width:210px;flex:0 0 auto}
+.dl-prog-n{font-size:.78rem;color:var(--steel);font-weight:700;margin-bottom:5px;text-align:end}
+.dl-bar{height:5px;border-radius:3px;background:var(--line);overflow:hidden}
+.dl-bar i{display:block;height:100%;background:var(--green);transition:width .3s ease}
+
+/* the one thing to do now */
+.nx{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 24px;
+  box-shadow:0 2px 4px rgba(27,29,34,.04),0 12px 30px rgba(27,29,34,.06);position:relative;overflow:hidden}
+.nx:before{content:"";position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px;background:var(--line)}
+.nx.p0:before{background:var(--red)} .nx.p1:before{background:var(--amber)} .nx.p2:before{background:var(--blue)}
+.nx-why{font-size:.76rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px}
+.nx.p0 .nx-why{color:var(--red)} .nx.p1 .nx-why{color:var(--amber)} .nx.p2 .nx-why{color:var(--blue)}
+.nx-name{font-size:1.65rem;letter-spacing:-.02em;margin:0}
+.nx-name a{color:var(--ink);text-decoration:none}
+.nx-name a:hover{color:var(--red)}
+.nx-sub{font-size:.88rem;color:var(--steel);margin-top:4px}
+.nx-facts{display:flex;gap:26px;flex-wrap:wrap;margin:16px 0 18px;padding-top:14px;border-top:1px solid var(--line-soft)}
+.nx-facts span{display:flex;flex-direction:column;font-size:.68rem;text-transform:uppercase;
+  letter-spacing:.05em;color:var(--steel);font-weight:700}
+.nx-facts b{font-size:1.05rem;letter-spacing:-.01em;color:var(--ink);text-transform:none;letter-spacing:0;margin-bottom:1px}
+.nx-do{display:flex;gap:8px;flex-wrap:wrap}
+.nx-btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 16px;
+  font-family:inherit;font-size:.85rem;font-weight:600;cursor:pointer;color:var(--ink);text-decoration:none}
+.nx-btn:hover{border-color:var(--ink-2)}
+.nx-btn.call{background:var(--ink);color:#fff;border-color:var(--ink)}
+.nx-btn.done{background:var(--red);color:#fff;border-color:var(--red)}
+.nx-btn.ghost{color:var(--steel);border-style:dashed}
+.nx.done-all:before{background:var(--green)}
+.nx.done-all .nx-why{color:var(--green)}
+.dl-back{border:0;background:none;color:var(--steel);font:inherit;font-size:.8rem;cursor:pointer;
+  padding:0 0 8px;font-weight:700}
+
+/* everything else: lines, not cards */
+.dl-head{font-size:.68rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--steel);
+  margin:22px 0 8px;display:flex;gap:8px;align-items:center}
+.dl-head span{background:var(--line-soft);border-radius:10px;padding:1px 8px;color:var(--ink-2)}
+.dl-list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
+.dl-row{display:flex;gap:12px;align-items:center;width:100%;border:0;background:none;cursor:pointer;
+  font-family:inherit;text-align:start;padding:11px 14px;border-bottom:1px solid var(--line-soft)}
+.dl-row:last-child{border-bottom:0}
+.dl-row:hover{background:var(--paper)}
+.dl-row i{width:6px;height:6px;border-radius:3px;background:var(--line);flex:none}
+.dl-row.p0 i{background:var(--red)} .dl-row.p1 i{background:var(--amber)}
+.dl-row.p2 i{background:var(--blue)} .dl-row.p3 i{background:#c9cdd3}
+.dl-name{font-weight:700;font-size:.88rem;min-width:150px;flex:0 1 auto}
+.dl-why{font-size:.8rem;color:var(--steel);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dl-val{font-size:.8rem;font-weight:700;white-space:nowrap}
+.dl-folds{margin-top:24px;display:flex;flex-direction:column;gap:8px}
+.dl-fold{border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden}
+.dl-fold-h{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;cursor:pointer;
+  font-family:inherit;padding:13px 16px;font-size:.88rem;font-weight:600;color:var(--ink);text-align:start}
+.dl-fold-h span{flex:1}
+.dl-fold-h b{background:var(--line-soft);border-radius:10px;padding:1px 9px;font-size:.78rem}
+.dl-fold-h i{font-style:normal;color:var(--steel);font-size:1.05rem;width:14px;text-align:center}
+.dl-fold.open .dl-fold-h{border-bottom:1px solid var(--line)}
+.dl-fold-b{padding:12px 14px}
+.day-out{background:var(--red-soft);border:1px solid var(--red-line);border-radius:12px;padding:14px 16px;margin:12px 0}
+.day-out-h{font-weight:700;font-size:.92rem;margin-bottom:9px}
+.day-out-b{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px}
 .day-out-w{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .day-out-w label{font-size:.76rem;color:var(--steel);font-weight:700}
-.day-out-w input{flex:1;min-width:180px}
-.day-rest{display:flex;gap:20px;flex-wrap:wrap;font-size:.86rem}
+.day-out-w input{flex:1;min-width:190px}
+@media(max-width:620px){
+  .nx{padding:18px}
+  .nx-name{font-size:1.3rem}
+  .nx-facts{gap:16px}
+  .nx-btn{flex:1 1 auto;text-align:center}
+  .dl-why{display:none}
+}
 .mk-upl{margin-top:12px;border-top:1px solid var(--line-soft);padding-top:10px}
 .mk-upl-h{font-size:.82rem;font-weight:700;margin-bottom:8px}
 .mk-upl-t{width:100%;border-collapse:collapse;font-size:.78rem}
@@ -1681,7 +1715,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev GH";
+const APP_BUILD = "20 Aug 2026 · rev GI";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -3442,74 +3476,125 @@ function daySection(title, tasks, note, limit){
       ${tasks.length-limit} more waiting — work through these first.</p>`:""}`;
 }
 
+/* ---- the screen, rebuilt ----
+   One thing at a time. A salesperson opening this should see the next call and
+   nothing competing with it; everything else is one line of text or folded away
+   until they ask for it. Counters in a row of boxes read as a report, not as
+   work, so there is a single line of progress instead. */
+let dayCursor = 0, dayOpenSection = "";
+function daySkip(){ dayCursor++; render(); }
+function dayBack(){ dayCursor = Math.max(0, dayCursor-1); render(); }
+function daySection2(k){ dayOpenSection = (dayOpenSection===k)? "" : k; render(); }
+
+function dayDoneToday(){
+  const t = today(), uid = currentUser && currentUser.id;
+  return (state.leads||[]).filter(l=>l.owner===uid && l.lastContact===t).length;
+}
+/* the one card that matters right now */
+function dayHero(task){
+  if(!task) return "";
+  const l = task.lead, v = Number(l.value)||0, land = Number(l.land||l.soldArea)||0;
+  const phone = bestPhone(l);
+  const tone = task.level===0? "p0" : task.level===1? "p1" : "p2";
+  return `
+  <div class="nx ${tone}">
+    <div class="nx-why">${esc(task.why)}</div>
+    <h2 class="nx-name"><a href="#" onclick="openLeadModal('${l.id}');return false">${esc(l.company||l.name)}</a></h2>
+    <div class="nx-sub">${esc(l.name||"")}${l.project? " · "+esc(l.project):""}${
+      normSource(l.source)? " · "+esc(normSource(l.source)):""}</div>
+    <div class="nx-facts">
+      ${v && canSeeMoney()? `<span><b>${fmtMoney(v)}</b>deal value</span>`:""}
+      ${land? `<span><b>${Math.round(land).toLocaleString()}</b>m²</span>`:""}
+      <span><b>${task.gap===null||task.gap===undefined? "never" : task.gap+"d"}</b>since contact</span>
+      ${l.status? `<span><b>${esc(l.status)}</b>status</span>`:""}
+    </div>
+    <div class="nx-do">
+      ${phone? `<a class="nx-btn call" href="tel:${esc(phone)}">Call ${esc(phone)}</a>
+        <button class="nx-btn" onclick="dayWhats('${l.id}')">WhatsApp</button>`:""}
+      <button class="nx-btn" onclick="openLeadModal('${l.id}')">Open lead</button>
+      <button class="nx-btn done" onclick="dayOutcome('${l.id}')">Done — log it</button>
+      <button class="nx-btn ghost" onclick="daySkip()">Skip</button>
+    </div>
+  </div>`;
+}
+/* everything else, as lines rather than cards */
+function dayRow(task, n){
+  const l = task.lead;
+  const tone = task.level===0? "p0" : task.level===1? "p1" : task.level===2? "p2":"p3";
+  return `<button class="dl-row ${tone}" onclick="dayGoTo(${n})">
+    <i></i>
+    <span class="dl-name">${esc(l.company||l.name)}</span>
+    <span class="dl-why">${esc(task.why)}</span>
+    <span class="dl-val">${canSeeMoney() && Number(l.value)? fmtMoney(l.value)
+      : (Number(l.land||l.soldArea)? Math.round(Number(l.land||l.soldArea)).toLocaleString()+" m²":"")}</span>
+  </button>`;
+}
+function dayGoTo(n){ dayCursor = n; render(); window.scrollTo({top:0,behavior:"smooth"}); }
+
+function dayFold(key, title, count, body, hint){
+  if(!count) return "";
+  const open = dayOpenSection===key;
+  return `<div class="dl-fold ${open?"open":""}">
+    <button class="dl-fold-h" onclick="daySection2('${key}')">
+      <span>${esc(title)}</span><b>${count}</b><i>${open? "−":"+"}</i>
+    </button>
+    ${open? `<div class="dl-fold-b">${hint? `<p class="muted" style="font-size:.8rem;margin:0 0 8px">${esc(hint)}</p>`:""}${body}</div>`:""}
+  </div>`;
+}
 function viewMyDay(){
   const b = dayBoard();
   const name = currentUser? String(currentUser.name).split(" ")[0] : "";
   const h = new Date().getHours();
   const hello = h<12? "Good morning" : h<17? "Good afternoon" : "Good evening";
   const batch = dayBatchSize();
-  const firstBatch = b.first.slice(0, batch);
-  const remaining = b.callList.length + firstBatch.length;
-  const count = (n, one, many)=>`<button class="day-kpi" onclick="dayJump('${one}')">
-      <b>${n}</b><span>${n===1? one : many}</span></button>`;
+
+  /* the queue for today: promises first, then a few new leads to start */
+  const queue = b.callList.concat(b.first.slice(0, batch));
+  const done = dayDoneToday();
+  const total = queue.length + done;
+  const pct = total? Math.round(done/total*100) : 100;
+  const cursor = Math.min(dayCursor, Math.max(0, queue.length-1));
+  const hero = queue[cursor];
+  const rest = queue.filter((_,i)=>i!==cursor);
 
   return `
-  <div class="day-head">
-    <div class="day-head-l">
-      <div class="day-date">${new Date().toLocaleDateString("en-GB",{weekday:"long", day:"numeric", month:"long"})}</div>
+  <div class="dl-top">
+    <div>
+      <div class="dl-date">${new Date().toLocaleDateString("en-GB",{weekday:"long", day:"numeric", month:"long"})}</div>
       <h1>${hello}${name? ", "+esc(name):""}</h1>
-      <p class="muted">${remaining? remaining+" thing"+(remaining===1?"":"s")+" to get through today."
-        : "Nothing outstanding today. Worth picking up a few new leads."}</p>
     </div>
-    <div class="day-kpis">
-      ${count(b.meetings.length, "meeting", "meetings")}
-      ${count(b.overdue.length, "overdue", "overdue")}
-      ${count(b.today.length + b.owe.length, "follow-up", "follow-ups")}
-      ${count(b.first.length, "new lead", "new leads")}
-      ${count(b.risk.length, "at risk", "at risk")}
+    <div class="dl-prog">
+      <div class="dl-prog-n">${done} done${queue.length? " · "+queue.length+" to go" : ""}</div>
+      <div class="dl-bar"><i style="width:${pct}%"></i></div>
     </div>
   </div>
-  <div id="dayOutcomeBox"></div>
 
-  ${b.callList.length? `
-    <div class="section-head" id="day-call"><h2>Call list — in this order</h2>
-      <span class="muted" style="font-size:.8rem">${b.callList.length} to work through</span></div>
-    <p class="muted" style="font-size:.82rem;margin:-4px 0 10px">
-      Everything a client is actually waiting for, biggest and most overdue first.
-      Each one says why it is here.</p>
-    <div class="day-grid">${b.callList.map(dayCard).join("")}</div>`
-  : `<div class="card card-pad"><b>No promises outstanding.</b>
-      <p class="muted" style="margin:6px 0 0;font-size:.85rem">Nobody is waiting on you today.
-      ${b.first.length? "There are "+b.first.length+" leads nobody has contacted yet — a good use of the morning." : ""}</p></div>`}
-
-  ${daySection("Meetings today", b.meetings, "")}
-  ${firstBatch.length? `
-    <div class="section-head" id="day-first"><h2>First contact needed
-      <span class="muted" style="font-weight:400">${b.first.length} waiting</span></h2></div>
-    <p class="muted" style="font-size:.82rem;margin:-4px 0 10px">
-      Leads nobody has spoken to yet. These are not follow-ups, and they are not counted as
-      overdue — today's batch is ${batch}, so the list stays workable.</p>
-    <div class="day-grid">${firstBatch.map(dayCard).join("")}</div>
-    ${b.first.length>batch? `<p class="muted" style="font-size:.8rem;margin-top:8px">
-      ${b.first.length-batch} more after these.</p>`:""}`:""}
-
-  ${daySection("Going cold", b.cold, "Spoken to before, but nothing for a while.", 6)}
-
-  <div class="section-head"><h2>The rest</h2></div>
-  <div class="card card-pad">
-    <div class="day-rest">
-      <span><b>${b.later.length}</b> with a later follow-up date</span>
-      <span><b>${b.first.length - firstBatch.length}</b> untouched leads after today's batch</span>
-      <span><b>${b.cold.length}</b> going cold</span>
+  ${hero? `
+    ${cursor>0? `<button class="dl-back" onclick="dayBack()">← back</button>`:""}
+    ${dayHero(hero)}
+    <div id="dayOutcomeBox"></div>
+    ${rest.length? `
+      <div class="dl-head">Then <span>${rest.length}</span></div>
+      <div class="dl-list">${queue.map((t,i)=>i===cursor? "" : dayRow(t,i)).join("")}</div>`:""}`
+  : `<div class="nx done-all">
+      <div class="nx-why">Nothing waiting</div>
+      <h2 class="nx-name">You're clear for today</h2>
+      <div class="nx-sub">${done? done+" dealt with today." : "No promises outstanding and no new leads to start."}</div>
+      <div class="nx-do"><button class="nx-btn" onclick="setView('leads')">Open my leads</button></div>
     </div>
-    <p class="muted" style="font-size:.79rem;margin:8px 0 0">
-      Nothing here needs you today. It is listed so you know it has not been lost.</p>
+    <div id="dayOutcomeBox"></div>`}
+
+  <div class="dl-folds">
+    ${dayFold("first","Leads never contacted", b.first.length,
+      `<div class="dl-list">${b.first.slice(batch, batch+30).map((t,i)=>dayRow(t, b.callList.length+batch+i)).join("")}</div>`,
+      "Today's "+batch+" are already in the queue above. These are the rest — not follow-ups, and not overdue.")}
+    ${dayFold("cold","Going quiet", b.cold.length,
+      `<div class="dl-list">${b.cold.slice(0,30).map((t,i)=>dayRow(t,-1)).join("")}</div>`,
+      "Spoken to before, but nothing for a while.")}
+    ${dayFold("later","Scheduled for later", b.later.length,
+      `<div class="dl-list">${b.later.slice(0,30).map((t,i)=>dayRow(t,-1)).join("")}</div>`,
+      "Nothing needed today — listed so you know they haven't been lost.")}
   </div>`;
-}
-function dayJump(kind){
-  const id = (kind==="new lead"||kind==="new leads")? "day-first" : "day-call";
-  const el = document.getElementById(id);
-  if(el) el.scrollIntoView({behavior:"smooth", block:"start"});
 }
 
 function viewDashboard(){
