@@ -742,24 +742,22 @@ th.th-sort.on .th-ar{opacity:1}
 .dl-bar{height:5px;border-radius:3px;background:var(--line);overflow:hidden}
 .dl-bar i{display:block;height:100%;background:var(--green);transition:width .3s ease}
 
-/* the one thing to do now */
-.nx{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 24px;
-  box-shadow:0 2px 4px rgba(27,29,34,.04),0 12px 30px rgba(27,29,34,.06);position:relative;overflow:hidden}
+/* the one thing to do now — kept compact: a single lead should not take a
+   screen to itself when there are hundreds behind it */
+.nx{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 16px;
+  box-shadow:var(--shadow);position:relative;overflow:hidden}
 .nx:before{content:"";position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px;background:var(--line)}
 .nx.p0:before{background:var(--red)} .nx.p1:before{background:var(--amber)} .nx.p2:before{background:var(--blue)}
-.nx-why{font-size:.76rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px}
+.nx-why{font-size:.7rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;margin-bottom:4px}
 .nx.p0 .nx-why{color:var(--red)} .nx.p1 .nx-why{color:var(--amber)} .nx.p2 .nx-why{color:var(--blue)}
-.nx-name{font-size:1.65rem;letter-spacing:-.02em;margin:0}
+.nx-name{font-size:1.15rem;letter-spacing:-.01em;margin:0}
 .nx-name a{color:var(--ink);text-decoration:none}
 .nx-name a:hover{color:var(--red)}
-.nx-sub{font-size:.88rem;color:var(--steel);margin-top:4px}
-.nx-facts{display:flex;gap:26px;flex-wrap:wrap;margin:16px 0 18px;padding-top:14px;border-top:1px solid var(--line-soft)}
-.nx-facts span{display:flex;flex-direction:column;font-size:.68rem;text-transform:uppercase;
-  letter-spacing:.05em;color:var(--steel);font-weight:700}
-.nx-facts b{font-size:1.05rem;letter-spacing:-.01em;color:var(--ink);text-transform:none;letter-spacing:0;margin-bottom:1px}
-.nx-do{display:flex;gap:8px;flex-wrap:wrap}
-.nx-btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 16px;
-  font-family:inherit;font-size:.85rem;font-weight:600;cursor:pointer;color:var(--ink);text-decoration:none}
+.nx-sub{font-size:.78rem;color:var(--steel);margin-top:2px}
+.nx-facts{font-size:.8rem;color:var(--ink-2);font-weight:600;margin:7px 0 10px}
+.nx-do{display:flex;gap:6px;flex-wrap:wrap}
+.nx-btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 12px;
+  font-family:inherit;font-size:.8rem;font-weight:600;cursor:pointer;color:var(--ink);text-decoration:none}
 .nx-btn:hover{border-color:var(--ink-2)}
 .nx-btn.call{background:var(--ink);color:#fff;border-color:var(--ink)}
 .nx-btn.done{background:var(--red);color:#fff;border-color:var(--red)}
@@ -770,6 +768,14 @@ th.th-sort.on .th-ar{opacity:1}
   padding:0 0 8px;font-weight:700}
 
 /* everything else: lines, not cards */
+.dl-switch{display:flex;gap:8px;margin-top:20px}
+.dl-sw{flex:0 0 auto;border:1px solid var(--line);background:var(--card);border-radius:22px;
+  padding:9px 16px;font-family:inherit;font-size:.86rem;font-weight:600;cursor:pointer;color:var(--ink-2);
+  display:flex;align-items:center;gap:8px}
+.dl-sw b{background:var(--line-soft);border-radius:10px;padding:1px 8px;font-size:.78rem}
+.dl-sw.on{border-color:var(--red);color:var(--red);background:var(--red-soft)}
+.dl-sw.on b{background:#fff;color:var(--red)}
+.dl-note{font-size:.79rem;color:var(--steel);margin:8px 0 0}
 .dl-pos{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:.78rem}
 .dl-next{display:block;width:100%;margin-top:10px;border:1px dashed var(--line);background:none;
   border-radius:10px;padding:11px 14px;font-family:inherit;font-size:.82rem;color:var(--steel);
@@ -1734,7 +1740,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev GK";
+const APP_BUILD = "20 Aug 2026 · rev GM";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -3500,7 +3506,8 @@ function daySection(title, tasks, note, limit){
    nothing competing with it; everything else is one line of text or folded away
    until they ask for it. Counters in a row of boxes read as a report, not as
    work, so there is a single line of progress instead. */
-let dayCursor = 0, dayOpenSection = "";
+let dayCursor = 0, dayOpenSection = "", dayMode = "follow";
+function daySetMode(m){ dayMode = m; dayCursor = 0; render(); }
 function daySkip(){ dayCursor++; render(); }
 function dayBack(){ dayCursor = Math.max(0, dayCursor-1); render(); }
 function daySection2(k){ dayOpenSection = (dayOpenSection===k)? "" : k; render(); }
@@ -3521,12 +3528,11 @@ function dayHero(task){
     <h2 class="nx-name"><a href="#" onclick="openLeadModal('${l.id}');return false">${esc(l.company||l.name)}</a></h2>
     <div class="nx-sub">${esc(l.name||"")}${l.project? " · "+esc(l.project):""}${
       normSource(l.source)? " · "+esc(normSource(l.source)):""}</div>
-    <div class="nx-facts">
-      ${v && canSeeMoney()? `<span><b>${fmtMoney(v)}</b>deal value</span>`:""}
-      ${land? `<span><b>${Math.round(land).toLocaleString()}</b>m²</span>`:""}
-      <span><b>${task.gap===null||task.gap===undefined? "never" : task.gap+"d"}</b>since contact</span>
-      ${l.status? `<span><b>${esc(l.status)}</b>status</span>`:""}
-    </div>
+    <div class="nx-facts">${[
+      v && canSeeMoney()? fmtMoney(v) : (land? Math.round(land).toLocaleString()+" m²" : ""),
+      (task.gap===null||task.gap===undefined? "never contacted" : task.gap+"d since contact"),
+      l.status? esc(l.status) : ""
+    ].filter(Boolean).join(" · ")}</div>
     <div class="nx-do">
       ${phone? `<a class="nx-btn call" href="tel:${esc(phone)}">Call ${esc(phone)}</a>
         <button class="nx-btn" onclick="dayWhats('${l.id}')">WhatsApp</button>`:""}
@@ -3583,8 +3589,14 @@ function viewMyDay(){
   const hello = h<12? "Good morning" : h<17? "Good afternoon" : "Good evening";
   const batch = dayBatchSize();
 
-  /* the queue for today: promises first, then a few new leads to start */
-  const queue = b.callList.concat(b.first.slice(0, batch));
+  /* Two queues, kept apart on purpose:
+       · follow-ups — clients who were spoken to and are expecting to hear back
+       · new leads  — nobody has contacted them yet, so nothing is overdue
+     They are never mixed into one stack. */
+  const followQ = b.callList;
+  const newQ    = b.first.slice(0, batch);
+  const mode = (dayMode==="new" || (!followQ.length && newQ.length))? "new" : "follow";
+  const queue = mode==="new"? newQ : followQ;
   const done = dayDoneToday();
   const total = queue.length + done;
   const pct = total? Math.round(done/total*100) : 100;
@@ -3595,6 +3607,15 @@ function viewMyDay(){
   return `
   ${greetingCard()}
   ${weekRecapCard()}
+  <div class="dl-switch">
+    <button class="dl-sw ${mode==="follow"?"on":""}" onclick="daySetMode('follow')">
+      Follow-ups <b>${followQ.length}</b></button>
+    <button class="dl-sw ${mode==="new"?"on":""}" onclick="daySetMode('new')">
+      New leads <b>${b.first.length}</b></button>
+  </div>
+  <p class="dl-note">${mode==="follow"
+    ? "Clients who were spoken to and are waiting to hear back. Nothing here is a lead nobody has opened."
+    : "Nobody has contacted these yet, so none of them is overdue — today's batch is "+batch+"."}</p>
   <div class="dl-top">
     <div class="dl-date">${new Date().toLocaleDateString("en-GB",{weekday:"long", day:"numeric", month:"long"})} · today's work</div>
     <div class="dl-prog">
@@ -3613,10 +3634,13 @@ function viewMyDay(){
     ${rest.length? `<button class="dl-next" onclick="daySkip()">
       Next: <b>${esc(rest[0].lead.company||rest[0].lead.name)}</b> · ${esc(rest[0].why)}</button>`:""}`
   : `<div class="nx done-all">
-      <div class="nx-why">Nothing waiting</div>
-      <h2 class="nx-name">You're clear for today</h2>
-      <div class="nx-sub">${done? done+" dealt with today." : "No promises outstanding and no new leads to start."}</div>
-      <div class="nx-do"><button class="nx-btn" onclick="setView('leads')">Open my leads</button></div>
+      <div class="nx-why">${mode==="follow"? "No follow-ups waiting" : "No new leads to start"}</div>
+      <h2 class="nx-name">${mode==="follow"? "Nobody is waiting on you" : "Every lead has been opened"}</h2>
+      <div class="nx-sub">${done? done+" dealt with today." : ""}${
+        mode==="follow" && b.first.length? " There are "+b.first.length+" leads nobody has contacted yet." : ""}</div>
+      <div class="nx-do">${mode==="follow" && b.first.length
+        ? `<button class="nx-btn done" onclick="daySetMode('new')">Start on new leads</button>`
+        : `<button class="nx-btn" onclick="setView('leads')">Open my leads</button>`}</div>
     </div>
     <div id="dayOutcomeBox"></div>`}
 
