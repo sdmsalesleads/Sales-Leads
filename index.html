@@ -770,6 +770,12 @@ th.th-sort.on .th-ar{opacity:1}
   padding:0 0 8px;font-weight:700}
 
 /* everything else: lines, not cards */
+.dl-pos{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:.78rem}
+.dl-next{display:block;width:100%;margin-top:10px;border:1px dashed var(--line);background:none;
+  border-radius:10px;padding:11px 14px;font-family:inherit;font-size:.82rem;color:var(--steel);
+  cursor:pointer;text-align:start}
+.dl-next:hover{border-color:var(--red);color:var(--ink)}
+.dl-next b{color:var(--ink)}
 .dl-head{font-size:.68rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--steel);
   margin:22px 0 8px;display:flex;gap:8px;align-items:center}
 .dl-head span{background:var(--line-soft);border-radius:10px;padding:1px 8px;color:var(--ink-2)}
@@ -1728,7 +1734,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev GJ";
+const APP_BUILD = "20 Aug 2026 · rev GK";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -3598,12 +3604,14 @@ function viewMyDay(){
   </div>
 
   ${hero? `
-    ${cursor>0? `<button class="dl-back" onclick="dayBack()">← back</button>`:""}
+    <div class="dl-pos">
+      ${cursor>0? `<button class="dl-back" onclick="dayBack()">← back</button>`:"<span></span>"}
+      <span class="muted">${cursor+1} of ${queue.length}</span>
+    </div>
     ${dayHero(hero)}
     <div id="dayOutcomeBox"></div>
-    ${rest.length? `
-      <div class="dl-head">Then <span>${rest.length}</span></div>
-      <div class="dl-list">${queue.map((t,i)=>i===cursor? "" : dayRow(t,i)).join("")}</div>`:""}`
+    ${rest.length? `<button class="dl-next" onclick="daySkip()">
+      Next: <b>${esc(rest[0].lead.company||rest[0].lead.name)}</b> · ${esc(rest[0].why)}</button>`:""}`
   : `<div class="nx done-all">
       <div class="nx-why">Nothing waiting</div>
       <h2 class="nx-name">You're clear for today</h2>
@@ -3617,9 +3625,12 @@ function viewMyDay(){
     ${dayFold("overdue","Overdue follow-ups", b.overdue.length,
       `<div class="dl-list">${b.overdue.slice(0,40).map(t=>dayRow(t,-1)).join("")}</div>`,
       "Promises that slipped. These are real follow-ups — someone was expecting to hear from you.", "red")}
-    ${dayFold("today","Due today", b.today.length + b.meetings.length,
-      `<div class="dl-list">${b.meetings.concat(b.today).map(t=>dayRow(t,-1)).join("")}</div>`,
-      "Meetings and follow-ups you set for today.", "red")}
+    ${dayFold("meet","Meetings today", b.meetings.length,
+      `<div class="dl-list">${b.meetings.map(t=>dayRow(t,-1)).join("")}</div>`,
+      "Booked for today.", "red")}
+    ${dayFold("today","Follow-ups due today", b.today.length,
+      `<div class="dl-list">${b.today.map(t=>dayRow(t,-1)).join("")}</div>`,
+      "You said you would come back to them today.", "red")}
     ${dayFold("owe","Waiting on me", b.owe.length,
       `<div class="dl-list">${b.owe.slice(0,40).map(t=>dayRow(t,-1)).join("")}</div>`,
       "You owe them the next step.", "amber")}
