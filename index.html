@@ -648,6 +648,70 @@ th.num{text-align:right}
    occupies a grid column in the desktop layout */
 .side-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:70}
 .side-backdrop.show{display:block}
+
+/* ---- conversion dials ---- */
+.rr-card{margin-bottom:14px}
+.rr-row{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:10px}
+.rr-cell{text-align:center}
+.rr{display:flex;flex-direction:column;align-items:center}
+.rr-dial{width:100%;max-width:104px;height:auto}
+.rr-pc{font-size:22px;font-weight:800;fill:#1A1D21}
+.rr-lb{font-size:.8rem;font-weight:800;margin-top:4px;color:#1A1D21}
+.rr-sub{font-size:.7rem;color:#8A9099;line-height:1.35;margin-top:1px}
+.rr-d{margin-top:3px}
+.rr-d .kd{font-size:.66rem}
+.rr-foot{font-size:.76rem;margin-top:12px;line-height:1.6}
+@media(max-width:900px){.rr-row{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:520px){.rr-row{grid-template-columns:repeat(2,1fr)}.rr-pc{font-size:20px}}
+/* ---- funnel with step percentages ---- */
+.fn{display:flex;flex-direction:column;gap:9px}
+.fn-r{}
+.fn-top{display:flex;align-items:baseline;gap:8px}
+.fn-k{font-size:.84rem;font-weight:800;flex:1}
+.fn-n{font-size:.95rem}
+.fn-all{font-size:.72rem;color:#8A9099;min-width:62px;text-align:right}
+.fn-track{height:12px;border-radius:7px;background:#F2F1EF;overflow:hidden;margin-top:4px}
+.fn-track i{display:block;height:100%;border-radius:7px;transition:width .3s}
+.fn-step{font-size:.72rem;color:#6C737E;margin:4px 0 0 2px;display:flex;align-items:center;gap:7px}
+.fn-arrow{color:#C9CDD2}
+.fn-drop{color:#E01E25;font-weight:700}
+/* ---- speed ---- */
+.sp-list{margin-top:8px}
+.sp-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:7px 0;border-bottom:1px dashed #EDECEA;font-size:.83rem}
+.sp-row:last-child{border-bottom:0}
+.sp-row b{font-size:.9rem}
+/* ---- record quality ---- */
+.hq-score{font-size:.78rem;font-weight:800;padding:3px 10px;border-radius:999px;background:#F2F1EF}
+.hq-score.good{background:#E6F5EC;color:#1E8A5A}
+.hq-score.warn{background:#FDF3E2;color:#A8710D}
+.hq-score.bad{background:#FDECED;color:#B5151B}
+.hq-grid{display:flex;flex-direction:column;gap:7px;margin-top:4px}
+.hq-row{display:grid;grid-template-columns:1fr 130px 54px 96px;gap:10px;align-items:center;font-size:.82rem}
+.hq-k{font-weight:600}
+.hq-track{height:9px;border-radius:6px;background:#F2F1EF;overflow:hidden}
+.hq-track i{display:block;height:100%;border-radius:6px}
+.hq-v{text-align:right;font-weight:800}
+.hq-n{font-size:.72rem;text-align:right}
+@media(max-width:700px){.hq-row{grid-template-columns:1fr 70px 48px}.hq-n{display:none}}
+/* ---- share bars inside tables ---- */
+.mini-bar{display:inline-block;width:62px;height:8px;border-radius:5px;background:#F2F1EF;overflow:hidden;vertical-align:middle}
+.mini-bar i{display:block;height:100%;border-radius:5px}
+.mini-pc{font-size:.74rem;font-weight:700;color:#3A3F45;margin-left:7px;vertical-align:middle}
+/* ---- team rate comparison ---- */
+.pr-head{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:12px;font-size:.7rem;font-weight:800;
+  text-transform:uppercase;letter-spacing:.04em;color:#8A9099;padding:0 0 6px;border-bottom:1px solid #EDECEA}
+.pr-row{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:12px;align-items:center;padding:9px 0;border-bottom:1px dashed #EDECEA}
+.pr-row:hover{background:#FAFAF8}
+.pr-name{display:flex;flex-direction:column;line-height:1.3}
+.pr-name b{font-size:.85rem}
+.pr-name em{font-size:.7rem;color:#8A9099;font-style:normal}
+.pr-c{display:flex;align-items:center;gap:7px}
+.pr-track{position:relative;flex:1;height:10px;border-radius:6px;background:#F2F1EF;overflow:visible}
+.pr-track i{display:block;height:100%;border-radius:6px}
+.pr-track u{position:absolute;top:-3px;width:2px;height:16px;background:#1A1D21;opacity:.5}
+.pr-v{font-size:.76rem;min-width:38px;text-align:right}
+@media(max-width:760px){.pr-head{display:none}.pr-row{grid-template-columns:1fr;gap:6px}.pr-c:before{content:attr(data-l)}}
+
 </style>
 <script>
 const SDM_LOGOS = [
@@ -1548,12 +1612,12 @@ const INDUSTRIES = ["Engineering","Pharmaceutical","Textile","Chemical","Food & 
 const PRIORITIES = ["VIP","High","Medium","Low"];
 const STATUS_GROUPS = [
   {g:"Pipeline", items:["New"]},
-  {g:"Contact attempt", items:["No Answer – Sent WhatsApp","Out of Coverage – Sent WhatsApp","Wrong Number","Mail Sent","Call Back","Client Will Call Back","Need Time to Study Our Offer"]},
+  {g:"Contact attempt", items:["Sent WhatsApp","No Answer – Sent WhatsApp","Out of Coverage – Sent WhatsApp","Wrong Number","Mail Sent","Call Back","Client Will Call Back","Need Time to Study Our Offer"]},
   {g:"Sales progress", items:["Offer Sent – Following Up","Scheduled Meeting","Site Visit Scheduled","Negotiation","Not Interested","Low Budget"]},
   {g:"Closing", items:["Won","Lost"]}
 ];
 const REQ_DATETIME = ["Call Back","Scheduled Meeting","Site Visit Scheduled"];            // mandatory date + time + notes
-const REQ_FOLLOWUP = ["No Answer – Sent WhatsApp","Out of Coverage – Sent WhatsApp","Mail Sent","Client Will Call Back","Need Time to Study Our Offer","Offer Sent – Following Up"]; // mandatory follow-up date
+const REQ_FOLLOWUP = ["Sent WhatsApp","No Answer – Sent WhatsApp","Out of Coverage – Sent WhatsApp","Mail Sent","Client Will Call Back","Need Time to Study Our Offer","Offer Sent – Following Up"]; // mandatory follow-up date
 const ACTIVE_EXCLUDE = ["Won","Lost","Not Interested","Low Budget","Wrong Number"];
 const PIPELINE_STATUSES = ["Offer Sent – Following Up","Scheduled Meeting","Site Visit Scheduled","Negotiation"];
 const LOST_CATS = ["Price","Not Interested","Competitor","Location"];
@@ -1736,6 +1800,7 @@ const PROJECTS = [
 const STATUSES = STATUS_GROUPS.flatMap(g=>g.items);
 const STATUS_COLORS = {
   "New":["#2A5D9C","#E8EFF8"],
+  "Sent WhatsApp":["#1F9D55","#E6F5EC"],
   "No Answer – Sent WhatsApp":["#6C737E","#EFEFED"], "Out of Coverage – Sent WhatsApp":["#6C737E","#EFEFED"],
   "Wrong Number":["#9AA0A8","#F1F1F0"], "Mail Sent":["#0E7C86","#E2F3F4"],
   "Call Back":["#C07F16","#FBF1DD"], "Client Will Call Back":["#C07F16","#FBF1DD"],
@@ -1756,7 +1821,7 @@ const XLSX_HEADERS = ["Lead ID","Lead Name","Reference No.","Company","Customer 
    every table; the key only lets people reach the login wall. */
 const SUPABASE_URL = "https://qatzwctetpfuhdjmvuhj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdHp3Y3RldHBmdWhkam12dWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MjIyNzksImV4cCI6MjEwMDM5ODI3OX0.4mBL8dZKoTjaFw2tvAOFQFE6clh5hFuzmAdokyMT0Do";
-const APP_BUILD = "20 Aug 2026 · rev GN";
+const APP_BUILD = "20 Aug 2026 · rev GP";
 const sb = (window.supabase && SUPABASE_URL.indexOf("https")===0)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
@@ -3817,7 +3882,7 @@ function logCall(id){
 /* ---- Team week in review: what every member DID, from the leads' activity logs ---- */
 let twrPrevWeek = false;
 function twrToggle(){ twrPrevWeek = !twrPrevWeek; render(); }
-const TWR_CALL_STATUSES = ["No Answer \u2013 Sent WhatsApp","Out of Coverage \u2013 Sent WhatsApp","Wrong Number","Call Back","Client Will Call Back","Need Time to Study Our Offer","Mail Sent"];
+const TWR_CALL_STATUSES = ["Sent WhatsApp","No Answer \u2013 Sent WhatsApp","Out of Coverage \u2013 Sent WhatsApp","Wrong Number","Call Back","Client Will Call Back","Need Time to Study Our Offer","Mail Sent"];
 function twrRange(){
   const ws = weekStart(); const from = new Date(ws), to = new Date();
   if(twrPrevWeek){ from.setDate(from.getDate()-7); to.setTime(ws.getTime()-864e5); }
@@ -10699,9 +10764,25 @@ function repSources(a){
     <p class="muted" style="font-size:.76rem;margin-top:8px">A source that brings many leads is not the same as one that brings business — compare the Leads column against Conversion and Revenue.</p>
   </div>`;
 }
+/* The span a chart should actually draw. "All time" runs from the year 2000,
+   which squeezes every real month into a sliver at the right-hand edge — so for
+   that period the window is pulled in to the first and last lead we hold. */
+function repSpan(pool){
+  const r = repRange();
+  if(repFilters.period!=="all" || !(pool||[]).length) return r;
+  let min = null, max = null;
+  pool.forEach(l=>{
+    const c = String(l.created||"").slice(0,10);
+    if(c){ if(!min || c<min) min = c; if(!max || c>max) max = c; }
+    const w = String(wonOn(l)||"").slice(0,10);
+    if(w){ if(!max || w>max) max = w; }
+  });
+  const t = today();
+  return { from: min || r.from, to: (max && max>t)? max : t, label: r.label };
+}
 /* ---- trend over the period ---- */
 function repTrend(pool){
-  const r = repRange();
+  const r = repSpan(pool);
   const from = new Date(r.from+"T00:00:00"), to = new Date(r.to+"T00:00:00");
   const days = Math.round((to-from)/864e5)+1;
   const byMonth = days>92;
@@ -10723,6 +10804,399 @@ function repTrend(pool){
                  {name:"Lost", color:"#E01E25", points:pts("lost")}])}
   </div>`;
 }
+/* =================== RATES AND PERCENTAGES ===================
+   A count on its own says how busy we were; a percentage says how well we
+   worked. Every rate below is measured against the honest denominator — a win
+   rate against the leads we actually reached, not against every record that
+   ever landed in the system, because a lead nobody called has not been lost
+   by sales. Each one returns null when there is nothing to divide by, so an
+   empty period reads "—" instead of a misleading 0%. */
+function pc(n, d){ return d? (n/d*100) : null; }
+function pcTxt(v, dp){ return (v===null||v===undefined||isNaN(v))? "—" : v.toFixed(dp===undefined?1:dp)+"%"; }
+/* green when it is where we want it, amber on the way, red when it needs work */
+function pcTone(v, good, ok){
+  if(v===null||v===undefined) return "flat";
+  if(v>=good) return "good"; if(v>=ok) return "warn"; return "bad";
+}
+function pcToneLow(v, good, ok){            // for rates where lower is better
+  if(v===null||v===undefined) return "flat";
+  if(v<=good) return "good"; if(v<=ok) return "warn"; return "bad";
+}
+const PC_COL = {good:"#1E8A5A", warn:"#F2A93B", bad:"#E01E25", flat:"#C9CDD2"};
+
+function repRates(a){
+  if(!a) return {};
+  return {
+    contact:   pc(a.contacted,   a.total),        // did we even reach them
+    qualify:   pc(a.qualified,   a.contacted),    // of those reached, how many were real
+    offer:     pc(a.opportunity, a.qualified),    // of the real ones, how many got an offer
+    negotiate: pc(a.negotiation, a.opportunity),  // of those, how many got to the table
+    close:     pc(a.won,         a.negotiation),  // of those, how many signed
+    win:       pc(a.won,         a.contacted),    // the rate that matters to a salesperson
+    winAll:    pc(a.won,         a.total),        // the rate that matters to marketing
+    loss:      pc(a.lost,        a.contacted),
+    decided:   pc(a.won + a.lost, a.total),       // how much of the book is settled
+    open:      pc(a.open,        a.total)
+  };
+}
+/* a circular percentage dial — small enough to put six in a row */
+function repRateRing(v, label, sub, tone, size){
+  const S = size||104, C=S/2, R=C-9, circ=2*Math.PI*R;
+  const p = (v===null||v===undefined)? 0 : Math.max(0, Math.min(100, v));
+  const col = PC_COL[tone||"flat"] || tone || "#E01E25";
+  return `<div class="rr">
+    <svg viewBox="0 0 ${S} ${S}" class="rr-dial">
+      <circle cx="${C}" cy="${C}" r="${R}" fill="none" stroke="#EDECEA" stroke-width="9"/>
+      <circle cx="${C}" cy="${C}" r="${R}" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round"
+        stroke-dasharray="${(p/100*circ).toFixed(1)} ${circ.toFixed(1)}" transform="rotate(-90 ${C} ${C})"/>
+      <text x="${C}" y="${C+5}" text-anchor="middle" class="rr-pc">${(v===null||v===undefined)? "—" : Math.round(v)+"%"}</text>
+    </svg>
+    <div class="rr-lb">${esc(label)}</div>
+    ${sub? `<div class="rr-sub">${esc(sub)}</div>`:""}
+  </div>`;
+}
+/* the six rates that describe a sales operation, side by side */
+function repRatesStrip(a, p){
+  const R = repRates(a), P = p? repRates(p) : null;
+  const d = (k, lowerBetter) => P? repDelta(R[k]||0, P[k]||0, lowerBetter?{lowerIsBetter:true}:undefined) : "";
+  const cell = (v, label, sub, tone, k, lowBad) => `<div class="rr-cell">
+    ${repRateRing(v, label, sub, tone)}
+    <div class="rr-d">${d(k, lowBad)}</div></div>`;
+  return `<div class="card card-pad rr-card">
+    <div class="eyebrow red">How well we are converting</div>
+    <div class="rr-row">
+      ${cell(R.contact,  "Reached",     a.contacted+" of "+a.total+" leads",    pcTone(R.contact, 80, 50), "contact")}
+      ${cell(R.qualify,  "Qualified",   "of the leads we reached",              pcTone(R.qualify, 40, 20), "qualify")}
+      ${cell(R.offer,    "Got an offer","of the qualified ones",                pcTone(R.offer, 50, 25),   "offer")}
+      ${cell(R.win,      "Win rate",    a.won+" won of "+a.contacted+" reached",pcTone(R.win, 10, 4),      "win")}
+      ${cell(R.loss,     "Loss rate",   a.lost+" lost of those reached",        pcToneLow(R.loss, 20, 40), "loss", true)}
+      ${cell(R.decided,  "Settled",     "won or lost, not still open",          pcTone(R.decided, 60, 30), "decided")}
+    </div>
+    <p class="muted rr-foot">Win and loss are measured against the leads we actually reached — a lead nobody has called yet has not been lost by sales.
+      Overall conversion across every lead received is ${pcTxt(R.winAll)}.</p>
+  </div>`;
+}
+/* the funnel, with the drop between every two stages spelled out */
+function repFunnelPct(a){
+  const steps = [
+    {k:"Leads received", n:a.total,       c:"#1A1D21"},
+    {k:"Reached",        n:a.contacted,   c:"#2A5D9C"},
+    {k:"Qualified",      n:a.qualified,   c:"#4A79C9"},
+    {k:"Offer or meeting", n:a.opportunity, c:"#3FA796"},
+    {k:"Negotiation",    n:a.negotiation, c:"#F2A93B"},
+    {k:"Won",            n:a.won,         c:"#1E8A5A"}
+  ];
+  const top = Math.max(1, a.total);
+  return `<div class="fn">${steps.map((s,i)=>{
+    const prev = i? steps[i-1].n : null;
+    const step = prev===null? null : pc(s.n, prev);
+    const ofAll = pc(s.n, top);
+    const dropN = prev===null? 0 : prev - s.n;
+    return `<div class="fn-r">
+      <div class="fn-top">
+        <span class="fn-k">${esc(s.k)}</span>
+        <b class="fn-n">${s.n.toLocaleString()}</b>
+        <span class="fn-all">${pcTxt(ofAll,0)} of all</span>
+      </div>
+      <div class="fn-track"><i style="width:${Math.max(1.5, ofAll||0)}%;background:${s.c}"></i></div>
+      ${step===null? "" : `<div class="fn-step">
+        <span class="fn-arrow">↳</span> ${pcTxt(step,0)} carried through from ${esc(steps[i-1].k.toLowerCase())}
+        ${dropN>0? `<span class="fn-drop">− ${dropN.toLocaleString()} dropped</span>`:""}
+      </div>`}
+    </div>`;
+  }).join("")}</div>`;
+}
+
+/* =================== SPEED ===================
+   How quickly a lead is picked up decides most of whether it closes. These are
+   the numbers nobody keeps by hand: how long a lead waits before anyone calls,
+   how many are reached on the first day, and how many are never touched at all. */
+function repSpeedCard(pool){
+  const rows = (pool||[]);
+  if(!rows.length) return "";
+  const waits = [], toOffer = [], toClose = [];
+  let within1 = 0, within2 = 0, within7 = 0, later = 0, never = 0;
+  rows.forEach(l=>{
+    const made = String(l.created||"").slice(0,10);
+    if(!made) return;
+    if(l.firstContactAt){
+      const d = Math.max(0, (new Date(l.firstContactAt) - new Date(made+"T00:00:00"))/864e5);
+      if(d < 3650){
+        waits.push(d);
+        if(d<=1) within1++; else if(d<=2) within2++; else if(d<=7) within7++; else later++;
+      }
+      if(l.offerSent){
+        const o = (new Date(String(l.offerSent).slice(0,10)+"T00:00:00") - new Date(l.firstContactAt))/864e5;
+        if(o>=0 && o<3650) toOffer.push(o);
+      }
+    } else if(!repStage(l).won){ never++; }
+    const c = repCycleDays(l); if(c!==null) toClose.push(c);
+  });
+  const avg = arr => arr.length? arr.reduce((s,x)=>s+x,0)/arr.length : null;
+  const med = arr => { if(!arr.length) return null; const s=arr.slice().sort((a,b)=>a-b), m=Math.floor(s.length/2);
+                       return s.length%2? s[m] : (s[m-1]+s[m])/2; };
+  const reached = waits.length, tot = rows.length;
+  const bands = [
+    {k:"Same day or next",  v:within1, color:"#1E8A5A"},
+    {k:"Within two days",   v:within2, color:"#3FA796"},
+    {k:"Inside a week",     v:within7, color:"#F2A93B"},
+    {k:"More than a week",  v:later,   color:"#E0601E"},
+    {k:"Never contacted",   v:never,   color:"#E01E25"}
+  ];
+  const num = (v, suffix) => v===null? "—" : (v<1? Math.max(1,Math.round(v*24))+" hours" : Math.round(v*10)/10+" "+(suffix||"days"));
+  return `<div class="rep-grid2">
+    <div class="card card-pad">
+      <div class="eyebrow red">How long a lead waits for its first call</div>
+      ${chartRing(bands, reached+never? Math.round(within1/(reached+never)*100)+"%" : "—", "same day", 200)}
+      <p class="muted" style="font-size:.76rem;margin-top:8px">Share of every lead received in this period, by how quickly someone first spoke to them.
+        ${never? `<b>${never.toLocaleString()}</b> (${pcTxt(pc(never,tot),0)}) have still never been contacted.`:"Every lead has been contacted."}</p>
+    </div>
+    <div class="card card-pad">
+      <div class="eyebrow red">Speed through the pipeline</div>
+      <div class="sp-list">
+        <div class="sp-row"><span>Average wait before the first call</span><b>${num(avg(waits))}</b></div>
+        <div class="sp-row"><span>Typical wait (median)</span><b>${num(med(waits))}</b></div>
+        <div class="sp-row"><span>Reached on day one</span><b>${pcTxt(pc(within1, tot),0)}</b></div>
+        <div class="sp-row"><span>Reached within a week</span><b>${pcTxt(pc(within1+within2+within7, tot),0)}</b></div>
+        <div class="sp-row"><span>First call to offer sent</span><b>${num(avg(toOffer))}</b></div>
+        <div class="sp-row"><span>Lead to signature</span><b>${num(avg(toClose))}</b></div>
+        <div class="sp-row"><span>Fastest deal closed</span><b>${toClose.length? Math.round(Math.min(...toClose))+" days":"—"}</b></div>
+        <div class="sp-row"><span>Slowest deal closed</span><b>${toClose.length? Math.round(Math.max(...toClose))+" days":"—"}</b></div>
+      </div>
+      <p class="muted" style="font-size:.76rem;margin-top:8px">A lead called on the first day converts far better than the same lead called a week later.</p>
+    </div>
+  </div>`;
+}
+/* =================== DATA HEALTH ===================
+   A report is only as true as the records behind it. This says, in plain
+   percentages, how much of the book is actually filled in. */
+function repHealthCard(pool){
+  const rows = (pool||[]);
+  if(!rows.length) return "";
+  const t = today();
+  const open = rows.filter(l=>{ const s=repStage(l); return !s.won && !s.lost; });
+  const n = rows.length;
+  const has = f => rows.filter(f).length;
+  const stale = open.filter(l=>{
+    const last = l.lastContact || l.firstContactAt || l.created;
+    return last && ctDays(String(last).slice(0,10)) > 14;
+  }).length;
+  const items = [
+    {k:"Have a usable phone number", v:has(l=>!!bestPhone(l)), d:n, good:95, ok:80},
+    {k:"Have the source recorded",   v:has(l=>!!normSource(l.source)), d:n, good:90, ok:70},
+    {k:"Have a company name",        v:has(l=>!!String(l.company||"").trim()), d:n, good:80, ok:50},
+    {k:"Have the project recorded",  v:has(l=>!!l.project), d:n, good:85, ok:60},
+    {k:"Have a nationality recorded",v:has(l=>!!leadNat(l)), d:n, good:70, ok:40},
+    {k:"Open leads with a next step",v:open.filter(l=>!!l.next).length, d:open.length, good:85, ok:60},
+    {k:"Open leads on time",         v:open.filter(l=>!l.next || l.next>=t).length, d:open.length, good:90, ok:70},
+    {k:"Open leads touched in the last 2 weeks", v:Math.max(0,open.length-stale), d:open.length, good:80, ok:50}
+  ];
+  const score = Math.round(items.reduce((s,i)=>s+(pc(i.v,i.d)||0),0)/items.length);
+  return `<div class="card card-pad">
+    <div class="section-head" style="margin:0 0 8px"><h2 style="font-size:1rem">Record quality</h2>
+      <span class="hq-score ${pcTone(score,85,65)}">${score}% complete</span></div>
+    <div class="hq-grid">${items.map(i=>{
+      const v = pc(i.v, i.d), tone = pcTone(v, i.good, i.ok);
+      return `<div class="hq-row">
+        <span class="hq-k">${esc(i.k)}</span>
+        <span class="hq-track"><i style="width:${Math.max(1,v||0)}%;background:${PC_COL[tone]}"></i></span>
+        <b class="hq-v" style="color:${PC_COL[tone]}">${pcTxt(v,0)}</b>
+        <span class="hq-n muted">${i.v.toLocaleString()} / ${i.d.toLocaleString()}</span>
+      </div>`; }).join("")}</div>
+    <p class="muted" style="font-size:.76rem;margin-top:10px">Every percentage in the rest of this report is drawn from these same records — the gaps here are the limits of what it can tell you.</p>
+  </div>`;
+}
+
+/* =================== BREAKDOWNS WITH SHARE AND CONVERSION ===================
+   One table shape, used for channels, projects and people: the count, its share
+   of the whole as a bar, and the conversion through each step as a percentage.
+   Share answers "where does the work come from", conversion answers "where does
+   the business come from" — and they are rarely the same column. */
+function repBreakdown(pool, keyOf, opts){
+  const o = opts||{};
+  const by = {};
+  (pool||[]).forEach(l=>{
+    const k = keyOf(l); if(k===null || k===undefined || k==="") return;
+    const g = by[k] || (by[k] = {k, leads:0, contacted:0, qualified:0, opp:0, won:0, lost:0, value:0, area:0, open:0, pipeline:0});
+    const s = repStage(l), v = Number(l.value)||0;
+    g.leads++;
+    if(s.contacted) g.contacted++;
+    if(s.qualified) g.qualified++;
+    if(s.opportunity) g.opp++;
+    if(s.won){ g.won++; g.value += v; g.area += Number(l.soldArea||l.land)||0; }
+    if(s.lost) g.lost++;
+    if(!s.won && !s.lost){ g.open++; g.pipeline += v; }
+  });
+  const rows = Object.values(by).map(g=>({...g,
+    share: null, conv: pc(g.won, g.leads), winRate: pc(g.won, g.contacted),
+    contactRate: pc(g.contacted, g.leads), lossRate: pc(g.lost, g.contacted),
+    avgDeal: g.won? g.value/g.won : 0
+  }));
+  const tot = rows.reduce((a,r)=>({leads:a.leads+r.leads, contacted:a.contacted+r.contacted, won:a.won+r.won,
+    lost:a.lost+r.lost, value:a.value+r.value, area:a.area+r.area, pipeline:a.pipeline+r.pipeline}),
+    {leads:0,contacted:0,won:0,lost:0,value:0,area:0,pipeline:0});
+  rows.forEach(r=>{ r.share = pc(r.leads, tot.leads); r.revShare = pc(r.value, tot.value); });
+  rows.sort(o.sort || ((a,b)=>b.leads-a.leads));
+  return {rows, tot};
+}
+function repShareBar(v, color){
+  return `<span class="mini-bar"><i style="width:${Math.max(1, v||0)}%;background:${color||"#2A5D9C"}"></i></span>
+    <span class="mini-pc">${pcTxt(v,0)}</span>`;
+}
+function repPcCell(v, good, ok){
+  const tone = pcTone(v, good, ok);
+  return `<td class="num"><b style="color:${PC_COL[tone]}">${pcTxt(v)}</b></td>`;
+}
+/* ---- channels, projects: the same table with a different key ---- */
+function repSplitTable(title, pool, keyOf, note, money){
+  const B = repBreakdown(pool, keyOf);
+  if(!B.rows.length) return "";
+  const showMoney = money!==false && canSeeMoney();
+  const best = B.rows.filter(r=>r.leads>=3).sort((a,b)=>(b.conv||0)-(a.conv||0))[0];
+  const most = B.rows[0];
+  return `<div class="card card-pad">
+    <div class="section-head" style="margin:0 0 6px"><h2 style="font-size:1rem">${esc(title)}</h2>
+      <span class="muted" style="font-size:.78rem">${B.tot.leads.toLocaleString()} leads · ${B.tot.won} won · overall ${pcTxt(pc(B.tot.won,B.tot.leads))}</span></div>
+    <div class="rep-flags">
+      ${most? `<span class="rep-flag">📊 Most volume: <b>${esc(most.k)}</b> — ${pcTxt(most.share,0)} of all leads</span>`:""}
+      ${best&&best!==most? `<span class="rep-flag good">🎯 Best conversion: <b>${esc(best.k)}</b> — ${pcTxt(best.conv)}</span>`:""}
+    </div>
+    <div style="overflow:auto;margin-top:10px"><table class="tbl">
+      <thead><tr><th>${esc(title.split("—")[0].trim())}</th><th class="num">Leads</th><th style="min-width:120px">Share of leads</th>
+        <th class="num">Reached</th><th class="num">Qualified</th><th class="num">Won</th>
+        <th class="num">Conversion</th><th class="num">Win rate</th>${showMoney? '<th class="num">Revenue</th><th style="min-width:110px">Share of revenue</th>':""}
+        <th class="num">Lost</th></tr></thead>
+      <tbody>${B.rows.map(r=>`<tr>
+        <td><b>${esc(r.k)}</b></td>
+        <td class="num">${r.leads.toLocaleString()}</td>
+        <td>${repShareBar(r.share)}</td>
+        <td class="num">${r.contacted} <span class="muted">${pcTxt(r.contactRate,0)}</span></td>
+        <td class="num">${r.qualified}</td>
+        <td class="num"><b>${r.won}</b></td>
+        ${repPcCell(r.conv, 5, 1)}
+        ${repPcCell(r.winRate, 10, 3)}
+        ${showMoney? `<td class="num"><b>${r.value? fmtMoney(r.value):'<span class="muted">—</span>'}</b></td><td>${repShareBar(r.revShare,"#1E8A5A")}</td>`:""}
+        <td class="num">${r.lost} <span class="muted">${pcTxt(r.lossRate,0)}</span></td>
+      </tr>`).join("")}</tbody>
+      <tfoot><tr><th>All</th><th class="num">${B.tot.leads.toLocaleString()}</th><th></th>
+        <th class="num">${B.tot.contacted}</th><th></th><th class="num">${B.tot.won}</th>
+        <th class="num">${pcTxt(pc(B.tot.won,B.tot.leads))}</th><th class="num">${pcTxt(pc(B.tot.won,B.tot.contacted))}</th>
+        ${showMoney? `<th class="num">${fmtMoney(B.tot.value)}</th><th></th>`:""}
+        <th class="num">${B.tot.lost}</th></tr></tfoot>
+    </table></div>
+    ${note? `<p class="muted" style="font-size:.76rem;margin-top:8px">${note}</p>`:""}
+  </div>`;
+}
+function repChannelTable(pool){
+  return repSplitTable("Channel — volume against conversion",
+    (pool||[]).filter(l=>isMktSource(l.source)), l=>srcLabel(l.source),
+    "Share of leads and share of revenue in the same row: a channel that brings a fifth of the leads and a twentieth of the revenue is costing more than it returns.");
+}
+function repProjectCard(pool){
+  const B = repBreakdown(pool, l=>l.project||"Not recorded");
+  if(!B.rows.length) return "";
+  const money = canSeeMoney();
+  return `<div class="rep-grid2">
+    <div class="card card-pad">
+      <div class="eyebrow red">Demand by project</div>
+      ${chartBars(B.rows.slice(0,9).map(r=>({k:r.k, v:r.leads})), {color:"#2A5D9C", limit:9})}
+      <p class="muted" style="font-size:.76rem;margin-top:8px">Where the enquiries are pointing.</p>
+    </div>
+    <div class="card card-pad">
+      <div class="eyebrow red">Which projects actually close</div>
+      ${chartBars(B.rows.filter(r=>r.won).sort((a,b)=>(b.conv||0)-(a.conv||0)).slice(0,9)
+          .map(r=>({k:r.k, v:Math.round((r.conv||0)*10)/10, color:PC_COL[pcTone(r.conv,5,1)]})), {limit:9})}
+      <p class="muted" style="font-size:.76rem;margin-top:8px">Conversion percentage per project — interest and sales are not the same map.</p>
+    </div>
+  </div>
+  ${repSplitTable("Project — interest against sales", pool, l=>l.project||"Not recorded",
+    "Land sold sits beside leads received: a project with heavy interest and no metres sold is a pricing or availability problem, not a sales one.", money)}`;
+}
+/* ---- month by month, with growth ---- */
+function repMonthlyCard(pool){
+  const r = repSpan(pool);
+  const from = new Date(r.from+"T00:00:00"), to = new Date(r.to+"T00:00:00");
+  const months = [];
+  { const c = new Date(from.getFullYear(), from.getMonth(), 1); let guard=0;
+    while(c<=to && guard++<60){ months.push(isoLocal(c).slice(0,7)); c.setMonth(c.getMonth()+1); } }
+  if(months.length<2) return "";
+  const m = {};
+  months.forEach(k=> m[k] = {k, leads:0, contacted:0, won:0, lost:0, value:0});
+  (pool||[]).forEach(l=>{
+    const ki = String(l.created||"").slice(0,7);
+    if(m[ki]){ m[ki].leads++; if(repStage(l).contacted) m[ki].contacted++; }
+    const s = repStage(l);
+    if(s.won){ const kw = String(wonOn(l)||"").slice(0,7); if(m[kw]){ m[kw].won++; m[kw].value += Number(l.value)||0; } }
+    if(s.lost){ const kl = String(wonOn(l)||l.created||"").slice(0,7); if(m[kl]) m[kl].lost++; }
+  });
+  const rows = months.map(k=>m[k]);
+  const label = k => new Date(k+"-01T00:00:00").toLocaleDateString("en-GB",{month:"short",year:"2-digit"});
+  const money = canSeeMoney();
+  const growth = (now, prev) => {
+    if(prev===null||prev===undefined) return "";
+    if(!prev) return now? `<span class="kd up">▲ new</span>` : "";
+    const g = Math.round((now-prev)/Math.abs(prev)*100);
+    if(!g) return `<span class="kd flat">— level</span>`;
+    return `<span class="kd ${g>0?"up":"down"}">${g>0?"▲":"▼"} ${Math.abs(g)}%</span>`;
+  };
+  return `<div class="card card-pad">
+    <div class="section-head" style="margin:0 0 8px"><h2 style="font-size:1rem">Month by month</h2>
+      <span class="muted" style="font-size:.78rem">${months.length} months in this period</span></div>
+    ${chartLine([
+      {name:"Leads received", color:"#8A9099", points:rows.map(x=>({x:label(x.k), y:x.leads}))},
+      {name:"Reached",        color:"#2A5D9C", points:rows.map(x=>({x:label(x.k), y:x.contacted}))},
+      {name:"Won",            color:"#1E8A5A", points:rows.map(x=>({x:label(x.k), y:x.won}))},
+      {name:"Lost",           color:"#E01E25", points:rows.map(x=>({x:label(x.k), y:x.lost}))}
+    ])}
+    <div style="overflow:auto;margin-top:12px"><table class="tbl">
+      <thead><tr><th>Month</th><th class="num">Leads</th><th class="num">Growth</th><th class="num">Reached</th>
+        <th class="num">Won</th><th class="num">Lost</th><th class="num">Conversion</th>${money? '<th class="num">Revenue</th><th class="num">Growth</th>':""}</tr></thead>
+      <tbody>${rows.map((x,i)=>{
+        const p = i? rows[i-1] : null;
+        return `<tr>
+          <td><b>${esc(label(x.k))}</b></td>
+          <td class="num">${x.leads.toLocaleString()}</td>
+          <td class="num">${growth(x.leads, p&&p.leads)}</td>
+          <td class="num">${x.contacted} <span class="muted">${pcTxt(pc(x.contacted,x.leads),0)}</span></td>
+          <td class="num"><b>${x.won}</b></td><td class="num">${x.lost}</td>
+          ${repPcCell(pc(x.won, x.leads), 5, 1)}
+          ${money? `<td class="num"><b>${x.value? fmtMoney(x.value):'<span class="muted">—</span>'}</b></td><td class="num">${growth(x.value, p&&p.value)}</td>`:""}
+        </tr>`; }).join("")}</tbody>
+      <tfoot><tr><th>Total</th><th class="num">${rows.reduce((s,x)=>s+x.leads,0).toLocaleString()}</th><th></th>
+        <th class="num">${rows.reduce((s,x)=>s+x.contacted,0)}</th>
+        <th class="num">${rows.reduce((s,x)=>s+x.won,0)}</th><th class="num">${rows.reduce((s,x)=>s+x.lost,0)}</th>
+        <th class="num">${pcTxt(pc(rows.reduce((s,x)=>s+x.won,0), rows.reduce((s,x)=>s+x.leads,0)))}</th>
+        ${money? `<th class="num">${fmtMoney(rows.reduce((s,x)=>s+x.value,0))}</th><th></th>`:""}</tr></tfoot>
+    </table></div>
+  </div>`;
+}
+/* ---- the team, rate against rate, with the team average marked ---- */
+function repPeopleRates(a){
+  const rows = Object.entries(a.byOwner||{}).filter(([id,o])=>id && o.leads)
+    .map(([id,o])=>({id, name: memberName(id)||"Unassigned", leads:o.leads,
+      contact: pc(o.contacted,o.leads), qualify: pc(o.qualified,o.contacted),
+      win: pc(o.won,o.contacted), won:o.won, value:o.wonValue}))
+    .sort((x,y)=>(y.win||0)-(x.win||0) || y.won-x.won);
+  if(rows.length<2) return "";
+  const teamContact = pc(a.contacted, a.total), teamWin = pc(a.won, a.contacted);
+  const bar = (v, tone, mark) => `<span class="pr-track">
+      <i style="width:${Math.max(1, Math.min(100, v||0))}%;background:${PC_COL[tone]}"></i>
+      ${mark!==null&&mark!==undefined? `<u style="left:${Math.max(0,Math.min(100,mark))}%"></u>`:""}
+    </span><b class="pr-v" style="color:${PC_COL[tone]}">${pcTxt(v,0)}</b>`;
+  return `<div class="card card-pad">
+    <div class="section-head" style="margin:0 0 8px"><h2 style="font-size:1rem">The team, rate by rate</h2>
+      <span class="muted" style="font-size:.78rem">the line marks the team average</span></div>
+    <div class="pr-head"><span></span><span>Leads reached</span><span>Qualified of reached</span><span>Won of reached</span></div>
+    ${rows.map(r=>`<div class="pr-row" onclick="repSet({owner:'${r.id}'})" style="cursor:pointer">
+      <span class="pr-name"><b>${esc(r.name)}</b><em>${r.leads} leads · ${r.won} won</em></span>
+      <span class="pr-c">${bar(r.contact, pcTone(r.contact,80,50), teamContact)}</span>
+      <span class="pr-c">${bar(r.qualify, pcTone(r.qualify,40,20), pc(a.qualified,a.contacted))}</span>
+      <span class="pr-c">${bar(r.win, pcTone(r.win,10,4), teamWin)}</span>
+    </div>`).join("")}
+    <p class="muted" style="font-size:.76rem;margin-top:10px">Rates, not totals — someone handed twice the leads should not look twice as good. Click a name to narrow the whole report to that person.</p>
+  </div>`;
+}
+
 function repIsDirector(){ return currentUser && (currentUser.director || currentUser.admin || currentUser.exec || isOps() || currentUser.mgr || currentUser.dmgr); }
 /* ---------- SALES DIRECTOR: the full picture ---------- */
 /* Where the demand is coming from. Marketing records it at intake, sales or
@@ -10786,19 +11260,29 @@ function viewDirectorReports(){
       ${repKpi("Average deal", a.avgDeal? fmtMoney(a.avgDeal):"—", "per won deal", repDelta(a.avgDeal, p&&p.avgDeal))}
       ${repKpi("Average cycle", a.avgCycle? Math.round(a.avgCycle)+" days":"—", "lead to signature", repDelta(a.avgCycle, p&&p.avgCycle, {lowerIsBetter:true}))}
     </div>
+    ${repRatesStrip(a, p)}
     <div class="rep-grid2">
-      <div class="card card-pad"><div class="eyebrow red">Sales funnel</div>${repFunnel(a)}</div>
+      <div class="card card-pad"><div class="eyebrow red">Sales funnel — and what falls out of it</div>${repFunnelPct(a)}</div>
       ${repTrend(d.pool)}
     </div>
+    <div class="section-head"><h2 style="font-size:1rem">How fast we move</h2></div>
+    ${repSpeedCard(d.pool)}
     ${repPeople(a)}
+    ${repPeopleRates(a)}
     <div class="section-head"><h2 style="font-size:1rem">Pipeline</h2></div>
     ${repPipeline(a, d.pool)}
     <div class="section-head"><h2 style="font-size:1rem">Why we lose</h2></div>
     ${repLost(a)}
+    <div class="section-head"><h2 style="font-size:1rem">Over time</h2></div>
+    ${repMonthlyCard(d.pool)}
     ${repSources(a)}
     ${repChannels(a)}
-    ${(isDirector()||isOps()||isAdmin())? offerNoteSettings() : ""}
+    ${repChannelTable(d.pool)}
+    <div class="section-head"><h2 style="font-size:1rem">By project</h2></div>
+    ${repProjectCard(d.pool)}
     ${natCard}
+    ${repHealthCard(d.pool)}
+    ${(isDirector()||isOps()||isAdmin())? offerNoteSettings() : ""}
   <p class="muted no-print" style="font-size:.76rem;margin-top:10px">Everything above follows the filters at the top. Click any salesperson, source or lost reason to narrow the whole dashboard to it.</p>
   </div>`;
 }
@@ -10961,6 +11445,14 @@ function viewMarketingReports(){
       ${repKpi("Lost rate", mktLostRate(m)===null? "—" : mktLostRate(m).toFixed(1)+"%",
         "of the "+m.contacted.toLocaleString()+" leads we reached", "")}
     </div>
+    ${repRatesStrip(m, p)}
+    <div class="card card-pad">
+      <div class="eyebrow red">Our funnel — and what falls out of it</div>
+      ${repFunnelPct(m)}
+    </div>
+    ${repMonthlyCard(mkt)}
+    <div class="section-head"><h2 style="font-size:1rem">How fast sales pick our leads up</h2></div>
+    ${repSpeedCard(mkt)}
     <div class="rep-grid2">
       <div class="card card-pad">
         <div class="eyebrow red">Outcome of our leads</div>
@@ -10985,10 +11477,14 @@ function viewMarketingReports(){
       <p class="muted" style="font-size:.76rem;margin-top:8px">Volume is not quality — a channel with fewer leads but a higher conversion rate is often worth more.</p>
     </div>
     ${repChannels(m)}
+    ${repChannelTable(mkt)}
     ${mktSideBySide(S)}
+    <div class="section-head"><h2 style="font-size:1rem">By project</h2></div>
+    ${repProjectCard(mkt)}
     ${mktLostSection(d.pool)}
     ${natCard}
     ${repTrend(mkt)}
+    ${repHealthCard(mkt)}
   </div>`;
 }
 /* area stands in for value where the commercial terms are not theirs to see */
@@ -11050,7 +11546,7 @@ function viewMyReports(){
     {k:"Opportunity", n:a.opportunity},{k:"Negotiation", n:a.negotiation},{k:"Won", n:a.won}
   ];
   /* monthly trend of my wins */
-  const r = repRange();
+  const r = repSpan(mine);
   const months = [];
   { const c = new Date(r.from+"T00:00:00"), end = new Date(r.to+"T00:00:00");
     let guard=0;
@@ -11098,14 +11594,16 @@ function viewMyReports(){
       </div>`:""}
     </div>
 
+    ${repRatesStrip(a, p)}
+
     <div class="mr-grid">
       <div class="mr-card">
         <div class="mr-h">What happened to my leads</div>
         ${chartRing(outcome, a.total.toLocaleString(), "leads")}
       </div>
       <div class="mr-card">
-        <div class="mr-h">My funnel</div>
-        ${chartFunnelBars(funnel)}
+        <div class="mr-h">My funnel — and what falls out of it</div>
+        ${repFunnelPct(a)}
       </div>
     </div>
 
@@ -11172,11 +11670,17 @@ function viewMyReports(){
       </div>
     </div>
 
+    <div class="section-head"><h2 style="font-size:1rem">How fast I pick leads up</h2></div>
+    ${repSpeedCard(mine)}
+    ${repMonthlyCard(mine)}
+    ${repProjectCard(mine)}
+
     <div class="mr-card">
       <div class="mr-h">My open pipeline by stage</div>
       ${chartBars(Object.entries(stages).map(([k,v])=>({k, v})), {money:true, keepZero:true, color:"#E01E25"})}
       <div class="mr-pipe-tot"><span>Total open pipeline</span><b>${fmtMoney(a.pipelineValue)}</b></div>
     </div>
+    ${repHealthCard(mine)}
   </div>`;
 }
 function viewLegacyReports(){
